@@ -1,0 +1,76 @@
+<script setup lang="ts">
+import { computed, reactive, ref } from 'vue';
+import { api } from '@/api';
+import { useRace } from '@/stores/race';
+import { useUi } from '@/stores/ui';
+import { fmtDateTime } from '@/utils/time';
+import EpSelector from '@/components/EpSelector.vue';
+import type { Team } from '@/types';
+
+const race = useRace();
+const ui = useUi();
+const ep = computed(() => race.currentEpisode);
+const inputs = reactive<Record<number, { amount: string; reason: string }>>({});
+const filterTeam = ref<number | ''>('');
+const get = (id: number) => (inputs[id] ??= { amount: '', reason: '' });
+
+async function apply(t: Team, sign: 1 | -1) {
+  const inp = get(t.id);
+  const amount = Math.abs(parseInt(inp.amount, 10));
+  if (!amount) { ui.toast('请输入有效金额', 'error'); return; }
+  const delta = amount * sign;
+  const reason = inp.reason.trim() || (sign > 0 ? '任务奖励' : '手动扣除');
+  if (!(await ui.confirm(sign > 0 ? '增加货币' : '扣除货币', `「${t.name}」${sign > 0 ? '增加' : '扣除'} ${amount}，原因：${reason}\n当前余额 ${t.currency} → ${t.currency + delta}`))) return;
+  try {
+    await api('/ledger', { method: 'POST', body: { episodeId: ep.value?.id, teamId: t.id, delta, reason } });
+    inp.amount = ''; inp.reason = '';
+    await Promise.all([race.loadTeams(), race.loadLedger()]);
+    ui.toast(`✅ 已${sign > 0 ? '增加' : '扣除'} ${amount}`);
+  } catch (e) { ui.error(e); }
+}
+const rows = computed(() => (filterTeam.value ? race.ledger.filter((l) => l.team_id === filterTeam.value) : race.ledger));
+</script>
+
+<template>
+  <EpSelector />
+  <div class="flex-between mb-2">
+    <div class="section-title">💰 {{ ep?.code }} 货币操作</div>
+    <span v-if="!race.canAdjustCurrency" class="text-sm text-gray">只有主办与本赛段站点人员可以操作货币</span>
+  </div>
+  <div class="grid grid-4">
+    <div v-for="t in race.teams" :key="t.id" class="team-card" :class="'team-' + t.status">
+      <div class="flex-between"><strong>{{ t.name }}</strong><span v-if="t.status !== 'alive'" class="status-eliminated">{{ t.status === 'eliminated' ? '已淘汰' : '已退赛' }}</span></div>
+      <div class="currency-box">💰 {{ t.currency }}</div>
+      <div v-if="race.canAdjustCurrency && t.status === 'alive'" class="mt-1">
+        <div class="flex" style="gap: 6px; flex-wrap: nowrap">
+          <input v-model="get(t.id).amount" type="number" inputmode="numeric" class="input-sm" placeholder="金额" style="width: 80px" />
+          <input v-model="get(t.id).reason" class="input-sm" placeholder="原因" style="flex: 1; min-width: 60px" />
+        </div>
+        <div class="flex mt-1" style="gap: 6px">
+          <button class="btn btn-success btn-sm" style="flex: 1" @click="apply(t, 1)">➕ 增加</button>
+          <button class="btn btn-danger btn-sm" style="flex: 1" @click="apply(t, -1)">➖ 扣除</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-3">
+    <div class="card-header">
+      <span>📝 货币变动日志（{{ ep?.code }}）</span>
+      <select v-model="filterTeam" class="input-sm input-inline" style="width: 140px"><option value="">全部队伍</option><option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.name }}</option></select>
+    </div>
+    <div v-if="!rows.length" class="empty-state">暂无货币变动记录</div>
+    <div v-else class="scroll-table">
+      <table class="table">
+        <thead><tr><th>时间</th><th>队伍</th><th>变动</th><th>余额</th><th>操作人</th><th>原因</th></tr></thead>
+        <tbody>
+          <tr v-for="l in rows" :key="l.id">
+            <td>{{ fmtDateTime(l.created_at) }}</td><td>{{ l.team_name }}</td>
+            <td :class="l.delta > 0 ? 'log-positive' : 'log-negative'">{{ l.delta > 0 ? '+' : '' }}{{ l.delta }}</td>
+            <td>{{ l.balance_after }}</td><td>{{ l.operator_name }}</td><td class="wrap">{{ l.reason || '-' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</template>

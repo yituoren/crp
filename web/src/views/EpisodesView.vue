@@ -1,0 +1,148 @@
+<script setup lang="ts">
+import { computed, reactive, ref } from 'vue';
+import { api } from '@/api';
+import { useAuth } from '@/stores/auth';
+import { useRace } from '@/stores/race';
+import { useUi } from '@/stores/ui';
+import { LEG_TYPES, LEG_TYPE_LABEL, type Leg } from '@/types';
+import EpSelector from '@/components/EpSelector.vue';
+import LegTag from '@/components/LegTag.vue';
+import Modal from '@/components/Modal.vue';
+
+const auth = useAuth();
+const race = useRace();
+const ui = useUi();
+const ep = computed(() => race.currentEpisode);
+
+const staffOf = (legId: number) => race.assignments.filter((a) => a.role === 'station' && a.leg_id === legId).map((a) => a.display_name);
+const doneCount = (legId: number) => race.aliveTeams.filter((t) => race.progressOf(t.id, legId)?.completed_at).length;
+const arrivedCount = (legId: number) => race.aliveTeams.filter((t) => { const p = race.progressOf(t.id, legId); return p?.arrived_at && !p.completed_at; }).length;
+
+// ---- 赛段编辑 ----
+const epEditing = ref(false);
+const epForm = reactive({ name: '', budget: 0, status: 'pending', notes: '' });
+function openEpEdit() {
+  if (!ep.value) return;
+  Object.assign(epForm, { name: ep.value.name, budget: ep.value.budget, status: ep.value.status, notes: ep.value.notes });
+  epEditing.value = true;
+}
+async function saveEp() {
+  try { await api(`/episodes/${ep.value!.id}`, { method: 'PUT', body: epForm }); await race.loadEpisodes(); epEditing.value = false; ui.toast('赛段已保存'); } catch (e) { ui.error(e); }
+}
+async function addEpisode() {
+  try { await api('/episodes', { method: 'POST', body: {} }); await race.loadEpisodes(); ui.toast('已新增赛段'); } catch (e) { ui.error(e); }
+}
+async function deleteEpisode() {
+  if (!ep.value) return;
+  if (!(await ui.confirm('删除赛段', `删除 ${ep.value.code}？该赛段的环节、记录、排班、货币日志都会被删除。`, { danger: true, okText: '删除' }))) return;
+  try { await api(`/episodes/${ep.value.id}`, { method: 'DELETE' }); await race.loadEpisodes(); ui.toast('已删除'); } catch (e) { ui.error(e); }
+}
+
+// ---- 环节编辑 ----
+const legEditing = ref<Leg | null>(null);
+const legForm = reactive({ type: 'TI', name: '', description: '', address: '', map_url: '', clue_text: '', judge_criteria: '', open_time: '', close_time: '', detour_a: '', detour_b: '' });
+function openLegEdit(leg: Leg) {
+  legEditing.value = leg;
+  Object.assign(legForm, { type: leg.type, name: leg.name, description: leg.description, address: leg.address, map_url: leg.map_url, clue_text: leg.clue_text, judge_criteria: leg.judge_criteria, open_time: leg.open_time, close_time: leg.close_time, detour_a: leg.detour_a, detour_b: leg.detour_b });
+}
+async function saveLeg() {
+  try { await api(`/legs/${legEditing.value!.id}`, { method: 'PUT', body: legForm }); await race.loadEpisodes(); legEditing.value = null; ui.toast('环节已保存'); } catch (e) { ui.error(e); }
+}
+async function addLeg() {
+  try {
+    const n = (ep.value?.legs.length ?? 0) + 1;
+    await api(`/episodes/${ep.value!.id}/legs`, { method: 'POST', body: { type: 'TI', name: `新环节 ${n}` } });
+    await race.loadEpisodes();
+    ui.toast('已添加环节，点击卡片上的「编辑」完善信息');
+  } catch (e) { ui.error(e); }
+}
+async function deleteLeg(leg: Leg) {
+  if (!(await ui.confirm('删除环节', `删除「${leg.name}」？相关记录和附件也将丢失。`, { danger: true, okText: '删除' }))) return;
+  try { await api(`/legs/${leg.id}`, { method: 'DELETE' }); await race.loadEpisodes(); ui.toast('已删除'); } catch (e) { ui.error(e); }
+}
+async function move(leg: Leg, dir: -1 | 1) {
+  const legs = [...ep.value!.legs];
+  const i = legs.findIndex((l) => l.id === leg.id);
+  const j = i + dir;
+  if (j < 0 || j >= legs.length) return;
+  [legs[i], legs[j]] = [legs[j]!, legs[i]!];
+  try { await api(`/episodes/${ep.value!.id}/legs/order`, { method: 'PUT', body: { ids: legs.map((l) => l.id) } }); await race.loadEpisodes(); } catch (e) { ui.error(e); }
+}
+const statusLabel: Record<string, string> = { pending: '未开始', running: '进行中', finished: '已结束' };
+</script>
+
+<template>
+  <EpSelector />
+  <div v-if="!ep" class="empty-state">暂无赛段<button v-if="auth.isHost" class="btn" style="margin-left: 8px" @click="addEpisode">+ 新增赛段</button></div>
+  <template v-else>
+    <div class="card">
+      <div class="card-header">
+        <span>📋 {{ ep.code }} · {{ ep.name }} <span class="badge" :class="ep.status === 'running' ? 'badge-station' : ep.status === 'finished' ? 'badge-crew' : 'badge-info'">{{ statusLabel[ep.status] }}</span></span>
+        <div v-if="auth.isHost" class="flex">
+          <button class="btn btn-outline btn-sm" @click="openEpEdit">✏️ 编辑赛段</button>
+          <button class="btn btn-outline btn-sm" @click="addEpisode">+ 新增赛段</button>
+          <button class="btn btn-danger btn-sm" @click="deleteEpisode">删除赛段</button>
+        </div>
+      </div>
+      <div class="text-sm text-gray">经费：{{ ep.budget ? `${ep.budget} 元/队` : '未设置' }}</div>
+      <div v-if="ep.notes" class="pre mt-1">{{ ep.notes }}</div>
+    </div>
+
+    <div class="flex-between mb-2">
+      <div class="section-title">环节列表（{{ ep.legs.length }}）</div>
+      <button v-if="auth.isHost" class="btn" @click="addLeg">+ 添加环节</button>
+    </div>
+    <div v-if="!ep.legs.length" class="empty-state">暂无环节，{{ auth.isHost ? '请点击右上角添加' : '请等待主办添加' }}</div>
+    <div class="grid grid-3">
+      <div v-for="(leg, i) in ep.legs" :key="leg.id" class="leg-item" @click="$router.push({ name: 'leg', params: { episodeId: ep.id, legId: leg.id } })">
+        <div class="flex-between" style="margin-bottom: 6px">
+          <LegTag :type="leg.type" full />
+          <span class="text-xs text-gray">#{{ i + 1 }}</span>
+        </div>
+        <div style="font-weight: 700; font-size: 15px">{{ leg.name }}</div>
+        <div class="text-sm text-gray">站点：{{ staffOf(leg.id).join('、') || '未分配' }}</div>
+        <div v-if="leg.address" class="text-sm text-gray">📍 {{ leg.address }}</div>
+        <div class="text-xs text-gray mt-1">
+          ✅ {{ doneCount(leg.id) }} 完成 · ⏳ {{ arrivedCount(leg.id) }} 进行中 · 📎 {{ leg.attachments.length }} 附件
+        </div>
+        <div v-if="auth.isHost" class="flex mt-2" @click.stop>
+          <button class="btn btn-outline btn-sm" @click="openLegEdit(leg)">编辑</button>
+          <button class="btn btn-outline btn-sm" :disabled="i === 0" @click="move(leg, -1)">↑</button>
+          <button class="btn btn-outline btn-sm" :disabled="i === ep.legs.length - 1" @click="move(leg, 1)">↓</button>
+          <button class="btn btn-danger btn-sm" @click="deleteLeg(leg)">删除</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <Modal v-if="epEditing" title="编辑赛段" small @close="epEditing = false">
+    <div class="form-group"><label>名称</label><input v-model="epForm.name" /></div>
+    <div class="form-group"><label>每队经费（元）</label><input v-model.number="epForm.budget" type="number" /></div>
+    <div class="form-group"><label>状态</label><select v-model="epForm.status"><option value="pending">未开始</option><option value="running">进行中</option><option value="finished">已结束</option></select></div>
+    <div class="form-group"><label>赛段说明（所有幕后可见）</label><textarea v-model="epForm.notes" /></div>
+    <div class="modal-actions"><button class="btn btn-secondary" @click="epEditing = false">取消</button><button class="btn" @click="saveEp">保存</button></div>
+  </Modal>
+
+  <Modal v-if="legEditing" :title="`编辑环节 · ${legEditing.name}`" @close="legEditing = null">
+    <div class="grid grid-2">
+      <div class="form-group"><label>类型</label>
+        <select v-model="legForm.type"><option v-for="t in LEG_TYPES" :key="t" :value="t">{{ t }} · {{ LEG_TYPE_LABEL[t] }}</option></select>
+      </div>
+      <div class="form-group"><label>名称</label><input v-model="legForm.name" /></div>
+    </div>
+    <div class="form-group"><label>环节说明（任务内容、流程）</label><textarea v-model="legForm.description" /></div>
+    <div class="grid grid-2">
+      <div class="form-group"><label>地址</label><input v-model="legForm.address" /></div>
+      <div class="form-group"><label>地图链接</label><input v-model="legForm.map_url" placeholder="高德/百度地图分享链接" /></div>
+      <div class="form-group"><label>开放时间</label><input v-model="legForm.open_time" placeholder="如 09:00" /></div>
+      <div class="form-group"><label>关闭时间</label><input v-model="legForm.close_time" placeholder="如 17:30" /></div>
+    </div>
+    <div v-if="legForm.type === 'DT'" class="grid grid-2">
+      <div class="form-group"><label>绕道选项 A</label><input v-model="legForm.detour_a" /></div>
+      <div class="form-group"><label>绕道选项 B</label><input v-model="legForm.detour_b" /></div>
+    </div>
+    <div class="form-group"><label>线索原文（发给选手的内容）</label><textarea v-model="legForm.clue_text" /></div>
+    <div class="form-group"><label>判定标准（站点人员看）</label><textarea v-model="legForm.judge_criteria" /></div>
+    <div class="modal-actions"><button class="btn btn-secondary" @click="legEditing = null">取消</button><button class="btn" @click="saveLeg">保存</button></div>
+  </Modal>
+</template>
