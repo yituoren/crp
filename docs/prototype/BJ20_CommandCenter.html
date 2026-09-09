@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BJ20 全明星赛 · 幕后指挥系统</title>
+<style>
+  :root {
+    --primary: #2563eb; --primary-light: #eff6ff; --danger: #dc2626; --success: #16a34a;
+    --warning: #ca8a04; --gray-50: #f8fafc; --gray-100: #f1f5f9; --gray-200: #e2e8f0;
+    --gray-300: #cbd5e1; --gray-400: #94a3b8; --gray-500: #64748b; --gray-600: #475569;
+    --gray-700: #334155; --gray-800: #1e293b; --gray-900: #0f172a;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; background: var(--gray-50); color: var(--gray-800); line-height: 1.5; }
+  .hidden { display: none !important; }
+  .btn { background: var(--primary); color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all .2s; display: inline-flex; align-items: center; gap: 4px; }
+  .btn:hover { opacity: .9; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn-secondary { background: var(--gray-500); }
+  .btn-danger { background: var(--danger); }
+  .btn-success { background: var(--success); }
+  .btn-warning { background: var(--warning); }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-block { width: 100%; justify-content: center; }
+  .card { background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+  .card-header { font-weight: 700; font-size: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .grid { display: grid; gap: 12px; }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 900px) { .grid-3, .grid-4 { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700; }
+  .tag-RI { background: #dbeafe; color: #1e40af; }
+  .tag-TI { background: #dcfce7; color: #166534; }
+  .tag-SL { background: #fef3c7; color: #92400e; }
+  .tag-RB { background: #fee2e2; color: #991b1b; }
+  .tag-DT { background: #f3e8ff; color: #6b21a8; }
+  .tag-FO { background: #ccfbf1; color: #115e59; }
+  .tag-Union { background: #ffe4e6; color: #9f1239; }
+  .tag-Trap { background: #e7e5e4; color: #44403c; }
+  .status-alive { color: var(--success); font-weight: 700; }
+  .status-eliminated { color: var(--danger); font-weight: 700; text-decoration: line-through; }
+  .login-box { max-width: 420px; margin: 60px auto; background: #fff; padding: 40px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,.08); }
+  .login-box h2 { text-align: center; margin-bottom: 28px; color: var(--gray-800); font-size: 22px; }
+  .form-group { margin-bottom: 18px; }
+  .form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: var(--gray-600); }
+  .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 14px; transition: border .2s; }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+  .nav { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; border-bottom: 2px solid var(--gray-200); padding-bottom: 12px; }
+  .nav button { background: transparent; color: var(--gray-600); border: none; padding: 8px 16px; cursor: pointer; font-weight: 600; border-radius: 8px; transition: all .2s; }
+  .nav button:hover { background: var(--gray-100); }
+  .nav button.active { background: var(--primary-light); color: var(--primary); }
+  .team-card { padding: 16px; border: 1px solid var(--gray-200); border-radius: 10px; background: #fff; transition: all .2s; }
+  .team-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.06); }
+  .team-eliminated { opacity: .55; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.5); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+  .modal { background: #fff; padding: 28px; border-radius: 16px; max-width: 600px; width: 92%; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.15); }
+  .modal h3 { margin-top: 0; font-size: 18px; color: var(--gray-800); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+  .table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .table th, .table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--gray-200); }
+  .table th { background: var(--gray-100); font-weight: 600; color: var(--gray-600); position: sticky; top: 0; }
+  .table tr:hover { background: var(--gray-50); }
+  .badge { padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; }
+  .badge-host { background: #fef3c7; color: #92400e; }
+  .badge-follow { background: #dbeafe; color: #1e40af; }
+  .badge-station { background: #dcfce7; color: #166534; }
+  .badge-crew { background: #f3e8ff; color: #6b21a8; }
+  .ep-selector { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .ep-btn { padding: 8px 18px; border: 1px solid var(--gray-300); background: #fff; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all .2s; }
+  .ep-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .ep-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .leg-item { padding: 16px; border: 1px solid var(--gray-200); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all .2s; background: #fff; }
+  .leg-item:hover { border-color: var(--primary); background: var(--primary-light); transform: translateY(-1px); }
+  .leg-item.selected { border-color: var(--primary); background: var(--primary-light); box-shadow: 0 0 0 2px rgba(37,99,235,.15); }
+  .record-time { font-family: "SF Mono", Monaco, monospace; background: var(--gray-100); padding: 3px 8px; border-radius: 4px; font-size: 13px; color: var(--gray-700); }
+  .currency-box { font-size: 20px; font-weight: 800; color: var(--warning); letter-spacing: .5px; }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--gray-800); color: #fff; padding: 14px 24px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.2); animation: slideIn .3s ease; z-index: 2000; font-weight: 500; }
+  @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .section-title { font-size: 18px; font-weight: 800; margin: 24px 0 14px; color: var(--gray-800); display: flex; align-items: center; gap: 8px; }
+  .upload-area { border: 2px dashed var(--gray-300); border-radius: 10px; padding: 24px; text-align: center; color: var(--gray-500); cursor: pointer; margin-top: 12px; transition: all .2s; }
+  .upload-area:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+  .staff-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
+  .confirm-box { background: #fef3c7; border: 1px solid #f59e0b; padding: 16px; border-radius: 10px; margin-bottom: 16px; color: #92400e; font-weight: 500; }
+  .info-text { color: var(--gray-500); font-size: 13px; margin-top: 4px; }
+  .sync-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; border-radius: 20px; background: var(--gray-100); color: var(--gray-500); }
+  .sync-status.online { background: #dcfce7; color: #166534; }
+  .sync-status.offline { background: #fee2e2; color: #991b1b; }
+  .empty-state { text-align: center; padding: 40px; color: var(--gray-400); }
+  .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+  .page-header h1 { margin: 0; font-size: 26px; font-weight: 800; color: var(--gray-900); }
+  .user-bar { display: flex; gap: 10px; align-items: center; background: #fff; padding: 8px 16px; border-radius: 10px; border: 1px solid var(--gray-200); }
+  .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+  .scroll-table { overflow-x: auto; }
+  .log-positive { color: var(--success); font-weight: 700; }
+  .log-negative { color: var(--danger); font-weight: 700; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+  .gap-2 { gap: 8px; }
+  .mt-2 { margin-top: 8px; }
+  .mt-3 { margin-top: 12px; }
+  .mb-0 { margin-bottom: 0; }
+  .text-sm { font-size: 13px; }
+  .text-gray { color: var(--gray-500); }
+  .w-full { width: 100%; }
+  .input-sm { width: 90px; padding: 5px 8px; border: 1px solid var(--gray-300); border-radius: 6px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<!-- ==================== 登录/注册页 ==================== -->
+<div id="page-login">
+  <div class="login-box">
+    <h2>🏃 BJ20 全明星赛<br><span style="font-size:16px;font-weight:500;color:var(--gray-500)">幕后指挥系统</span></h2>
+
+    <div id="login-mode">
+      <div class="form-group">
+        <label>幕后ID</label>
+        <input type="text" id="login-id" placeholder="请输入你的幕后ID" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="login-pwd" placeholder="请输入密码">
+      </div>
+      <button class="btn btn-block" onclick="doLogin()" style="margin-bottom:10px">登 录</button>
+      <div style="text-align:center">
+        <a href="#" onclick="toggleMode('register')" style="color:var(--primary);font-size:14px;text-decoration:none">还没有账号？立即注册</a>
+      </div>
+    </div>
+
+    <div id="register-mode" class="hidden">
+      <div class="form-group">
+        <label>幕后ID</label>
+        <input type="text" id="reg-id" placeholder="ID需在主办准入名单中" autocomplete="off">
+        <div class="info-text">主办名单：阳秋、云缨、云影（可直接注册）</div>
+      </div>
+      <div class="form-group">
+        <label>设置密码</label>
+        <input type="password" id="reg-pwd" placeholder="设置密码">
+      </div>
+      <div class="form-group">
+        <label>确认密码</label>
+        <input type="password" id="reg-pwd2" placeholder="再次输入密码">
+      </div>
+      <button class="btn btn-block" onclick="doRegister()" style="margin-bottom:10px">注 册</button>
+      <div style="text-align:center">
+        <a href="#" onclick="toggleMode('login')" style="color:var(--primary);font-size:14px;text-decoration:none">已有账号？去登录</a>
+      </div>
+    </div>
+
+    <div id="change-mode" class="hidden">
+      <div class="form-group">
+        <label>当前密码</label>
+        <input type="password" id="chg-old" placeholder="当前密码">
+      </div>
+      <div class="form-group">
+        <label>新密码</label>
+        <input type="password" id="chg-new" placeholder="新密码">
+      </div>
+      <div class="form-group">
+        <label>确认新密码</label>
+        <input type="password" id="chg-new2" placeholder="再次输入新密码">
+      </div>
+      <button class="btn btn-block" onclick="doChangePwd()" style="margin-bottom:10px">修改密码</button>
+      <div style="text-align:center">
+        <a href="#" onclick="showMain()" style="color:var(--primary);font-size:14px;text-decoration:none">返回主页</a>
+      </div>
+    </div>
+
+    <div id="login-msg" style="margin-top:14px;text-align:center;font-size:14px;color:var(--danger);min-height:20px"></div>
+  </div>
+</div>
+
+<!-- ==================== 主页面 ==================== -->
+<div id="page-main" class="hidden">
+  <div class="container">
+    <div class="page-header">
+      <h1>🏃 BJ20 全明星赛</h1>
+      <div class="user-bar">
+        <span id="sync-badge" class="sync-status offline">● 离线模式</span>
+        <span id="user-badge" class="badge badge-host">主办</span>
+        <span id="user-name" style="font-weight:700"></span>
+        <button class="btn btn-secondary btn-sm" onclick="showChangePwd()">改密</button>
+        <button class="btn btn-danger btn-sm" onclick="doLogout()">退出</button>
+      </div>
+    </div>
+
+    <div class="nav" id="main-nav">
+      <button class="active" onclick="switchTab('episodes')" id="nav-episodes">📋 赛段信息</button>
+      <button onclick="switchTab('schedule')" id="nav-schedule">📅 排班系统</button>
+      <button onclick="switchTab('teams')" id="nav-teams">👥 队伍管理</button>
+      <button onclick="switchTab('currency')" id="nav-currency">💰 货币中心</button>
+      <button onclick="switchTab('admin')" id="nav-admin" class="hidden">⚙️ 主办后台</button>
+    </div>
+
+    <!-- ===== 赛段信息 ===== -->
+    <div id="tab-episodes">
+      <div class="ep-selector" id="ep-selector"></div>
+      <div id="episode-content"></div>
+    </div>
+
+    <!-- ===== 排班系统 ===== -->
+    <div id="tab-schedule" class="hidden">
+      <div class="ep-selector" id="schedule-ep-selector"></div>
+      <div id="schedule-content"></div>
+    </div>
+
+    <!-- ===== 队伍管理 ===== -->
+    <div id="tab-teams" class="hidden">
+      <div id="teams-content"></div>
+    </div>
+
+    <!-- ===== 货币中心 ===== -->
+    <div id="tab-currency" class="hidden">
+      <div class="ep-selector" id="currency-ep-selector"></div>
+      <div id="currency-content"></div>
+    </div>
+
+    <!-- ===== 主办后台 ===== -->
+    <div id="tab-admin" class="hidden">
+      <div class="card">
+        <div class="card-header">🔐 准入名单管理</div>
+        <div class="form-group">
+          <label>添加准入ID（多个用逗号/中文逗号分隔）</label>
+          <input type="text" id="new-access-id" placeholder="例如：小明, 小红, 小刚">
+        </div>
+        <button class="btn" onclick="addAccessIds()">添加至准入名单</button>
+        <div class="section-title">当前准入名单</div>
+        <div class="grid grid-4" id="access-list"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">👤 账号数据库（主办可见）</div>
+        <div class="scroll-table">
+          <table class="table">
+            <thead><tr><th>幕后ID</th><th>密码</th><th>角色</th><th>注册时间</th></tr></thead>
+            <tbody id="account-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">💾 数据备份与恢复</div>
+        <p class="text-gray text-sm" style="margin-top:0">建议每次比赛前导出备份，比赛后也可存档。Firebase模式下数据自动云端同步，本地备份作为双保险。</p>
+        <div class="flex-between gap-2" style="flex-wrap:wrap">
+          <button class="btn btn-secondary" onclick="exportData()">📥 导出全部数据备份</button>
+          <div style="display:flex;align-items:center;gap:8px">
+            <label class="text-sm text-gray">导入备份：</label>
+            <input type="file" id="import-file" accept=".json" onchange="importData(this)">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">🔥 危险操作区</div>
+        <button class="btn btn-danger" onclick="resetAllData()">🗑️ 重置全部数据（不可逆）</button>
+        <p class="text-gray text-sm mt-2">此操作将清空所有账号、赛段、记录、货币日志，恢复为初始状态。请先导出备份！</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 通用弹窗 ==================== -->
+<div id="modal-overlay" class="modal-overlay hidden" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal-body"></div>
+</div>
+
+<!-- ==================== 确认对话框 ==================== -->
+<div id="confirm-overlay" class="modal-overlay hidden">
+  <div class="modal">
+    <h3 id="confirm-title">⚠️ 确认操作</h3>
+    <p id="confirm-msg" style="color:var(--gray-600);line-height:1.6"></p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeConfirm(false)">取消</button>
+      <button class="btn btn-danger" id="confirm-yes" onclick="closeConfirm(true)">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 提示条容器 ==================== -->
+<div id="toast-container"></div>
+
+<!-- ==================== Firebase & 核心逻辑 ==================== -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, onValue, update, remove, push, child, off } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ═══════════════════════════════════════════════════════════════
+//  STEP 1: 配置你的 Firebase（创建项目后替换下方内容）
+//  教程：https://firebase.google.com/docs/web/setup
+// ═══════════════════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+// ═══════════════════════════════════════════════════════════════
+
+let app, db, fbOnline = false;
+let fbUnsubscribers = [];
+
+try {
+  if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+    app = initializeApp(firebaseConfig);
+    db = getDatabase(app);
+    fbOnline = true;
+  }
+} catch (e) {
+  console.warn("Firebase 初始化失败，将使用本地模式", e);
+}
+
+// ==================== 常量与初始数据 ====================
+const HOSTS = ['阳秋', '云缨', '云影'];
+const LEG_TYPES = ['RI', 'TI', 'SL', 'RB', 'DT', 'FO', 'Union', 'Trap'];
+const EPISODES = ['EP1', 'EP2', 'EP3', 'EP4', 'EP5'];
+const TEAM_NAMES = [
+  "队伍1","队伍2","队伍3","队伍4","队伍5","队伍6",
+  "队伍7","队伍8","队伍9","队伍10","队伍11","队伍12"
+];
+
+function makeDefaultTeams() {
+  return Object.fromEntries(TEAM_NAMES.map((name, i) => {
+    const id = `T${i + 1}`;
+    return [id, { id, name, eliminated: false, currency: 1000 }];
+  }));
+}
+
+function makeDefaultEpisodes() {
+  const eps = {};
+  EPISODES.forEach(ep => {
+    eps[ep] = {
+      legs: {
+        [`${ep}-SL`]: { id: `${ep}-SL`, type: 'SL', name: '起跑线', desc: '', attachments: [], stationStaff: '' },
+        [`${ep}-RI1`]: { id: `${ep}-RI1`, type: 'RI', name: '路线信息 1', desc: '', attachments: [], stationStaff: '' },
+        [`${ep}-TI1`]: { id: `${ep}-TI1`, type: 'TI', name: '任务点 1', desc: '', attachments: [], stationStaff: '' }
+      },
+      assignments: {},
+      records: {},
+      currencyLog: {}
+    };
+  });
+  return eps;
+}
+
+// ==================== 全局状态 ====================
+let state = {
+  currentUser: null,
+  data: {
+    accounts: {},
+    accessList: Object.fromEntries(HOSTS.map(h => [h, true])),
+    teams: makeDefaultTeams(),
+    episodes: makeDefaultEpisodes()
+  },
+  currentEp: 'EP1'
+};
+
+// ==================== 本地持久化 ====================
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem('bj20_data_v2');
+    if (raw) Object.assign(state.data, JSON.parse(raw));
+  } catch (e) { console.error("本地数据加载失败", e); }
+  // 确保基础数据存在
+  HOSTS.forEach(h => state.data.accessList[h] = true);
+  if (!state.data.teams || !Object.keys(state.data.teams).length) state.data.teams = makeDefaultTeams();
+  if (!state.data.episodes || !Object.keys(state.data.episodes).length) state.data.episodes = makeDefaultEpisodes();
+}
+
+function saveLocal() {
+  try {
+    localStorage.setItem('bj20_data_v2', JSON.stringify(state.data));
+  } catch (e) { console.error("本地存储失败", e); }
+}
+
+// ==================== Firebase 读写封装 ====================
+async function fbSet(path, val) {
+  if (!db || !fbOnline) return false;
+  try { await set(ref(db, 'bj20/' + path), val); return true; }
+  catch (e) { console.warn("Firebase写入失败", path, e); return false; }
+}
+
+async function fbUpdate(path, val) {
+  if (!db || !fbOnline) return false;
+  try { await update(ref(db, 'bj20/' + path), val); return true; }
+  catch (e) { console.warn("Firebase更新失败", path, e); return false; }
+}
+
+function fbListen(path, callback) {
+  if (!db || !fbOnline) return null;
+  const r = ref(db, 'bj20/' + path);
+  const unsub = onValue(r, snap => { callback(snap.exists() ? snap.val() : null); });
+  fbUnsubscribers.push({ path, unsub });
+  return unsub;
+}
+
+function sync(path, val) {
+  const keys = path.split('/');
+  let cur = state.data;
+  for (let i = 0; i < keys.length - 1; i++) {
+    if (!cur[keys[i]]) cur[keys[i]] = {};
+    cur = cur[keys[i]];
+  }
+  cur[keys[keys.length - 1]] = val;
+  saveLocal();
+  fbSet(path, val);
+}
+
+function getPath(path) {
+  const keys = path.split('/');
+  let cur = state.data;
+  for (let k of keys) { if (cur == null) return undefined; cur = cur[k]; }
+  return cur;
+}
+
+function updateSync(updates) {
+  // updates: { path: value }
+  Object.entries(updates).forEach(([path, val]) => {
+    const keys = path.split('/');
+    let cur = state.data;
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (!cur[keys[i]]) cur[keys[i]] = {};
+      cur = cur[keys[i]];
+    }
+    cur[keys[keys.length - 1]] = val;
+  });
+  saveLocal();
+  if (db && fbOnline) {
+    const fbUpdates = {};
+    Object.entries(updates).forEach(([path, val]) => { fbUpdates['bj20/' + path] = val; });
+    update(ref(db), fbUpdates).catch(() => {});
+  }
+}
+
+// ==================== 初始化 Firebase 监听 ====================
+function initFirebaseListeners() {
+  if (!db || !fbOnline) return;
+  // 监听根数据变化（单向：云端 -> 本地，避免循环）
+  const paths = ['accounts', 'accessList', 'teams', 'episodes'];
+  paths.forEach(p => {
+    fbListen(p, val => {
+      if (val != null) {
+        state.data[p] = val;
+        saveLocal();
+        refreshCurrentView();
+      }
+    });
+  });
+  // 在线状态指示
+  const connectedRef = ref(db, '.info/connected');
+  onValue(connectedRef, snap => {
+    const online = !!snap.val();
+    fbOnline = online;
+    updateSyncBadge(online);
+  });
+}
+
+function updateSyncBadge(online) {
+  const el = document.getElementById('sync-badge');
+  if (!el) return;
+  if (online) { el.className = 'sync-status online'; el.innerHTML = '● 实时同步中'; }
+  else { el.className = 'sync-status offline'; el.innerHTML = '● 离线模式'; }
+}
+
+function refreshCurrentView() {
+  const active = document.querySelector('.nav button.active');
+  if (!active) return;
+  const tab = active.id.replace('nav-', '');
+  if (tab === 'episodes') renderEpisodes();
+  if (tab === 'schedule') renderSchedule();
+  if (tab === 'teams') renderTeams();
+  if (tab === 'currency') renderCurrency();
+  if (tab === 'admin') renderAdmin();
+}
+
+// ==================== 登录/注册/改密 ====================
+window.toggleMode = function (mode) {
+  document.getElementById('login-mode').classList.toggle('hidden', mode !== 'login');
+  document.getElementById('register-mode').classList.toggle('hidden', mode !== 'register');
+  document.getElementById('change-mode').classList.toggle('hidden', mode !== 'change');
+  document.getElementById('login-msg').textContent = '';
+};
+
+window.doLogin = function () {
+  const id = document.getElementById('login-id').value.trim();
+  const pwd = document.getElementById('login-pwd').value;
+  if (!id || !pwd) { showMsg('请填写完整信息'); return; }
+  const acc = state.data.accounts[id];
+  if (!acc) { showMsg('账号不存在，请先注册'); return; }
+  if (acc.password !== pwd) { showMsg('密码错误'); return; }
+  state.currentUser = { id, role: acc.role || 'crew' };
+  sessionStorage.setItem('bj20_user', JSON.stringify(state.currentUser));
+  enterMain();
+};
+
+window.doRegister = function () {
+  const id = document.getElementById('reg-id').value.trim();
+  const pwd = document.getElementById('reg-pwd').value;
+  const pwd2 = document.getElementById('reg-pwd2').value;
+  if (!id || !pwd) { showMsg('请填写完整信息'); return; }
+  if (pwd !== pwd2) { showMsg('两次密码不一致'); return; }
+  if (!state.data.accessList[id]) { showMsg('你的ID不在主办准入名单中，请联系主办添加'); return; }
+  if (state.data.accounts[id]) { showMsg('该ID已注册，如需重置密码请联系主办'); return; }
+  const role = HOSTS.includes(id) ? 'host' : 'crew';
+  const acc = { password: pwd, role, createdAt: new Date().toISOString() };
+  state.data.accounts[id] = acc;
+  sync('accounts/' + id, acc);
+  showMsg('注册成功！请登录', '#16a34a');
+  toggleMode('login');
+};
+
+window.doChangePwd = function () {
+  const old = document.getElementById('chg-old').value;
+  const ne = document.getElementById('chg-new').value;
+  const ne2 = document.getElementById('chg-new2').value;
+  const acc = state.data.accounts[state.currentUser.id];
+  if (acc.password !== old) { showMsg('当前密码错误'); return; }
+  if (ne !== ne2) { showMsg('两次新密码不一致'); return; }
+  acc.password = ne;
+  sync('accounts/' + state.currentUser.id + '/password', ne);
+  showMsg('密码修改成功', '#16a34a');
+  setTimeout(showMain, 800);
+};
+
+window.showChangePwd = function () {
+  toggleMode('change');
+  document.getElementById('page-login').classList.remove('hidden');
+  document.getElementById('page-main').classList.add('hidden');
+};
+
+window.doLogout = function () {
+  state.currentUser = null;
+  sessionStorage.removeItem('bj20_user');
+  document.getElementById('page-main').classList.add('hidden');
+  document.getElementById('page-login').classList.remove('hidden');
+  toggleMode('login');
+};
+
+function showMsg(msg, color = 'var(--danger)') {
+  const el = document.getElementById('login-msg');
+  el.textContent = msg; el.style.color = color;
+}
+
+// ==================== 主页入口 ====================
+function enterMain() {
+  document.getElementById('page-login').classList.add('hidden');
+  document.getElementById('page-main').classList.remove('hidden');
+  document.getElementById('user-name').textContent = state.currentUser.id;
+  const badge = document.getElementById('user-badge');
+  if (state.currentUser.role === 'host') {
+    badge.textContent = '主办'; badge.className = 'badge badge-host';
+    document.getElementById('nav-admin').classList.remove('hidden');
+  } else {
+    badge.textContent = '幕后'; badge.className = 'badge badge-crew';
+    document.getElementById('nav-admin').classList.add('hidden');
+  }
+  initFirebaseListeners();
+  showMain();
+}
+
+function showMain() {
+  toggleMode('login');
+  document.getElementById('page-login').classList.add('hidden');
+  document.getElementById('page-main').classList.remove('hidden');
+  switchTab('episodes');
+}
+
+// ==================== Tab 切换 ====================
+window.switchTab = function (tab) {
+  ['episodes', 'schedule', 'teams', 'currency', 'admin'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
+    const nav = document.getElementById('nav-' + t);
+    if (nav) nav.classList.toggle('active', t === tab);
+  });
+  if (tab === 'episodes') renderEpisodes();
+  if (tab === 'schedule') renderSchedule();
+  if (tab === 'teams') renderTeams();
+  if (tab === 'currency') renderCurrency();
+  if (tab === 'admin') renderAdmin();
+};
+
+// ==================== 赛段选择器 ====================
+function renderEpSelector(containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = EPISODES.map(ep =>
+    `<button class="ep-btn ${ep === state.currentEp ? 'active' : ''}" onclick="selectEp('${ep}', '${containerId}')">${ep}</button>`
+  ).join('');
+}
+
+window.selectEp = function (ep, src) {
+  state.currentEp = ep;
+  ['ep-selector', 'schedule-ep-selector', 'currency-ep-selector'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) Array.from(el.children).forEach(btn => btn.classList.toggle('active', btn.textContent === ep));
+  });
+  if (src === 'ep-selector') renderEpisodes();
+  if (src === 'schedule-ep-selector') renderSchedule();
+  if (src === 'currency-ep-selector') renderCurrency();
+};
+
+// ==================== 赛段信息 ====================
+function renderEpisodes() {
+  renderEpSelector('ep-selector');
+  const ep = state.data.episodes[state.currentEp];
+  const isHost = state.currentUser.role === 'host';
+  let html = `<div class="flex-between" style="margin-bottom:14px">
+    <div class="section-title">📋 ${state.currentEp} 环节列表</div>
+    ${isHost ? `<button class="btn" onclick="addLeg()">+ 添加环节</button>` : ''}
+  </div>`;
+
+  const sortedLegs = Object.values(ep.legs || {}).sort((a, b) => a.id.localeCompare(b.id));
+  if (!sortedLegs.length) {
+    html += `<div class="empty-state">暂无环节，${isHost ? '请点击右上角添加' : '请等待主办添加'}</div>`;
+  } else {
+    html += `<div class="grid grid-3">`;
+    sortedLegs.forEach(leg => {
+      const assignment = Object.entries(ep.assignments || {}).find(([_, a]) => a.legId === leg.id);
+      const stationName = assignment ? assignment[0] : (leg.stationStaff || '未分配');
+      html += `<div class="leg-item" onclick="showLegDetail('${leg.id}')">
+        <div class="flex-between" style="margin-bottom:6px">
+          <span class="tag tag-${leg.type}">${leg.type}</span>
+          <span style="font-size:12px;color:var(--gray-400)">${leg.id}</span>
+        </div>
+        <div style="font-weight:700;margin-bottom:4px;font-size:15px">${leg.name}</div>
+        <div style="font-size:13px;color:var(--gray-500)">站点：${stationName}</div>
+        <div style="font-size:12px;color:var(--gray-400);margin-top:4px">${leg.attachments?.length || 0} 个附件</div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+  document.getElementById('episode-content').innerHTML = html;
+}
+
+window.showLegDetail = function (legId) {
+  const ep = state.data.episodes[state.currentEp];
+  const leg = ep.legs[legId];
+  const isHost = state.currentUser.role === 'host';
+  const myAssign = ep.assignments[state.currentUser.id] || {};
+  const isStation = myAssign.type === 'station' && myAssign.legId === legId;
+  const isFollow = myAssign.type === 'follow';
+
+  let html = `<h3 style="margin-top:0">${leg.name} <span class="tag tag-${leg.type}">${leg.type}</span></h3>`;
+  if (isHost) {
+    html += `<div style="margin-bottom:16px;display:flex;gap:8px">
+      <button class="btn btn-secondary btn-sm" onclick="editLeg('${legId}')">✏️ 编辑</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteLeg('${legId}')">🗑️ 删除</button>
+    </div>`;
+  }
+  html += `<div class="card"><div class="card-header">📝 环节说明</div><div style="white-space:pre-wrap">${leg.desc || '暂无说明'}</div></div>`;
+
+  // 附件
+  html += `<div class="card"><div class="card-header">📎 附件 / 线索</div>`;
+  if (leg.attachments?.length) {
+    html += `<div class="grid grid-3">`;
+    leg.attachments.forEach((att, idx) => {
+      html += `<div style="border:1px solid var(--gray-200);border-radius:8px;padding:10px">
+        <div style="font-size:12px;color:var(--gray-500);margin-bottom:6px;word-break:break-all">${att.name}</div>
+        ${att.type.startsWith('image') ? `<img src="${att.data}" style="max-width:100%;border-radius:6px;cursor:pointer" onclick="window.open(this.src)">` : ''}
+        ${att.type === 'application/pdf' ? `<a href="${att.data}" target="_blank" class="btn btn-sm" style="display:inline-block">📄 查看PDF</a>` : ''}
+        ${isHost ? `<button class="btn btn-danger btn-sm" style="margin-top:6px" onclick="removeAttachment('${legId}',${idx})">删除</button>` : ''}
+      </div>`;
+    });
+    html += `</div>`;
+  } else {
+    html += `<div class="empty-state" style="padding:20px">暂无附件</div>`;
+  }
+  if (isHost || isStation) {
+    html += `<div class="upload-area" onclick="document.getElementById('leg-file-${legId}').click()">
+      📤 点击上传图片 / PDF
+      <input type="file" id="leg-file-${legId}" class="hidden" accept="image/*,application/pdf" onchange="uploadAttachment('${legId}',this)">
+    </div>`;
+  }
+  html += `</div>`;
+
+  // 队伍完成情况
+  html += `<div class="card"><div class="card-header">🏁 队伍完成情况</div>
+    <div class="scroll-table"><table class="table">
+      <thead><tr><th>队伍</th><th>状态</th><th>到达时间</th><th>完成时间</th><th>操作</th></tr></thead>
+      <tbody>`;
+  Object.values(state.data.teams).forEach(team => {
+    const rec = (ep.records[team.id] || {})[legId] || {};
+    const isMyTeam = isFollow && myAssign.teamId === team.id;
+    const canRecord = (isMyTeam || isHost) && !team.eliminated;
+    const teamClass = team.eliminated ? 'status-eliminated' : 'status-alive';
+    html += `<tr class="${team.eliminated ? 'team-eliminated' : ''}">
+      <td><span class="${teamClass}">${team.name}</span>${team.eliminated ? ' <span style="font-size:11px;color:var(--danger)">[已淘汰]</span>' : ''}</td>
+      <td>${rec.completed ? '✅ 已完成' : (rec.arrivedAt ? '⏳ 已到达' : '⏹ 未到达')}</td>
+      <td>${rec.arrivedAt ? `<span class="record-time">${rec.arrivedAt}</span>` : '-'}</td>
+      <td>${rec.completedAt ? `<span class="record-time">${rec.completedAt}</span>` : '-'}</td>
+      <td>`;
+    if (canRecord) {
+      if (!rec.arrivedAt) html += `<button class="btn btn-sm" onclick="recordArrival('${team.id}','${legId}')">记录到达</button>`;
+      else if (!rec.completed) html += `<button class="btn btn-success btn-sm" onclick="recordComplete('${team.id}','${legId}')">记录完成</button>`;
+    }
+    if (isHost) html += ` <button class="btn btn-secondary btn-sm" onclick="editRecord('${team.id}','${legId}')">修改</button>`;
+    html += `</td></tr>`;
+  });
+  html += `</tbody></table></div></div>`;
+
+  openModal(html);
+};
+
+// ==================== 时间记录（带确认） ====================
+let pendingAction = null;
+
+window.recordArrival = function (teamId, legId) {
+  pendingAction = () => {
+    const now = new Date();
+    const time = fmtTime(now);
+    const ep = state.data.episodes[state.currentEp];
+    if (!ep.records[teamId]) ep.records[teamId] = {};
+    ep.records[teamId][legId] = { ...(ep.records[teamId][legId] || {}), arrivedAt: time };
+    sync(`episodes/${state.currentEp}/records/${teamId}/${legId}`, ep.records[teamId][legId]);
+    showLegDetail(legId);
+    toast(`✅ 已记录到达时间：${time}`);
+  };
+  openConfirm('确认记录到达', '确定要为该队伍记录当前时间作为到达时间吗？此操作会实时同步给所有幕后。');
+};
+
+window.recordComplete = function (teamId, legId) {
+  pendingAction = () => {
+    const now = new Date();
+    const time = fmtTime(now);
+    const ep = state.data.episodes[state.currentEp];
+    if (!ep.records[teamId]) ep.records[teamId] = {};
+    ep.records[teamId][legId] = { ...(ep.records[teamId][legId] || {}), completed: true, completedAt: time };
+    sync(`episodes/${state.currentEp}/records/${teamId}/${legId}`, ep.records[teamId][legId]);
+    showLegDetail(legId);
+    toast(`✅ 已记录完成时间：${time}`);
+  };
+  openConfirm('确认记录完成', '确定要为该队伍记录当前时间作为完成时间吗？');
+};
+
+function fmtTime(d) {
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
+}
+
+window.closeConfirm = function (yes) {
+  document.getElementById('confirm-overlay').classList.add('hidden');
+  if (yes && pendingAction) { pendingAction(); pendingAction = null; }
+};
+
+function openConfirm(title, msg) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').textContent = msg;
+  document.getElementById('confirm-overlay').classList.remove('hidden');
+}
+
+// ==================== 附件管理 ====================
+window.uploadAttachment = function (legId, input) {
+  const file = input.files[0]; if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { toast('⚠️ 文件过大，请压缩至2MB以内', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const ep = state.data.episodes[state.currentEp];
+    if (!ep.legs[legId].attachments) ep.legs[legId].attachments = [];
+    ep.legs[legId].attachments.push({ name: file.name, type: file.type, data: e.target.result, uploadedAt: new Date().toISOString() });
+    sync(`episodes/${state.currentEp}/legs/${legId}/attachments`, ep.legs[legId].attachments);
+    showLegDetail(legId);
+    toast('📎 上传成功');
+  };
+  reader.readAsDataURL(file);
+};
+
+window.removeAttachment = function (legId, idx) {
+  const ep = state.data.episodes[state.currentEp];
+  ep.legs[legId].attachments.splice(idx, 1);
+  sync(`episodes/${state.currentEp}/legs/${legId}/attachments`, ep.legs[legId].attachments);
+  showLegDetail(legId);
+};
+
+// ==================== 主办：环节CRUD ====================
+window.addLeg = function () {
+  const ep = state.data.episodes[state.currentEp];
+  const n = Object.keys(ep.legs).length + 1;
+  const id = `${state.currentEp}-L${n}`;
+  ep.legs[id] = { id, type: 'TI', name: '新环节', desc: '', attachments: [], stationStaff: '' };
+  sync(`episodes/${state.currentEp}/legs/${id}`, ep.legs[id]);
+  renderEpisodes();
+  toast('✅ 环节已添加');
+};
+
+window.editLeg = function (legId) {
+  const ep = state.data.episodes[state.currentEp];
+  const leg = ep.legs[legId];
+  const html = `<h3 style="margin-top:0">编辑环节</h3>
+    <div class="form-group"><label>环节名称</label><input id="edit-name" value="${leg.name}"></div>
+    <div class="form-group"><label>类型</label><select id="edit-type">${LEG_TYPES.map(t => `<option value="${t}" ${t === leg.type ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+    <div class="form-group"><label>说明</label><textarea id="edit-desc">${leg.desc || ''}</textarea></div>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">取消</button><button class="btn" onclick="saveLeg('${legId}')">保存</button></div>`;
+  openModal(html);
+};
+
+window.saveLeg = function (legId) {
+  const ep = state.data.episodes[state.currentEp];
+  ep.legs[legId].name = document.getElementById('edit-name').value;
+  ep.legs[legId].type = document.getElementById('edit-type').value;
+  ep.legs[legId].desc = document.getElementById('edit-desc').value;
+  sync(`episodes/${state.currentEp}/legs/${legId}`, ep.legs[legId]);
+  closeModal();
+  renderEpisodes();
+  toast('✅ 保存成功');
+};
+
+window.deleteLeg = function (legId) {
+  pendingAction = () => {
+    delete state.data.episodes[state.currentEp].legs[legId];
+    sync(`episodes/${state.currentEp}/legs/${legId}`, null);
+    closeModal();
+    renderEpisodes();
+    toast('🗑️ 已删除');
+  };
+  openConfirm('删除环节', '确定要删除此环节吗？相关记录和附件也将丢失。');
+};
+
+window.editRecord = function (teamId, legId) {
+  const ep = state.data.episodes[state.currentEp];
+  const rec = (ep.records[teamId] || {})[legId] || {};
+  const html = `<h3 style="margin-top:0">修改记录 - ${state.data.teams[teamId].name}</h3>
+    <div class="form-group"><label>到达时间 (HH:MM:SS，留空表示未到达)</label><input id="rec-arrive" value="${rec.arrivedAt || ''}" placeholder="09:30:00"></div>
+    <div class="form-group"><label>完成时间 (HH:MM:SS，留空表示未完成)</label><input id="rec-complete" value="${rec.completedAt || ''}" placeholder="10:15:00"></div>
+    <div class="form-group"><label><input type="checkbox" id="rec-done" ${rec.completed ? 'checked' : ''}> 标记为已完成</label></div>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">取消</button><button class="btn" onclick="saveRecord('${teamId}','${legId}')">保存</button></div>`;
+  openModal(html);
+};
+
+window.saveRecord = function (teamId, legId) {
+  const ep = state.data.episodes[state.currentEp];
+  if (!ep.records[teamId]) ep.records[teamId] = {};
+  ep.records[teamId][legId] = {
+    arrivedAt: document.getElementById('rec-arrive').value || null,
+    completedAt: document.getElementById('rec-complete').value || null,
+    completed: document.getElementById('rec-done').checked
+  };
+  sync(`episodes/${state.currentEp}/records/${teamId}/${legId}`, ep.records[teamId][legId]);
+  closeModal();
+  showLegDetail(legId);
+  toast('✅ 记录已更新');
+};
+
+// ==================== 排班系统 ====================
+function renderSchedule() {
+  renderEpSelector('schedule-ep-selector');
+  const ep = state.data.episodes[state.currentEp];
+  const isHost = state.currentUser.role === 'host';
+  let html = `<div class="flex-between" style="margin-bottom:14px">
+    <div class="section-title">📅 ${state.currentEp} 排班</div>
+    ${isHost ? `<button class="btn" onclick="saveSchedule()">💾 保存排班</button>` : ''}
+  </div>`;
+
+  html += `<div class="card"><div class="card-header">当前排班表</div>`;
+  const allStaff = Object.keys(state.data.accounts).sort();
+  if (!allStaff.length) {
+    html += `<div class="empty-state">暂无注册幕后</div>`;
+  } else {
+    html += `<div class="scroll-table"><table class="table">
+      <thead><tr><th>幕后ID</th><th>角色</th><th>分配详情</th></tr></thead><tbody>`;
+    allStaff.forEach(id => {
+      const a = ep.assignments[id] || { type: 'crew' };
+      const roleMap = { host: ['主办', 'badge-host'], follow: ['跟队', 'badge-follow'], station: ['站点', 'badge-station'], crew: ['幕后', 'badge-crew'] };
+      const [roleLabel, badgeClass] = roleMap[a.type] || roleMap.crew;
+      let assignText = '-';
+      if (a.type === 'follow') assignText = `跟队 → ${state.data.teams[a.teamId]?.name || a.teamId}`;
+      else if (a.type === 'station') assignText = `站点 → ${ep.legs[a.legId]?.name || a.legId}`;
+      html += `<tr><td style="font-weight:600">${id}</td><td><span class="badge ${badgeClass}">${roleLabel}</span></td><td>${assignText}</td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+  html += `</div>`;
+
+  if (isHost) {
+    html += `<div class="card"><div class="card-header">✏️ 编辑排班</div>`;
+    allStaff.forEach(id => {
+      const a = ep.assignments[id] || {};
+      html += `<div class="staff-row">
+        <span style="width:90px;font-weight:600">${id}</span>
+        <select id="sch-type-${id}" onchange="onSchTypeChange('${id}')" style="width:110px;padding:6px;border-radius:6px;border:1px solid var(--gray-300)">
+          <option value="crew" ${a.type !== 'follow' && a.type !== 'station' ? 'selected' : ''}>幕后</option>
+          <option value="follow" ${a.type === 'follow' ? 'selected' : ''}>跟队</option>
+          <option value="station" ${a.type === 'station' ? 'selected' : ''}>站点</option>
+        </select>
+        <select id="sch-team-${id}" style="width:140px;padding:6px;border-radius:6px;border:1px solid var(--gray-300);display:${a.type === 'follow' ? 'inline-block' : 'none'}">
+          ${Object.values(state.data.teams).map(t => `<option value="${t.id}" ${a.teamId === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
+        </select>
+        <select id="sch-leg-${id}" style="width:160px;padding:6px;border-radius:6px;border:1px solid var(--gray-300);display:${a.type === 'station' ? 'inline-block' : 'none'}">
+          ${Object.values(ep.legs || {}).map(l => `<option value="${l.id}" ${a.legId === l.id ? 'selected' : ''}>${l.name}</option>`).join('')}
+        </select>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+  document.getElementById('schedule-content').innerHTML = html;
+}
+
+window.onSchTypeChange = function (id) {
+  const type = document.getElementById('sch-type-' + id).value;
+  const teamSel = document.getElementById('sch-team-' + id);
+  const legSel = document.getElementById('sch-leg-' + id);
+  if (teamSel) teamSel.style.display = type === 'follow' ? 'inline-block' : 'none';
+  if (legSel) legSel.style.display = type === 'station' ? 'inline-block' : 'none';
+};
+
+window.saveSchedule = function () {
+  const ep = state.data.episodes[state.currentEp];
+  const updates = {};
+  Object.keys(state.data.accounts).forEach(id => {
+    const type = document.getElementById('sch-type-' + id).value;
+    if (type === 'crew') {
+      delete ep.assignments[id];
+      updates[`episodes/${state.currentEp}/assignments/${id}`] = null;
+    } else if (type === 'follow') {
+      ep.assignments[id] = { type, teamId: document.getElementById('sch-team-' + id).value };
+      updates[`episodes/${state.currentEp}/assignments/${id}`] = ep.assignments[id];
+    } else if (type === 'station') {
+      ep.assignments[id] = { type, legId: document.getElementById('sch-leg-' + id).value };
+      updates[`episodes/${state.currentEp}/assignments/${id}`] = ep.assignments[id];
+    }
+  });
+  updateSync(updates);
+  renderSchedule();
+  toast('✅ 排班已保存并同步');
+};
+
+// ==================== 队伍管理 ====================
+function renderTeams() {
+  const isHost = state.currentUser.role === 'host';
+  let html = `<div class="flex-between" style="margin-bottom:14px">
+    <div class="section-title">👥 队伍列表（共12支）</div>
+    ${isHost ? `<button class="btn btn-secondary btn-sm" onclick="resetTeams()">🔄 重置队伍数据</button>` : ''}
+  </div><div class="grid grid-4">`;
+  Object.values(state.data.teams).forEach(team => {
+    html += `<div class="team-card ${team.eliminated ? 'team-eliminated' : ''}">
+      <div class="flex-between" style="margin-bottom:8px">
+        <span style="font-weight:700;font-size:16px">${team.name}</span>
+        ${team.eliminated ? '<span class="status-eliminated">已淘汰</span>' : '<span class="status-alive">存活</span>'}
+      </div>
+      <div class="currency-box">💰 ${team.currency}</div>
+      ${isHost ? `<div style="display:flex;gap:6px;margin-top:10px">
+        <button class="btn btn-secondary btn-sm" onclick="renameTeam('${team.id}')">✏️ 改名</button>
+        <button class="btn ${team.eliminated ? 'btn-success' : 'btn-danger'} btn-sm" onclick="toggleEliminate('${team.id}')">${team.eliminated ? '♻️ 恢复' : '💀 淘汰'}</button>
+      </div>` : ''}
+    </div>`;
+  });
+  html += `</div>`;
+  document.getElementById('teams-content').innerHTML = html;
+}
+
+window.renameTeam = function (id) {
+  const name = prompt('请输入新队名：', state.data.teams[id].name);
+  if (name && name.trim()) {
+    state.data.teams[id].name = name.trim();
+    sync('teams/' + id + '/name', name.trim());
+    renderTeams();
+    toast('✅ 已改名');
+  }
+};
+
+window.toggleEliminate = function (id) {
+  state.data.teams[id].eliminated = !state.data.teams[id].eliminated;
+  sync('teams/' + id + '/eliminated', state.data.teams[id].eliminated);
+  renderTeams();
+  toast(state.data.teams[id].eliminated ? '💀 已淘汰' : '♻️ 已恢复');
+};
+
+window.resetTeams = function () {
+  pendingAction = () => {
+    state.data.teams = makeDefaultTeams();
+    sync('teams', state.data.teams);
+    renderTeams();
+    toast('🔄 队伍数据已重置');
+  };
+  openConfirm('重置队伍数据', '确定重置所有队伍数据吗？队名、淘汰状态、货币余额将全部恢复初始值。');
+};
+
+// ==================== 货币中心 ====================
+function renderCurrency() {
+  renderEpSelector('currency-ep-selector');
+  const ep = state.data.episodes[state.currentEp];
+  const isHost = state.currentUser.role === 'host';
+  const myAssign = ep.assignments[state.currentUser.id] || {};
+  const isStation = myAssign.type === 'station';
+  const canEdit = isHost || isStation;
+
+  let html = `<div class="section-title">💰 ${state.currentEp} 货币操作</div>`;
+  html += `<div class="grid grid-4">`;
+  Object.values(state.data.teams).forEach(team => {
+    if (team.eliminated) return;
+    html += `<div class="team-card">
+      <div style="font-weight:700;margin-bottom:4px">${team.name}</div>
+      <div class="currency-box">💰 ${team.currency}</div>
+      ${canEdit ? `<div style="display:flex;gap:6px;margin-top:10px;align-items:center">
+        <input type="number" id="cur-${team.id}" class="input-sm" placeholder="金额">
+        <button class="btn btn-success btn-sm" onclick="modCurrency('${team.id}',1)">➕</button>
+        <button class="btn btn-danger btn-sm" onclick="modCurrency('${team.id}',-1)">➖</button>
+      </div>` : ''}
+    </div>`;
+  });
+  html += `</div>`;
+
+  // 货币日志
+  html += `<div class="card" style="margin-top:20px"><div class="card-header">📝 货币变动日志</div>`;
+  const logs = ep.currencyLog || {};
+  const allLogs = [];
+  Object.entries(logs).forEach(([teamId, arr]) => {
+    if (Array.isArray(arr)) arr.forEach(log => allLogs.push({ ...log, teamName: state.data.teams[teamId]?.name || teamId }));
+  });
+  allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  if (!allLogs.length) {
+    html += `<div class="empty-state">暂无货币变动记录</div>`;
+  } else {
+    html += `<div class="scroll-table"><table class="table">
+      <thead><tr><th>时间</th><th>队伍</th><th>变动</th><th>余额</th><th>操作人</th><th>原因</th></tr></thead>
+      <tbody>`;
+    allLogs.slice(0, 100).forEach(log => {
+      html += `<tr>
+        <td>${new Date(log.timestamp).toLocaleString()}</td>
+        <td>${log.teamName}</td>
+        <td class="${log.amount > 0 ? 'log-positive' : 'log-negative'}">${log.amount > 0 ? '+' : ''}${log.amount}</td>
+        <td>${log.balance}</td>
+        <td>${log.staffId}</td>
+        <td>${log.reason || '-'}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+  html += `</div>`;
+  document.getElementById('currency-content').innerHTML = html;
+}
+
+window.modCurrency = function (teamId, sign) {
+  const input = document.getElementById('cur-' + teamId);
+  const amount = parseInt(input.value || 0) * sign;
+  if (!amount || isNaN(amount)) { toast('⚠️ 请输入有效金额', 'error'); return; }
+  const reason = prompt('请输入操作原因（如：任务奖励、罚款、购买线索等）：') || '手动调整';
+  const team = state.data.teams[teamId];
+  team.currency += amount;
+  const ep = state.data.episodes[state.currentEp];
+  if (!ep.currencyLog) ep.currencyLog = {};
+  if (!ep.currencyLog[teamId]) ep.currencyLog[teamId] = [];
+  const logEntry = { amount, balance: team.currency, staffId: state.currentUser.id, reason, timestamp: new Date().toISOString() };
+  ep.currencyLog[teamId].push(logEntry);
+  const updates = {};
+  updates[`teams/${teamId}/currency`] = team.currency;
+  updates[`episodes/${state.currentEp}/currencyLog/${teamId}`] = ep.currencyLog[teamId];
+  updateSync(updates);
+  renderCurrency();
+  toast(`${amount > 0 ? '✅ 增加' : '✅ 扣除'} ${Math.abs(amount)} 货币`);
+};
+
+// ==================== 主办后台 ====================
+function renderAdmin() {
+  // 准入名单
+  const accessEl = document.getElementById('access-list');
+  const accessIds = Object.keys(state.data.accessList).sort();
+  accessEl.innerHTML = accessIds.map(id =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--gray-50);border-radius:8px;border:1px solid var(--gray-200)">
+      <span style="font-weight:600">${id}</span>
+      ${HOSTS.includes(id) ? '<span style="font-size:11px;color:var(--gray-400)">主办（不可移除）</span>' : `<button class="btn btn-danger btn-sm" onclick="removeAccess('${id}')">移除</button>`}
+    </div>`
+  ).join('');
+
+  // 账号表
+  const tbody = document.getElementById('account-table');
+  const accounts = Object.entries(state.data.accounts).sort((a, b) => a[0].localeCompare(b[0]));
+  tbody.innerHTML = accounts.map(([id, acc]) =>
+    `<tr><td style="font-weight:600">${id}</td><td style="font-family:monospace">${acc.password}</td><td><span class="badge badge-${acc.role === 'host' ? 'host' : 'crew'}">${acc.role === 'host' ? '主办' : '幕后'}</span></td><td>${new Date(acc.createdAt).toLocaleString()}</td></tr>`
+  ).join('');
+}
+
+window.addAccessIds = function () {
+  const val = document.getElementById('new-access-id').value.trim();
+  if (!val) return;
+  const updates = {};
+  val.split(/[,，]/).map(s => s.trim()).filter(Boolean).forEach(id => {
+    state.data.accessList[id] = true;
+    updates[`accessList/${id}`] = true;
+  });
+  updateSync(updates);
+  document.getElementById('new-access-id').value = '';
+  renderAdmin();
+  toast('✅ 已添加至准入名单');
+};
+
+window.removeAccess = function (id) {
+  delete state.data.accessList[id];
+  sync('accessList/' + id, null);
+  renderAdmin();
+  toast('🗑️ 已移除');
+};
+
+// ==================== 数据备份 ====================
+window.exportData = function () {
+  const blob = new Blob([JSON.stringify(state.data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `BJ20_backup_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('📥 备份已下载到本地');
+};
+
+window.importData = function (input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      state.data = data;
+      saveLocal();
+      if (db && fbOnline) fbSet('', data);
+      renderAdmin();
+      toast('✅ 数据已恢复并同步');
+    } catch (err) { toast('⚠️ 文件格式错误，无法解析', 'error'); }
+  };
+  reader.readAsText(file);
+};
+
+window.resetAllData = function () {
+  pendingAction = () => {
+    state.data = {
+      accounts: {},
+      accessList: Object.fromEntries(HOSTS.map(h => [h, true])),
+      teams: makeDefaultTeams(),
+      episodes: makeDefaultEpisodes()
+    };
+    saveLocal();
+    if (db && fbOnline) fbSet('', state.data);
+    renderAdmin();
+    toast('🗑️ 全部数据已重置');
+  };
+  openConfirm('⚠️ 重置全部数据', '此操作将清空所有账号、赛段、记录、货币日志，恢复为初始状态。请先导出备份！确定要继续吗？');
+};
+
+// ==================== 通用UI ====================
+window.openModal = function (html) {
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+};
+
+window.closeModal = function () {
+  document.getElementById('modal-overlay').classList.add('hidden');
+};
+
+function toast(msg, type = 'success') {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  el.style.background = type === 'error' ? 'var(--danger)' : 'var(--gray-800)';
+  container.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(10px)'; setTimeout(() => el.remove(), 300); }, 2800);
+}
+
+// ==================== 启动 ====================
+loadLocal();
+
+// 恢复登录态
+const savedUser = sessionStorage.getItem('bj20_user');
+if (savedUser) {
+  try {
+    state.currentUser = JSON.parse(savedUser);
+    enterMain();
+  } catch (e) { sessionStorage.removeItem('bj20_user'); }
+}
+
+// 暴露到全局供HTML内联事件使用
+window.state = state;
+window.HOSTS = HOSTS;
+</script>
+
+</body>
+</html>

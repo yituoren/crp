@@ -1,0 +1,24 @@
+{
+  "name": "@crp/server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "import-prototype": "tsx src/cli-import.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.0",
+    "bcryptjs": "^3.0.2",
+    "hono": "^4.7.0",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  }
+}

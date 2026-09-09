@@ -1,0 +1,183 @@
+import { DatabaseSync } from 'node:sqlite';
+import fs from 'node:fs';
+import path from 'node:path';
+
+export const DATA_DIR = process.env.DATA_DIR ?? path.resolve(process.cwd(), 'data');
+export const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+export const db = new DatabaseSync(path.join(DATA_DIR, 'crp.db'));
+db.exec('PRAGMA journal_mode = WAL;');
+db.exec('PRAGMA foreign_keys = ON;');
+
+const SCHEMA = `
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  display_name TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'crew',          -- host | crew
+  disabled INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS access_list (
+  username TEXT PRIMARY KEY,
+  added_by TEXT,
+  added_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS episodes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL UNIQUE,                  -- EP1
+  name TEXT NOT NULL,
+  budget INTEGER NOT NULL DEFAULT 0,
+  sort INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending',     -- pending | running | finished
+  notes TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS legs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  episode_id INTEGER NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
+  sort INTEGER NOT NULL DEFAULT 0,
+  type TEXT NOT NULL,                         -- SL RI TI DT RB FO Union Trap PS
+  name TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  address TEXT NOT NULL DEFAULT '',
+  map_url TEXT NOT NULL DEFAULT '',
+  clue_text TEXT NOT NULL DEFAULT '',
+  judge_criteria TEXT NOT NULL DEFAULT '',
+  open_time TEXT NOT NULL DEFAULT '',
+  close_time TEXT NOT NULL DEFAULT '',
+  detour_a TEXT NOT NULL DEFAULT '',
+  detour_b TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_legs_ep ON legs(episode_id, sort);
+CREATE TABLE IF NOT EXISTS attachments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  leg_id INTEGER NOT NULL REFERENCES legs(id) ON DELETE CASCADE,
+  filename TEXT NOT NULL,
+  mime TEXT NOT NULL,
+  path TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  uploaded_by INTEGER,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS teams (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL UNIQUE,                  -- T1
+  name TEXT NOT NULL,
+  members TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'alive',       -- alive | eliminated | withdrawn
+  currency INTEGER NOT NULL DEFAULT 0,
+  sort INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS assignments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  episode_id INTEGER NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL,                         -- follow | station
+  team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL,
+  leg_id INTEGER REFERENCES legs(id) ON DELETE SET NULL,
+  UNIQUE(episode_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS progress (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  episode_id INTEGER NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
+  team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  leg_id INTEGER NOT NULL REFERENCES legs(id) ON DELETE CASCADE,
+  arrived_at TEXT,
+  completed_at TEXT,
+  detour_choice TEXT,
+  roadblock_by TEXT,
+  ff_result TEXT,                             -- success | fail | null
+  note TEXT NOT NULL DEFAULT '',
+  recorded_by INTEGER,
+  updated_at TEXT NOT NULL,
+  UNIQUE(episode_id, team_id, leg_id)
+);
+CREATE TABLE IF NOT EXISTS penalties (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  episode_id INTEGER NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
+  team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  minutes INTEGER NOT NULL,
+  reason TEXT NOT NULL DEFAULT '',
+  applied_by INTEGER,
+  applied_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS pitstop_results (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  episode_id INTEGER NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
+  team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  checkin_at TEXT,
+  rank INTEGER,
+  eliminated INTEGER NOT NULL DEFAULT 0,
+  note TEXT NOT NULL DEFAULT '',
+  UNIQUE(episode_id, team_id)
+);
+CREATE TABLE IF NOT EXISTS currency_ledger (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  episode_id INTEGER REFERENCES episodes(id) ON DELETE SET NULL,
+  team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  delta INTEGER NOT NULL,
+  balance_after INTEGER NOT NULL,
+  reason TEXT NOT NULL DEFAULT '',
+  operator_id INTEGER,
+  operator_name TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ledger_ep ON currency_ledger(episode_id, created_at);
+CREATE TABLE IF NOT EXISTS announcements (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  content TEXT NOT NULL,
+  level TEXT NOT NULL DEFAULT 'info',         -- info | warning | urgent
+  created_by TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
+  username TEXT NOT NULL,
+  action TEXT NOT NULL,
+  target_type TEXT NOT NULL,
+  target_id TEXT NOT NULL DEFAULT '',
+  before TEXT,
+  after TEXT,
+  created_at TEXT NOT NULL
+);
+`;
+db.exec(SCHEMA);
+
+type Param = string | number | null;
+export type Row = Record<string, any>;
+
+export function all<T = Row>(sql: string, ...params: Param[]): T[] {
+  return db.prepare(sql).all(...params) as T[];
+}
+export function get<T = Row>(sql: string, ...params: Param[]): T | undefined {
+  return db.prepare(sql).get(...params) as T | undefined;
+}
+export function run(sql: string, ...params: Param[]) {
+  return db.prepare(sql).run(...params);
+}
+export function tx<T>(fn: () => T): T {
+  db.exec('BEGIN');
+  try {
+    const r = fn();
+    db.exec('COMMIT');
+    return r;
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+}
+export const now = () => new Date().toISOString();
+
+export function getSetting(key: string, fallback = ''): string {
+  return get<{ value: string }>('SELECT value FROM settings WHERE key = ?', key)?.value ?? fallback;
+}
+export function setSetting(key: string, value: string) {
+  run('INSERT INTO settings(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', key, value);
+}
