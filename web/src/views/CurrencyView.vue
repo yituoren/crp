@@ -7,6 +7,7 @@ import { fmtDateTime } from '@/utils/time';
 import { fmtMoney, parseMoney } from '@/utils/money';
 import EpSelector from '@/components/EpSelector.vue';
 import type { Team } from '@/types';
+import PenaltyPanel from '@/components/PenaltyPanel.vue';
 
 const race = useRace();
 const ui = useUi();
@@ -74,4 +75,6 @@ const rows = computed(() => (filterTeam.value ? race.ledger.filter((l) => l.team
       </table>
     </div>
   </div>
+
+  <PenaltyPanel />
 </template>

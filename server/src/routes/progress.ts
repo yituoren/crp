@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { all, get, run, tx, now } from '../db.js';
-import { hostOnly, canRecordProgress, isHostRole, type Env } from '../auth.js';
+import { hostOnly, canRecordProgress, canAdjustCurrency, isHostRole, type Env } from '../auth.js';
 import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forbidden } from '../util.js';
 
 export const progressRoutes = new Hono<Env>();
@@ -33,7 +33,7 @@ export function listProgress(episodeId: number) {
 }
 export function listPenalties(episodeId: number) {
   return all(
-    `SELECT p.*, t.name AS team_name FROM penalties p JOIN teams t ON t.id = p.team_id WHERE p.episode_id = ? ORDER BY p.id`,
+    `SELECT p.*, t.name AS team_name, u.display_name AS applied_by_name FROM penalties p JOIN teams t ON t.id = p.team_id LEFT JOIN users u ON u.id = p.applied_by WHERE p.episode_id = ? ORDER BY p.id DESC`,
     episodeId,
   );
 }
@@ -172,16 +172,20 @@ progressRoutes.put('/progress/:episodeId/:teamId/:legId', hostOnly, async (c) =>
 });
 
 // ---------- 罚时 ----------
-progressRoutes.post('/episodes/:id/penalties', hostOnly, async (c) => {
+/** 补罚时：minutes 为正是增加罚时，为负是减少罚时。主办与本赛段站点人员可操作 */
+progressRoutes.post('/episodes/:id/penalties', async (c) => {
   const episodeId = intParam(c, 'id');
+  const user = c.get('user');
+  if (!canAdjustCurrency(user, episodeId)) throw forbidden('只有主办或本赛段的站点人员可以补罚时');
   const b = await body(c);
   const teamId = int(b.teamId), minutes = int(b.minutes);
   if (!teamId || !minutes) throw bad('缺少队伍或罚时分钟数');
+  if (!get('SELECT 1 FROM teams WHERE id = ?', teamId)) throw notFound('队伍不存在');
   const r = run(
     'INSERT INTO penalties(episode_id, team_id, minutes, reason, applied_by, applied_at) VALUES (?,?,?,?,?,?)',
-    episodeId, teamId, minutes, str(b.reason, 200), c.get('user').id, now(),
+    episodeId, teamId, minutes, str(b.reason, 200), user.id, now(),
   );
-  audit(c.get('user'), 'create', 'penalty', Number(r.lastInsertRowid), undefined, { episodeId, teamId, minutes, reason: b.reason });
+  audit(user, 'create', 'penalty', Number(r.lastInsertRowid), undefined, { episodeId, teamId, minutes, reason: b.reason });
   notify('progress', episodeId);
   return c.json({ id: Number(r.lastInsertRowid) });
 });

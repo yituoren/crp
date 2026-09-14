@@ -7,6 +7,7 @@ import { fmtTime, fmtDateTime, toLocalInput, fromLocalInput } from '@/utils/time
 import EpSelector from '@/components/EpSelector.vue';
 import Modal from '@/components/Modal.vue';
 import TeamStatus from '@/components/TeamStatus.vue';
+import PenaltyPanel from '@/components/PenaltyPanel.vue';
 import type { PitstopRow } from '@/types';
 
 const race = useRace();
@@ -38,20 +39,6 @@ async function autoRank() {
   try { await api(`/episodes/${ep.value.id}/pitstop/auto`, { method: 'POST' }); await race.loadProgress(); ui.toast('已排名'); } catch (e) { ui.error(e); }
 }
 
-const penForm = reactive({ teamId: '' as number | '', minutes: '', reason: '' });
-async function addPenalty() {
-  if (!ep.value || !penForm.teamId || !Number(penForm.minutes)) { ui.toast('请选择队伍并填写分钟数', 'error'); return; }
-  try {
-    await api(`/episodes/${ep.value.id}/penalties`, { method: 'POST', body: { teamId: penForm.teamId, minutes: Number(penForm.minutes), reason: penForm.reason } });
-    penForm.minutes = ''; penForm.reason = '';
-    await race.loadProgress();
-    ui.toast('罚时已添加');
-  } catch (e) { ui.error(e); }
-}
-async function removePenalty(id: number) {
-  if (!(await ui.confirm('删除罚时', '确定删除这条罚时？', { danger: true }))) return;
-  try { await api(`/penalties/${id}`, { method: 'DELETE' }); await race.loadProgress(); } catch (e) { ui.error(e); }
-}
 const sorted = computed(() => [...race.pitstop].sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999) || (a.final_time ?? 'z').localeCompare(b.final_time ?? 'z')));
 watch(() => race.currentEpisodeId, () => { editing.value = null; });
 </script>
@@ -84,25 +71,7 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-header">罚时记录</div>
-    <div class="flex mb-2">
-      <select v-model="penForm.teamId" class="input-inline" style="width: 140px"><option value="">选择队伍</option><option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.name }}</option></select>
-      <input v-model="penForm.minutes" type="number" inputmode="numeric" class="input-inline" placeholder="分钟" style="width: 90px" />
-      <input v-model="penForm.reason" class="input-inline" placeholder="原因（如：打车超预算）" style="flex: 1; min-width: 160px" />
-      <button class="btn" @click="addPenalty">添加罚时</button>
-    </div>
-    <div v-if="!race.penalties.length" class="text-gray text-sm">本赛段暂无罚时</div>
-    <table v-else class="table">
-      <thead><tr><th>队伍</th><th>分钟</th><th>原因</th><th>时间</th><th></th></tr></thead>
-      <tbody>
-        <tr v-for="p in race.penalties" :key="p.id">
-          <td>{{ p.team_name }}</td><td>+{{ p.minutes }}</td><td class="wrap">{{ p.reason || '-' }}</td><td>{{ fmtDateTime(p.applied_at) }}</td>
-          <td><button class="btn btn-outline btn-sm" @click="removePenalty(p.id)">删</button></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <PenaltyPanel />
 
   <Modal v-if="editing" :title="`结算 · ${editing.team_name}`" small @close="editing = null">
     <div class="form-group"><label>签到时间（留空则采用终点环节的完成时间）</label><input v-model="form.checkinAt" type="datetime-local" step="1" /></div>
