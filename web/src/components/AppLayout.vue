@@ -31,8 +31,16 @@ function onLayoutChange() {
 }
 
 let sx = 0, sy = 0, horizontal: boolean | null = null;
+/** 手势起点落在可横向滚动的元素（进度矩阵、宽表格、赛段选择条等）里时，交给它自己滚动，不翻屏 */
+function insideHScroll(target: EventTarget | null): boolean {
+  const el = (target as HTMLElement | null)?.closest?.('.matrix-scroll, .scroll-table, .ep-selector, .nav, textarea');
+  if (!el) return false;
+  if (el.tagName === 'TEXTAREA') return true;
+  return el.scrollWidth > el.clientWidth + 2;
+}
 function onTouchStart(e: TouchEvent) {
   if (!isNarrow()) return;
+  if (insideHScroll(e.target)) { dragging.value = false; return; }
   const t = e.touches[0]; if (!t) return;
   sx = t.clientX; sy = t.clientY; horizontal = null; dragging.value = true; dragX.value = 0;
 }
@@ -59,6 +67,7 @@ let wheelAcc = 0, wheelLock = 0;
 function onWheel(e: WheelEvent) {
   if (!isNarrow()) return;
   if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return; // 纵向滚动交给页面
+  if (insideHScroll(e.target)) return;
   const now = Date.now();
   if (now < wheelLock) return;
   wheelAcc += e.deltaX;
