@@ -31,7 +31,7 @@ app.use(logger());
 
 app.onError((err, c) => {
   if (err instanceof HttpError) return c.json({ error: err.message }, err.status);
-  console.error(err);
+  console.error('[error] unhandled:', err);
   return c.json({ error: '服务器内部错误' }, 500);
 });
 
@@ -64,6 +64,6 @@ if (fs.existsSync(PUBLIC_DIR)) {
 }
 
 const server = serve({ fetch: app.fetch, port: PORT, hostname: '0.0.0.0' }, (info) => {
-  console.log(`CRP server listening on http://0.0.0.0:${info.port}  (public: ${fs.existsSync(PUBLIC_DIR) ? PUBLIC_DIR : 'none, dev mode'})`);
+  console.log(`[server] listening on http://0.0.0.0:${info.port} (static: ${fs.existsSync(PUBLIC_DIR) ? PUBLIC_DIR : 'none, dev mode'})`);
 });
 attachRealtime(server as any);

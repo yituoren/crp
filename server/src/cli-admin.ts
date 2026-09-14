@@ -7,7 +7,7 @@ import { seed } from './seed.js';
 
 const [username, password] = process.argv.slice(2);
 if (!username || !password || password.length < 4) {
-  console.error('用法: create-admin <用户名> <密码(至少4位)>');
+  console.error('Usage: create-admin <username> <password (min 4 chars)>');
   process.exit(1);
 }
 seed();
@@ -16,8 +16,8 @@ run('INSERT OR IGNORE INTO access_list(username, added_by, added_at) VALUES (?,?
 const existing = get('SELECT id FROM users WHERE username = ?', username);
 if (existing) {
   run("UPDATE users SET role = 'admin', password_hash = ?, disabled = 0 WHERE id = ?", hash, existing.id);
-  console.log(`已将 ${username} 设为管理员并重置密码`);
+  console.log(`[admin] user "${username}" promoted to admin, password reset`);
 } else {
   run("INSERT INTO users(username, password_hash, display_name, role, created_at) VALUES (?,?,?,'admin',?)", username, hash, username, now());
-  console.log(`已创建管理员账号 ${username}`);
+  console.log(`[admin] admin account "${username}" created`);
 }

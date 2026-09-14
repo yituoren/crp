@@ -9,31 +9,31 @@ REPO_URL="${1:-}"
 APP_DIR=/opt/crp
 DATA_DIR=/opt/crp/data
 
-echo "==> 安装系统依赖"
+echo "==> Installing system packages"
 apt-get update -y
 apt-get install -y curl git sqlite3 ca-certificates
 
 if ! command -v node >/dev/null 2>&1 || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 22 ]; then
-  echo "==> 安装 Node.js 22（node:sqlite 需要 >= 22.13）"
+  echo "==> Installing Node.js 22 (node:sqlite requires >= 22.13)"
   curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
   apt-get install -y nodejs
 fi
 node -v && npm -v
 
 if ! id crp >/dev/null 2>&1; then
-  echo "==> 创建运行用户 crp"
+  echo "==> Creating service user crp"
   useradd --system --home "$APP_DIR" --shell /usr/sbin/nologin crp
 fi
 
 if [ ! -d "$APP_DIR/.git" ]; then
-  if [ -z "$REPO_URL" ]; then echo "请提供仓库地址：install.sh <git url>"; exit 1; fi
-  echo "==> 克隆代码到 $APP_DIR"
+  if [ -z "$REPO_URL" ]; then echo "Usage: install.sh <git url>"; exit 1; fi
+  echo "==> Cloning repository into $APP_DIR"
   git clone "$REPO_URL" "$APP_DIR"
 fi
 
 cd "$APP_DIR"
 git config --global --add safe.directory "$APP_DIR" >/dev/null 2>&1 || true
-echo "==> 安装依赖并构建"
+echo "==> Installing dependencies and building"
 npm ci
 npm run build
 
@@ -42,26 +42,26 @@ mkdir -p "$DATA_DIR" "$APP_DIR/backups"
 chown -R root:root "$APP_DIR"
 chown -R crp:crp "$DATA_DIR" "$APP_DIR/backups"
 
-echo "==> 允许 node 监听 80 端口"
+echo "==> Allowing node to bind port 80"
 setcap 'cap_net_bind_service=+ep' "$(readlink -f "$(command -v node)")"
 
-echo "==> 安装 systemd 服务"
+echo "==> Installing systemd service"
 cp deploy/crp.service /etc/systemd/system/crp.service
 systemctl daemon-reload
 systemctl enable --now crp
 sleep 2
 systemctl --no-pager status crp | head -5
 
-echo "==> 安装每日备份任务（每天 04:00，保留 30 天）"
+echo "==> Installing daily backup cron job (04:00, keep 30 days)"
 chmod +x deploy/backup.sh deploy/update.sh
 ( crontab -u root -l 2>/dev/null | grep -v crp/deploy/backup.sh; echo "0 4 * * * $APP_DIR/deploy/backup.sh >> /var/log/crp-backup.log 2>&1" ) | crontab -u root -
 
 if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
-  echo "==> ufw 已启用，放行 80 端口"
+  echo "==> ufw is active, allowing port 80"
   ufw allow 80/tcp
 fi
 
 IP=$(curl -fsS -4 https://api.ipify.org || hostname -I | awk '{print $1}')
 echo
-echo "部署完成。用手机流量打开 http://$IP 检查是否可访问。"
-echo "首个主办账号：用主办名单里的ID（默认 阳秋 / 云缨 / 云影）直接注册即可。"
+echo "Deploy complete. Open http://$IP from a phone on mobile data to verify access."
+echo "First host account: register with a username from the host list (default: 阳秋 / 云缨 / 云影)."
