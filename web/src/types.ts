@@ -6,8 +6,10 @@ export interface EventInfo { name: string; hosts: string[]; teamSize: number; cu
 export const LEG_TYPES = ['SL', 'RI', 'TI', 'DT', 'RB', 'FO', 'Union', 'Shuffle', 'UT', 'YD', 'SB', 'PK', 'Trap', 'PS'] as const;
 export type LegType = (typeof LEG_TYPES)[number];
 export type RecordMode = 'none' | 'single' | 'full';
+/** 类型缩写的显示文字：SL 显示为 Starting Line，其余用缩写 */
+export const typeCode = (t: LegType): string => (t === 'SL' ? 'Starting Line' : t);
 export const LEG_TYPE_LABEL: Record<LegType, string> = {
-  SL: 'Starting Line', RI: '路线信息', TI: '任务点', DT: '绕道', RB: '路障', FO: '快进/捷径', Union: '联合', Shuffle: '洗牌', UT: '回转点', YD: '让路点', SB: '减速带', PK: '对抗/PK', Trap: '陷阱', PS: '中继站/终点',
+  SL: '起跑线', RI: '路线信息', TI: '任务点', DT: '绕道', RB: '路障', FO: '快进/捷径', Union: '联合', Shuffle: '洗牌', UT: '回转点', YD: '让路点', SB: '减速带', PK: '对抗/PK', Trap: '陷阱', PS: '中继站/终点',
 };
 export const LEG_TYPE_HINT: Record<LegType, string> = {
   SL: '赛段出发点，记录出发时间',

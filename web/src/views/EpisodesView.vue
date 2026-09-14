@@ -4,8 +4,7 @@ import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
-import { LEG_TYPES, LEG_TYPE_LABEL, LEG_TYPE_HINT, TYPE_DEFAULTS, RECORD_MODE_LABEL, type Leg, type LegType, type RecordMode } from '@/types';
-import { watch } from 'vue';
+import type { Leg } from '@/types';
 import { fmtMoney, moneyUnit, moneyLabel, moneyMode } from '@/utils/money';
 import { fmtDateTime } from '@/utils/time';
 import EpSelector from '@/components/EpSelector.vue';
@@ -62,9 +61,7 @@ async function deleteEpisode() {
 }
 
 // ---- 环节编辑 ----
-const legEditing = ref<Leg | null>(null);
 const isFixed = (l: Leg) => l.type === 'SL' || l.type === 'PS';
-const selectableTypes = LEG_TYPES.filter((t) => t !== 'SL' && t !== 'PS');
 // 可移动范围：Starting Line 永远第一、中继站永远最后
 function canMove(i: number, dir: -1 | 1) {
   const legs = ep.value?.legs ?? [];
@@ -73,22 +70,12 @@ function canMove(i: number, dir: -1 | 1) {
   if (isFixed(legs[i]!) || isFixed(legs[j]!)) return false;
   return true;
 }
-const legForm = reactive({ type: 'TI' as LegType, name: '', description: '', address: '', map_url: '', clue_text: '', judge_criteria: '', open_time: '', close_time: '', detour_a: '', detour_b: '', needs_staff: true, record_mode: 'full' as RecordMode });
-// 切换类型时套用该类型的默认行为（主办仍可手动改）
-watch(() => legForm.type, (t, prev) => { if (prev !== undefined && t !== prev) { legForm.needs_staff = TYPE_DEFAULTS[t].staff; legForm.record_mode = TYPE_DEFAULTS[t].mode; } });
-function openLegEdit(leg: Leg) {
-  legEditing.value = leg;
-  Object.assign(legForm, { type: leg.type, name: leg.name, description: leg.description, address: leg.address, map_url: leg.map_url, clue_text: leg.clue_text, judge_criteria: leg.judge_criteria, open_time: leg.open_time, close_time: leg.close_time, detour_a: leg.detour_a, detour_b: leg.detour_b, needs_staff: !!leg.needs_staff, record_mode: leg.record_mode });
-}
-async function saveLeg() {
-  try { await api(`/legs/${legEditing.value!.id}`, { method: 'PUT', body: legForm }); await race.loadEpisodes(); legEditing.value = null; ui.toast('环节已保存'); } catch (e) { ui.error(e); }
-}
 async function addLeg() {
   try {
     const n = (ep.value?.legs.length ?? 0) + 1;
     await api(`/episodes/${ep.value!.id}/legs`, { method: 'POST', body: { type: 'TI', name: `新环节 ${n}` } });
     await race.loadEpisodes();
-    ui.toast('已在中继站前添加环节，点击卡片上的「编辑」完善信息');
+    ui.toast('已在中继站前添加环节，点进卡片完善信息');
   } catch (e) { ui.error(e); }
 }
 async function deleteLeg(leg: Leg) {
@@ -151,7 +138,6 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
           · {{ leg.attachments.length }} 附件
         </div>
         <div v-if="auth.isHost" class="flex mt-2" @click.stop>
-          <button class="btn btn-outline btn-sm" @click="openLegEdit(leg)">编辑</button>
           <template v-if="!isFixed(leg)">
             <button class="btn btn-outline btn-sm" :disabled="!canMove(i, -1)" @click="move(leg, -1)">↑</button>
             <button class="btn btn-outline btn-sm" :disabled="!canMove(i, 1)" @click="move(leg, 1)">↓</button>
@@ -171,36 +157,4 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
     <div class="modal-actions"><button class="btn btn-secondary" @click="epEditing = false">取消</button><button class="btn" @click="saveEp">保存</button></div>
   </Modal>
 
-  <Modal v-if="legEditing" :title="`编辑环节 · ${legEditing.name}`" @close="legEditing = null">
-    <div class="grid grid-2">
-      <div class="form-group"><label>类型</label>
-        <input v-if="legEditing && isFixed(legEditing)" :value="`${legForm.type} · ${LEG_TYPE_LABEL[legForm.type]}（固定）`" disabled />
-        <select v-else v-model="legForm.type"><option v-for="t in selectableTypes" :key="t" :value="t">{{ t }} · {{ LEG_TYPE_LABEL[t] }}</option></select>
-      </div>
-      <div class="form-group"><label>名称</label><input v-model="legForm.name" /></div>
-    </div>
-    <div class="info-text" style="margin: -6px 0 10px">{{ LEG_TYPE_HINT[legForm.type] }}</div>
-    <div class="grid grid-2">
-      <div class="form-group"><label>记录方式</label>
-        <select v-model="legForm.record_mode"><option v-for="(l, m) in RECORD_MODE_LABEL" :key="m" :value="m">{{ l }}</option></select>
-      </div>
-      <div class="form-group"><label>站点人员</label>
-        <select v-model="legForm.needs_staff"><option :value="true">需要安排站点人员</option><option :value="false">无需站点（无人值守）</option></select>
-      </div>
-    </div>
-    <div class="form-group"><label>环节说明（任务内容、流程）</label><textarea v-model="legForm.description" /></div>
-    <div class="grid grid-2">
-      <div class="form-group"><label>地址</label><input v-model="legForm.address" /></div>
-      <div class="form-group"><label>地图链接</label><input v-model="legForm.map_url" placeholder="高德/百度地图分享链接" /></div>
-      <div class="form-group"><label>开放时间</label><input v-model="legForm.open_time" placeholder="如 09:00" /></div>
-      <div class="form-group"><label>关闭时间</label><input v-model="legForm.close_time" placeholder="如 17:30" /></div>
-    </div>
-    <div v-if="legForm.type === 'DT'" class="grid grid-2">
-      <div class="form-group"><label>绕道选项 A</label><input v-model="legForm.detour_a" /></div>
-      <div class="form-group"><label>绕道选项 B</label><input v-model="legForm.detour_b" /></div>
-    </div>
-    <div class="form-group"><label>线索原文（发给选手的内容）</label><textarea v-model="legForm.clue_text" /></div>
-    <div class="form-group"><label>判定标准（站点人员看）</label><textarea v-model="legForm.judge_criteria" /></div>
-    <div class="modal-actions"><button class="btn btn-secondary" @click="legEditing = null">取消</button><button class="btn" @click="saveLeg">保存</button></div>
-  </Modal>
 </template>

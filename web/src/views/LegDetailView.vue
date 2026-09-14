@@ -5,7 +5,9 @@ import { api } from '@/api';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
-import { LEG_TYPE_LABEL } from '@/types';
+import { LEG_TYPES, LEG_TYPE_LABEL, LEG_TYPE_HINT, TYPE_DEFAULTS, RECORD_MODE_LABEL, typeCode, type LegType, type RecordMode } from '@/types';
+import { reactive } from 'vue';
+import { useAuth } from '@/stores/auth';
 import LegTag from '@/components/LegTag.vue';
 import RecordTable from '@/components/RecordTable.vue';
 
@@ -18,6 +20,27 @@ const ep = computed(() => race.episodes.find((e) => e.id === episodeId.value) ??
 const leg = computed(() => ep.value?.legs.find((l) => l.id === legId.value) ?? null);
 const canUpload = computed(() => race.canUploadTo(legId.value));
 const staff = computed(() => race.assignments.filter((a) => a.role === 'station' && a.leg_id === legId.value).map((a) => a.display_name));
+const auth = useAuth();
+// ---- 主办/管理员：页内编辑 ----
+const isFixed = computed(() => leg.value?.type === 'SL' || leg.value?.type === 'PS');
+const selectableTypes = LEG_TYPES.filter((t) => t !== 'SL' && t !== 'PS');
+const form = reactive({ type: 'TI' as LegType, name: '', description: '', address: '', map_url: '', clue_text: '', judge_criteria: '', open_time: '', close_time: '', detour_a: '', detour_b: '', needs_staff: true, record_mode: 'full' as RecordMode });
+const dirty = ref(false);
+let filling = false;
+function fillForm() {
+  const l = leg.value; if (!l) return;
+  filling = true;
+  Object.assign(form, { type: l.type, name: l.name, description: l.description, address: l.address, map_url: l.map_url, clue_text: l.clue_text, judge_criteria: l.judge_criteria, open_time: l.open_time, close_time: l.close_time, detour_a: l.detour_a, detour_b: l.detour_b, needs_staff: !!l.needs_staff, record_mode: l.record_mode });
+  dirty.value = false;
+  setTimeout(() => { filling = false; }, 0);
+}
+watch(leg, () => { if (!dirty.value) fillForm(); }, { immediate: true });
+watch(form, () => { if (!filling) dirty.value = true; }, { deep: true });
+watch(() => form.type, (t, prev) => { if (!filling && prev !== undefined && t !== prev) { form.needs_staff = TYPE_DEFAULTS[t].staff; form.record_mode = TYPE_DEFAULTS[t].mode; } });
+async function saveLeg() {
+  if (!leg.value) return;
+  try { await api(`/legs/${leg.value.id}`, { method: 'PUT', body: form }); await race.loadEpisodes(); fillForm(); ui.toast('环节已保存'); } catch (e) { ui.error(e); }
+}
 const fileInput = ref<HTMLInputElement | null>(null);
 const uploading = ref(false);
 const preview = ref<string | null>(null);
@@ -49,7 +72,45 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
     <div class="flex-between mb-2">
       <div><router-link to="/episodes" class="text-sm">← {{ ep.code }} 环节列表</router-link></div>
     </div>
-    <div class="card">
+    <!-- 主办/管理员：页内编辑 -->
+    <div v-if="auth.isHost" class="card">
+      <div class="card-header">
+        <span><LegTag :type="leg.type" /> {{ leg.name }} <span class="text-gray text-sm">站点：{{ staff.join('、') || '未分配' }}</span></span>
+        <button class="btn" :disabled="!dirty" @click="saveLeg">保存修改</button>
+      </div>
+      <div class="grid grid-2">
+        <div class="form-group"><label>类型</label>
+          <input v-if="isFixed" :value="`${typeCode(form.type)} · ${LEG_TYPE_LABEL[form.type]}（固定）`" disabled />
+          <select v-else v-model="form.type"><option v-for="t in selectableTypes" :key="t" :value="t">{{ typeCode(t) }} · {{ LEG_TYPE_LABEL[t] }}</option></select>
+        </div>
+        <div class="form-group"><label>名称</label><input v-model="form.name" /></div>
+      </div>
+      <div class="info-text" style="margin: -6px 0 10px">{{ LEG_TYPE_HINT[form.type] }}</div>
+      <div class="grid grid-2">
+        <div class="form-group"><label>记录方式</label>
+          <select v-model="form.record_mode"><option v-for="(l, m) in RECORD_MODE_LABEL" :key="m" :value="m">{{ l }}</option></select>
+        </div>
+        <div class="form-group"><label>站点人员</label>
+          <select v-model="form.needs_staff"><option :value="true">需要安排站点人员</option><option :value="false">无需站点（无人值守）</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label>环节说明（任务内容、流程）</label><textarea v-model="form.description" /></div>
+      <div class="grid grid-2">
+        <div class="form-group"><label>地址</label><input v-model="form.address" /></div>
+        <div class="form-group"><label>地图链接</label><input v-model="form.map_url" placeholder="高德/百度地图分享链接" /></div>
+        <div class="form-group"><label>开放时间</label><input v-model="form.open_time" placeholder="如 09:00" /></div>
+        <div class="form-group"><label>关闭时间</label><input v-model="form.close_time" placeholder="如 17:30" /></div>
+      </div>
+      <div v-if="form.type === 'DT'" class="grid grid-2">
+        <div class="form-group"><label>绕道选项 A</label><input v-model="form.detour_a" /></div>
+        <div class="form-group"><label>绕道选项 B</label><input v-model="form.detour_b" /></div>
+      </div>
+      <div class="form-group"><label>线索原文（发给选手的内容）</label><textarea v-model="form.clue_text" /></div>
+      <div class="form-group" style="margin-bottom: 0"><label>判定标准（站点人员看）</label><textarea v-model="form.judge_criteria" /></div>
+    </div>
+
+    <!-- 其他人：只读信息 -->
+    <div v-else class="card">
       <div class="card-header">
         <span><LegTag :type="leg.type" /> {{ leg.name }} <span class="text-gray text-sm">{{ LEG_TYPE_LABEL[leg.type] }}</span></span>
         <span class="text-sm text-gray">站点：{{ staff.join('、') || '未分配' }}</span>

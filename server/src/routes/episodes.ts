@@ -60,7 +60,7 @@ episodeRoutes.post('/episodes', hostOnly, async (c) => {
     );
     const id = Number(r.lastInsertRowid);
     // 固定结构：第一个赛段以 Starting Line 开头；每个赛段以中继站结尾
-    if (count === 0) run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', id, 1, 'SL', 'Starting Line', 'single');
+    if (count === 0) run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', id, 1, 'SL', '起跑线', 'single');
     run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', id, 99, 'PS', '中继站', 'single');
     return id;
   });
