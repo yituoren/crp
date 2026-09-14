@@ -53,7 +53,10 @@ echo "==> 安装每日备份任务（每天 04:00，保留 30 天）"
 chmod +x deploy/backup.sh deploy/update.sh
 ( crontab -u root -l 2>/dev/null | grep -v crp/deploy/backup.sh; echo "0 4 * * * $APP_DIR/deploy/backup.sh >> /var/log/crp-backup.log 2>&1" ) | crontab -u root -
 
-if command -v ufw >/dev/null 2>&1; then ufw allow 80/tcp >/dev/null 2>&1 || true; fi
+if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
+  echo "==> ufw 已启用，放行 80 端口"
+  ufw allow 80/tcp
+fi
 
 IP=$(curl -fsS -4 https://api.ipify.org || hostname -I | awk '{print $1}')
 echo
