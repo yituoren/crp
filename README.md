@@ -107,7 +107,7 @@ bash /opt/crp/deploy/create-admin.sh 用户名 密码
 
 ## 线索卡模板与配色
 
-`docs/templates/三折页线索模板.docx` 是线索卡的打印模板，`docs/templates/cards/` 里是各类卡片的缩略图。页面上环节类型标签的颜色取自这些卡片的主色：起跑线 #C9DA4D、路线 #009DDA、任务 #33CBCC、绕道 #EAAA16、路障 #AC0000、快进（FF）#27CE62、联合 #EB661C、对抗（FO）#664193、减速带 #FFCC01。模板里没有的类型（回转点、让路点、陷阱、中继站、洗牌）另选了不冲突的颜色，定义在 `web/src/styles.css`。
+`docs/templates/cards/` 里是三折页线索卡各类型的缩略图（按类型缩写命名）。页面上环节类型标签的颜色取自这些卡片的主色：起跑线 #C9DA4D、路线 #009DDA、任务 #33CBCC、绕道 #EAAA16、路障 #AC0000、快进（FF）#27CE62、联合 #EB661C、对抗（FO）#664193、减速带 #FFCC01。模板里没有的类型（回转点、让路点、陷阱、中继站、洗牌）另选了不冲突的颜色，定义在 `web/src/styles.css`。
 
 ## 目录结构
 
