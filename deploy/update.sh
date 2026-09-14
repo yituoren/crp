@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 更新到最新代码并重启（在服务器上以 root 运行）
+# Pull latest code, rebuild and restart (run as root on the server)
 set -euo pipefail
 cd /opt/crp
 echo "==> Pulling latest code"

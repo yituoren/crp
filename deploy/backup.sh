@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 备份 SQLite 数据库（WAL 模式下安全的在线备份）与附件目录
+# Back up the SQLite database (online backup, WAL-safe) and the uploads directory
 set -euo pipefail
 DATA_DIR=${DATA_DIR:-/opt/crp/data}
 OUT=${BACKUP_DIR:-/opt/crp/backups}
