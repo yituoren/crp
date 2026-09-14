@@ -218,7 +218,12 @@ html, body { overscroll-behavior: none; }
   .pager-track { width: 200vw; will-change: transform; transform: translateX(calc(var(--page, 1) * -100vw + var(--drag, 0px))) !important; }
   .pane { flex: none; width: 100vw; height: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
   .pane-live { position: static; padding: 16px 16px 40px; }
-  .live-row { grid-template-columns: minmax(90px, 1.2fr) minmax(120px, 1.6fr) minmax(110px, 1.3fr) 70px; gap: 6px; font-size: 12px; }
+  /* 手机端大屏：去掉最近记录列，三列紧凑排布，不产生横向滚动 */
+  .live-col-time { display: none; }
+  .live-grid { overflow-x: hidden; }
+  .live-row { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.5fr) 72px; gap: 6px; font-size: 12px; min-height: 40px; padding: 0 2px; }
+  .live-team { font-size: 13px; }
+  .live-card { padding: 14px 12px 10px; }
   .pane-main .container { min-height: 100%; }
   .container-fixed { height: 100%; }
   .pager-dots { display: flex; position: fixed; left: 0; right: 0; bottom: 10px; justify-content: center; gap: 6px; z-index: 120; pointer-events: none; }

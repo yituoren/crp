@@ -34,7 +34,7 @@ watch(() => [liveEpisode.value?.id, race.progress, race.teams, race.episodes], l
     <div v-if="!data" class="text-gray text-sm">加载中…</div>
     <div v-else class="live-grid">
       <div class="live-row live-row-head">
-        <div>队伍</div><div>当前环节</div><div>最近记录</div><div>余额（{{ moneyUnit() }}）</div>
+        <div>队伍</div><div>当前环节</div><div class="live-col-time">最近记录</div><div>余额（{{ moneyUnit() }}）</div>
       </div>
       <div v-for="t in data.teams" :key="t.id" class="live-row" :class="{ 'mx-dead': t.status !== 'alive' }">
         <div class="live-team"><strong>{{ t.label }}</strong><TeamStatus v-if="t.status !== 'alive'" :status="t.status" /></div>
@@ -43,7 +43,7 @@ watch(() => [liveEpisode.value?.id, race.progress, race.teams, race.episodes], l
           <template v-else-if="t.currentLeg"><LegTag :type="t.currentLeg.type" /> <span class="live-legname">{{ t.currentLeg.name }}</span></template>
           <span v-else class="text-gray">未出发</span>
         </div>
-        <div class="live-time"><span class="record-time">{{ fmtTime(t.lastActivity) }}</span></div>
+        <div class="live-time live-col-time"><span class="record-time">{{ fmtTime(t.lastActivity) }}</span></div>
         <div class="live-money">{{ fmtMoney(t.currency) }}</div>
       </div>
     </div>
