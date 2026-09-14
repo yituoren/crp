@@ -16,8 +16,9 @@ const get = (id: number) => (inputs[id] ??= { amount: '', reason: '' });
 
 async function apply(t: Team, sign: 1 | -1) {
   const inp = get(t.id);
-  const amount = Math.abs(parseInt(inp.amount, 10));
-  if (!amount) { ui.toast('请输入有效金额', 'error'); return; }
+  const raw = Number(inp.amount);
+  if (!Number.isInteger(raw) || raw <= 0) { ui.toast('金额必须是正整数，扣除请用「扣除」按钮', 'error'); return; }
+  const amount = raw;
   const delta = amount * sign;
   const reason = inp.reason.trim() || (sign > 0 ? '任务奖励' : '手动扣除');
   if (!(await ui.confirm(sign > 0 ? '增加货币' : '扣除货币', `「${t.name}」${sign > 0 ? '增加' : '扣除'} ${amount}，原因：${reason}\n当前余额 ${t.currency} → ${t.currency + delta}`))) return;
@@ -43,7 +44,7 @@ const rows = computed(() => (filterTeam.value ? race.ledger.filter((l) => l.team
       <div class="currency-box">{{ t.currency }}</div>
       <div v-if="race.canAdjustCurrency && t.status === 'alive'" class="mt-1">
         <div class="flex" style="gap: 6px; flex-wrap: nowrap">
-          <input v-model="get(t.id).amount" type="number" inputmode="numeric" class="input-sm" placeholder="金额" style="width: 80px" />
+          <input v-model="get(t.id).amount" type="number" inputmode="numeric" min="1" step="1" class="input-sm" placeholder="金额" style="width: 80px" />
           <input v-model="get(t.id).reason" class="input-sm" placeholder="原因" style="flex: 1; min-width: 60px" />
         </div>
         <div class="flex mt-1" style="gap: 6px">
