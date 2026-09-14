@@ -54,21 +54,21 @@ async function resetAll() {
       <button class="btn btn-outline" @click="resetAll">重置队伍数据</button>
     </div>
   </div>
-  <div class="grid grid-4">
+  <div class="grid grid-3">
     <div v-for="t in race.teams" :key="t.id" class="team-card" :class="'team-' + t.status">
       <div class="flex-between" style="margin-bottom: 4px">
         <span style="font-weight: 700; font-size: 16px">{{ t.label }}</span>
         <TeamStatus :status="t.status" />
       </div>
       <div class="currency-box mt-1">{{ fmtMoney(t.currency) }} <span class="text-sm text-gray">{{ moneyUnit() }}</span></div>
-      <div v-if="auth.isHost" class="flex mt-2" style="gap: 6px">
+      <div v-if="auth.isHost" class="flex mt-2" style="gap: 6px; flex-wrap: nowrap">
         <button class="btn btn-outline btn-sm" @click="open(t)">编辑</button>
         <button v-if="t.status !== 'alive'" class="btn btn-success btn-sm" @click="setStatus(t, 'alive')">恢复</button>
         <template v-else>
           <button class="btn btn-danger btn-sm" @click="setStatus(t, 'eliminated')">淘汰</button>
           <button class="btn btn-secondary btn-sm" @click="setStatus(t, 'withdrawn')">退赛</button>
         </template>
-        <button class="btn btn-outline btn-sm" @click="remove(t)">删</button>
+        <button class="btn btn-outline btn-sm" @click="remove(t)">删除</button>
       </div>
     </div>
   </div>
