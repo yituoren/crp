@@ -227,15 +227,15 @@ html, body { overscroll-behavior: none; }
 
 /* 进度页矩阵：队伍列固定在左，其余横向滚动；每个环节用实线分组 */
 .matrix-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.mx2 { min-width: max-content; border-collapse: separate; border-spacing: 0; border-top: 2px solid var(--gray-300); border-bottom: 2px solid var(--gray-300); }
+.mx2 { min-width: max-content; border-collapse: separate; border-spacing: 0; border-top: 2px solid var(--gray-300); border-bottom: 2px solid var(--gray-300); border-right: 2px solid var(--gray-300); }
 .mx2 th, .mx2 td { text-align: center; border-bottom: 1px solid var(--gray-200); white-space: nowrap; }
 .mx2 tbody tr:last-child td { border-bottom: none; }
-.mx2 .mx2-team { position: sticky; left: 0; z-index: 2; background: #fff; text-align: left; min-width: 150px; border-left: 2px solid var(--gray-300); border-right: 2px solid var(--gray-300); }
+.mx2 .mx2-team { position: sticky; left: 0; z-index: 2; background: #fff; text-align: left; min-width: 150px; border-left: 2px solid var(--gray-300); }
 .mx2 thead .mx2-team { background: var(--gray-50); z-index: 3; }
 .mx2 .mx2-leg { background: var(--gray-50); }
 .mx2 .mx2-sub { background: var(--gray-50); font-weight: 500; color: var(--gray-500); }
 .mx2 .mx2-cell { font-family: ui-monospace, Menlo, monospace; min-width: 64px; }
+/* 分组之间只画一条线：每组首列画左边线，表格右缘由 .mx2 的 border-right 收尾 */
 .mx2 .mx2-first { border-left: 2px solid var(--gray-300); }
-.mx2 .mx2-last { border-right: 2px solid var(--gray-300); }
 .mx2 .mx-done { background: #dcfce7; color: #166534; }
 .mx2 .mx-arrived { background: #fef9c3; color: #854d0e; }
