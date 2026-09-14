@@ -29,7 +29,7 @@ npm start          # 生产模式：单进程同时提供页面与 API（默认 
 一台 1 核 1G 的机器足够。以 root 登录后：
 
 ```bash
-git clone https://github.com/<你的GitHub>/crp.git /opt/crp
+git clone https://github.com/yituoren/crp.git /opt/crp
 bash /opt/crp/deploy/install.sh
 ```
 

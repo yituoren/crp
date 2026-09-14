@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 首次部署脚本（在服务器上以 root 运行）。适用于 Ubuntu 22.04 / 24.04 / Debian 12。
 # 用法：
-#   curl -fsSL https://raw.githubusercontent.com/<你的GitHub>/crp/main/deploy/install.sh | bash -s -- https://github.com/<你的GitHub>/crp.git
+#   curl -fsSL https://raw.githubusercontent.com/yituoren/crp/main/deploy/install.sh | bash -s -- https://github.com/yituoren/crp.git
 # 或先 git clone 到 /opt/crp 再执行：bash /opt/crp/deploy/install.sh
 set -euo pipefail
 
