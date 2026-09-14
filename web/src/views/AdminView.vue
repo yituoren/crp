@@ -98,7 +98,7 @@ async function importProto() {
   } catch (e) { ui.error(e); }
 }
 async function resetAll(includeAccounts: boolean) {
-  const msg = includeAccounts ? '清空所有比赛数据、公告，并删除除你以外的全部账号与准入名单。' : '清空赛段、环节、附件、队伍、记录、货币日志、公告，恢复默认赛段与队伍。账号保留。';
+  const msg = includeAccounts ? '清空所有比赛数据、公告，并删除除管理员以外的全部账号与准入名单。' : '清空赛段、环节、附件、队伍、记录、货币日志、公告，恢复默认赛段与队伍。账号保留。';
   if (!(await ui.confirm('⚠️ 重置数据', msg + '\n请先导出备份！确定要继续吗？', { danger: true, okText: '确认重置' }))) return;
   try { await api('/admin/reset', { method: 'POST', body: { includeAccounts } }); ui.toast('已重置'); window.location.reload(); } catch (e) { ui.error(e); }
 }

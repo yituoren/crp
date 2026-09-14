@@ -155,7 +155,7 @@ adminRoutes.post('/admin/reset', adminOnly, async (c) => {
   tx(() => {
     for (const t of ['pitstop_results', 'penalties', 'progress', 'currency_ledger', 'assignments', 'attachments', 'legs', 'episodes', 'teams', 'announcements']) run(`DELETE FROM ${t}`);
     if (includeAccounts) {
-      run("DELETE FROM users WHERE id != ? AND role != 'admin'", me.id);
+      run("DELETE FROM users WHERE role != 'admin'"); // 只保留管理员账号
       run('DELETE FROM access_list');
     }
   });
