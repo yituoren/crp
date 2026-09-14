@@ -27,7 +27,7 @@ async function logout() {
 </script>
 
 <template>
-  <div class="container">
+  <div class="container" :class="{ 'container-fixed': $route.meta.fillPage }">
     <div class="page-header">
       <h1>{{ auth.event.name }}</h1>
       <div class="user-bar">
@@ -49,7 +49,9 @@ async function logout() {
       <router-link v-if="auth.isHost" to="/pitstop">终点结算</router-link>
       <router-link v-if="auth.isHost" to="/admin">主办后台</router-link>
     </nav>
-    <router-view v-if="race.loaded" />
-    <div v-else class="empty-state">加载中…</div>
+    <div class="page-body">
+      <router-view v-if="race.loaded" />
+      <div v-else class="empty-state">加载中…</div>
+    </div>
   </div>
 </template>

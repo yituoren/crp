@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS users (
   display_name TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'crew',          -- host | crew
   disabled INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  ann_read_id INTEGER NOT NULL DEFAULT 0     -- 最后已读公告 id（跨设备）
 );
 CREATE TABLE IF NOT EXISTS access_list (
   username TEXT PRIMARY KEY,
@@ -170,6 +171,7 @@ if (ensureColumn('legs', 'needs_staff', 'INTEGER NOT NULL DEFAULT 1') || ensureC
 ensureColumn('progress', 'target_team_id', 'INTEGER');
 ensureColumn('episodes', 'started_at', 'TEXT');
 ensureColumn('episodes', 'finished_at', 'TEXT');
+ensureColumn('users', 'ann_read_id', 'INTEGER NOT NULL DEFAULT 0');
 
 type Param = string | number | null;
 export type Row = Record<string, any>;

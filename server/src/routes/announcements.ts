@@ -1,13 +1,22 @@
 import { Hono } from 'hono';
-import { all, run, now } from '../db.js';
+import { all, get, run, now } from '../db.js';
 import { hostOnly, type Env } from '../auth.js';
-import { audit, body, str, intParam, notify, bad } from '../util.js';
+import { audit, body, str, int, intParam, notify, bad } from '../util.js';
 
 export const announcementRoutes = new Hono<Env>();
 
-announcementRoutes.get('/announcements', (c) =>
-  c.json({ announcements: all('SELECT * FROM announcements ORDER BY id DESC LIMIT 100') }),
-);
+announcementRoutes.get('/announcements', (c) => {
+  const me = get('SELECT ann_read_id FROM users WHERE id = ?', c.get('user').id);
+  return c.json({ announcements: all('SELECT * FROM announcements ORDER BY id DESC LIMIT 200'), lastReadId: me?.ann_read_id ?? 0 });
+});
+
+/** 标记已读到某条公告（存在账号上，换设备也生效） */
+announcementRoutes.post('/announcements/read', async (c) => {
+  const { id } = await body(c);
+  const n = int(id, 0);
+  run('UPDATE users SET ann_read_id = MAX(ann_read_id, ?) WHERE id = ?', n, c.get('user').id);
+  return c.json({ ok: true });
+});
 
 announcementRoutes.post('/announcements', hostOnly, async (c) => {
   const b = await body(c);

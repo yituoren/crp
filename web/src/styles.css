@@ -28,7 +28,12 @@ p { margin: 0 0 8px; }
 .btn-block { width: 100%; }
 
 /* 卡片、布局 */
-.container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+.container { max-width: 1200px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; }
+.container-fixed { height: 100vh; height: 100dvh; overflow: hidden; }
+.page-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.fill-page { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.fill-card { flex: 1; min-height: 0; display: flex; flex-direction: column; margin-bottom: 0; }
+.fill-card .scroll-y { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .card { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
 .card-header { font-weight: 700; font-size: 15px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .grid { display: grid; gap: 12px; }

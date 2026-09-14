@@ -78,15 +78,20 @@ export const useRace = defineStore('race', () => {
   }
   async function loadTeams() { teams.value = (await api('/teams')).teams; }
   async function loadUsers() { users.value = (await api('/auth/users')).users; }
-  async function loadAnnouncements() { announcements.value = (await api('/announcements')).announcements; }
-  // 未读公告：按账号在本机记录最后已读的公告 id
-  const readKey = () => `crp.annRead.${auth.user?.id ?? 0}`;
+  // 未读公告：最后已读的公告 id 存在账号上，跨设备一致
   const lastReadId = ref<number>(0);
-  function loadReadMark() { lastReadId.value = Number(localStorage.getItem(readKey()) ?? 0) || 0; }
+  async function loadAnnouncements() {
+    const d = await api('/announcements');
+    announcements.value = d.announcements;
+    lastReadId.value = Math.max(lastReadId.value, Number(d.lastReadId ?? 0));
+  }
   const unreadAnnouncements = computed(() => announcements.value.filter((a) => a.id > lastReadId.value).length);
-  function markAnnouncementsRead() {
+  async function markAnnouncementsRead() {
     const max = Math.max(0, ...announcements.value.map((a) => a.id));
-    if (max > lastReadId.value) { lastReadId.value = max; localStorage.setItem(readKey(), String(max)); }
+    if (max > lastReadId.value) {
+      lastReadId.value = max;
+      try { await api('/announcements/read', { method: 'POST', body: { id: max } }); } catch { /* 下次再同步 */ }
+    }
   }
   async function loadAssignments() {
     if (!currentEpisode.value) return;
@@ -105,7 +110,6 @@ export const useRace = defineStore('race', () => {
     await Promise.all([loadAssignments(), loadProgress(), loadLedger()]);
   }
   async function loadAll() {
-    loadReadMark();
     await Promise.all([loadEpisodes(), loadTeams(), loadUsers(), loadAnnouncements()]);
     await loadEpisodeScoped();
     loaded.value = true;
