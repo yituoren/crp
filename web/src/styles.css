@@ -172,3 +172,16 @@ textarea { min-height: 90px; resize: vertical; }
 .rank-1 { color: #b45309; font-weight: 800; }
 .rank-2 { color: #6b7280; font-weight: 800; }
 .rank-3 { color: #92400e; font-weight: 800; }
+
+/* 环节编辑表单（电脑端两栏） */
+.leg-edit .edit-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 20px; align-items: stretch; }
+.leg-edit .edit-col { display: flex; flex-direction: column; gap: 14px; }
+.leg-edit .edit-section { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 14px 16px 4px; }
+.leg-edit .edit-section-fill { flex: 1; }
+.leg-edit .edit-section-title { font-weight: 700; font-size: 13px; color: var(--gray-600); margin-bottom: 10px; letter-spacing: .3px; }
+.leg-edit .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.leg-edit .edit-hint { margin: -4px 0 12px; }
+.leg-edit .form-group label .text-gray { font-weight: 400; margin-left: 4px; }
+.leg-edit .ta-md { min-height: 120px; }
+.leg-edit .form-group { margin-bottom: 12px; }
+@media (max-width: 900px) { .leg-edit .edit-grid { grid-template-columns: 1fr; } }

@@ -73,40 +73,61 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
       <div><router-link to="/episodes" class="text-sm">← {{ ep.code }} 环节列表</router-link></div>
     </div>
     <!-- 主办/管理员：页内编辑 -->
-    <div v-if="auth.isHost" class="card">
+    <div v-if="auth.isHost" class="card leg-edit">
       <div class="card-header">
         <span><LegTag :type="leg.type" /> {{ leg.name }} <span class="text-gray text-sm">站点：{{ staff.join('、') || '未分配' }}</span></span>
-        <button class="btn" :disabled="!dirty" @click="saveLeg">保存修改</button>
+        <span class="flex">
+          <span v-if="dirty" class="text-xs text-warning">有未保存的修改</span>
+          <button class="btn" :disabled="!dirty" @click="saveLeg">保存修改</button>
+        </span>
       </div>
-      <div class="grid grid-2">
-        <div class="form-group"><label>类型</label>
-          <input v-if="isFixed" :value="`${typeCode(form.type)} · ${LEG_TYPE_LABEL[form.type]}（固定）`" disabled />
-          <select v-else v-model="form.type"><option v-for="t in selectableTypes" :key="t" :value="t">{{ typeCode(t) }} · {{ LEG_TYPE_LABEL[t] }}</option></select>
+      <div class="edit-grid">
+        <div class="edit-col">
+          <div class="edit-section">
+            <div class="edit-section-title">基本信息</div>
+            <div class="field-row">
+              <div class="form-group"><label>类型</label>
+                <input v-if="isFixed" :value="`${typeCode(form.type)} · ${LEG_TYPE_LABEL[form.type]}（固定）`" disabled />
+                <select v-else v-model="form.type"><option v-for="t in selectableTypes" :key="t" :value="t">{{ typeCode(t) }} · {{ LEG_TYPE_LABEL[t] }}</option></select>
+              </div>
+              <div class="form-group"><label>名称</label><input v-model="form.name" /></div>
+            </div>
+            <div class="info-text edit-hint">{{ LEG_TYPE_HINT[form.type] }}</div>
+            <div class="field-row">
+              <div class="form-group"><label>记录方式</label>
+                <select v-model="form.record_mode"><option v-for="(l, m) in RECORD_MODE_LABEL" :key="m" :value="m">{{ l }}</option></select>
+              </div>
+              <div class="form-group"><label>站点人员</label>
+                <select v-model="form.needs_staff"><option :value="true">需要安排站点人员</option><option :value="false">无需站点（无人值守）</option></select>
+              </div>
+            </div>
+          </div>
+          <div class="edit-section">
+            <div class="edit-section-title">地点与时间</div>
+            <div class="form-group"><label>地址</label><input v-model="form.address" placeholder="到站点后能直接找到的描述" /></div>
+            <div class="form-group"><label>地图链接</label><input v-model="form.map_url" placeholder="高德 / 百度地图分享链接" /></div>
+            <div class="field-row">
+              <div class="form-group"><label>开放时间</label><input v-model="form.open_time" placeholder="如 09:00" /></div>
+              <div class="form-group"><label>关闭时间</label><input v-model="form.close_time" placeholder="如 17:30" /></div>
+            </div>
+          </div>
+          <div v-if="form.type === 'DT'" class="edit-section">
+            <div class="edit-section-title">绕道选项</div>
+            <div class="field-row">
+              <div class="form-group"><label>选项 A</label><input v-model="form.detour_a" /></div>
+              <div class="form-group"><label>选项 B</label><input v-model="form.detour_b" /></div>
+            </div>
+          </div>
         </div>
-        <div class="form-group"><label>名称</label><input v-model="form.name" /></div>
-      </div>
-      <div class="info-text" style="margin: -6px 0 10px">{{ LEG_TYPE_HINT[form.type] }}</div>
-      <div class="grid grid-2">
-        <div class="form-group"><label>记录方式</label>
-          <select v-model="form.record_mode"><option v-for="(l, m) in RECORD_MODE_LABEL" :key="m" :value="m">{{ l }}</option></select>
-        </div>
-        <div class="form-group"><label>站点人员</label>
-          <select v-model="form.needs_staff"><option :value="true">需要安排站点人员</option><option :value="false">无需站点（无人值守）</option></select>
+        <div class="edit-col">
+          <div class="edit-section edit-section-fill">
+            <div class="edit-section-title">文字内容</div>
+            <div class="form-group"><label>环节说明<span class="text-gray">（任务内容、流程，所有幕后可见）</span></label><textarea v-model="form.description" class="ta-md" /></div>
+            <div class="form-group"><label>线索原文<span class="text-gray">（发给选手的内容）</span></label><textarea v-model="form.clue_text" class="ta-md" /></div>
+            <div class="form-group" style="margin-bottom: 0"><label>判定标准<span class="text-gray">（站点人员看）</span></label><textarea v-model="form.judge_criteria" class="ta-md" /></div>
+          </div>
         </div>
       </div>
-      <div class="form-group"><label>环节说明（任务内容、流程）</label><textarea v-model="form.description" /></div>
-      <div class="grid grid-2">
-        <div class="form-group"><label>地址</label><input v-model="form.address" /></div>
-        <div class="form-group"><label>地图链接</label><input v-model="form.map_url" placeholder="高德/百度地图分享链接" /></div>
-        <div class="form-group"><label>开放时间</label><input v-model="form.open_time" placeholder="如 09:00" /></div>
-        <div class="form-group"><label>关闭时间</label><input v-model="form.close_time" placeholder="如 17:30" /></div>
-      </div>
-      <div v-if="form.type === 'DT'" class="grid grid-2">
-        <div class="form-group"><label>绕道选项 A</label><input v-model="form.detour_a" /></div>
-        <div class="form-group"><label>绕道选项 B</label><input v-model="form.detour_b" /></div>
-      </div>
-      <div class="form-group"><label>线索原文（发给选手的内容）</label><textarea v-model="form.clue_text" /></div>
-      <div class="form-group" style="margin-bottom: 0"><label>判定标准（站点人员看）</label><textarea v-model="form.judge_criteria" /></div>
     </div>
 
     <!-- 其他人：只读信息 -->
