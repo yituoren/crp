@@ -33,7 +33,7 @@ ledgerRoutes.post('/ledger', async (c) => {
   const reason = str(b.reason, 200) || '手动调整';
   if (!teamId) throw bad('缺少队伍');
   if (!delta) throw bad('金额不能为 0');
-  if (!canAdjustCurrency(user, episodeId ?? 0)) throw forbidden('只有主办或本赛段的站点人员可以操作货币');
+  if (!canAdjustCurrency(user, episodeId ?? 0, teamId)) throw forbidden('只有主办、本赛段站点人员，或该队伍的跟队可以操作货币');
   const team = get('SELECT * FROM teams WHERE id = ?', teamId);
   if (!team) throw notFound('队伍不存在');
   const balance = team.currency + delta;

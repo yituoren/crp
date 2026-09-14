@@ -37,13 +37,13 @@ const rows = computed(() => (filterTeam.value ? race.ledger.filter((l) => l.team
   <EpSelector />
   <div class="flex-between mb-2">
     <div class="section-title">{{ ep?.code }} 货币操作</div>
-    <span v-if="!race.canAdjustCurrency" class="text-sm text-gray">只有主办与本赛段站点人员可以操作货币</span>
+    <span v-if="!race.canAdjustCurrency && race.myAssignment?.role !== 'follow'" class="text-sm text-gray">主办与本赛段站点可操作所有队伍的货币，跟队只能操作所跟队伍</span>
   </div>
   <div class="grid grid-4">
     <div v-for="t in race.teams" :key="t.id" class="team-card" :class="'team-' + t.status">
       <div class="flex-between"><strong>{{ t.name }}</strong><span v-if="t.status !== 'alive'" class="status-eliminated">{{ t.status === 'eliminated' ? '已淘汰' : '已退赛' }}</span></div>
       <div class="currency-box">{{ fmtMoney(t.currency) }}</div>
-      <div v-if="race.canAdjustCurrency && t.status === 'alive'" class="mt-1">
+      <div v-if="race.canAdjustCurrencyFor(t.id) && t.status === 'alive'" class="mt-1">
         <div class="flex" style="gap: 6px; flex-wrap: nowrap">
           <input v-model="get(t.id).amount" type="number" inputmode="decimal" min="0.01" step="0.01" class="input-sm" placeholder="金额" style="width: 90px" />
           <input v-model="get(t.id).reason" class="input-sm" placeholder="原因" style="flex: 1; min-width: 60px" />

@@ -37,6 +37,12 @@ export const useRace = defineStore('race', () => {
     return (a.role === 'follow' && a.team_id === teamId) || (a.role === 'station' && a.leg_id === legId);
   }
   const canAdjustCurrency = computed(() => auth.isHost || myAssignment.value?.role === 'station');
+  /** 货币：主办、站点任意队伍；跟队仅所跟队伍 */
+  function canAdjustCurrencyFor(teamId: number) {
+    if (canAdjustCurrency.value) return true;
+    const a = myAssignment.value;
+    return a?.role === 'follow' && a.team_id === teamId;
+  }
 
   /** 与服务端一致的打卡顺序检查：返回不能打卡的原因，null 表示可以 */
   const MANDATORY_TYPES = new Set(['SL', 'TI', 'DT', 'RB', 'Union', 'Trap', 'PS']);
@@ -110,7 +116,7 @@ export const useRace = defineStore('race', () => {
 
   return {
     episodes, teams, users, announcements, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
-    aliveTeams, myAssignment, teamById, legById, progressOf, canRecord, canAdjustCurrency, canUploadTo, blockReason,
+    aliveTeams, myAssignment, teamById, legById, progressOf, canRecord, canAdjustCurrency, canAdjustCurrencyFor, canUploadTo, blockReason,
     loadAll, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
   };
 });
