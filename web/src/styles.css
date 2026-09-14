@@ -98,10 +98,22 @@ textarea { min-height: 90px; resize: vertical; }
 .badge-warning { background: #fef3c7; color: #92400e; }
 .badge-urgent { background: #fee2e2; color: #991b1b; }
 .tag { display: inline-block; padding: 2px 7px; border-radius: 5px; font-size: 11px; font-weight: 700; letter-spacing: .3px; color: #fff; background: var(--gray-500); }
-.tag-SL { background: #0ea5e9; } .tag-RI { background: #6366f1; } .tag-TI { background: #2563eb; } .tag-DT { background: #f59e0b; }
-.tag-RB { background: #ef4444; } .tag-FO { background: #10b981; } .tag-Union { background: #8b5cf6; } .tag-Trap { background: #1e293b; } .tag-PS { background: #db2777; }
-.tag-Shuffle { background: #0d9488; }
-.tag-UT { background: #f97316; } .tag-YD { background: #eab308; color: #422006; } .tag-SB { background: #78716c; } .tag-PK { background: #dc2626; }
+/* 环节类型颜色：取自 docs/templates 三折页线索模板的卡片主色 */
+.tag-SL { background: #C9DA4D; color: #2B3300; }     /* 起跑线任务 */
+.tag-RI { background: #009DDA; }                     /* 路线 */
+.tag-TI { background: #33CBCC; color: #063D3E; }     /* 任务 */
+.tag-DT { background: #EAAA16; color: #3A2A00; }     /* 绕道 */
+.tag-RB { background: #AC0000; }                     /* 路障 */
+.tag-FO { background: #27CE62; color: #063A18; }     /* 快进 */
+.tag-Union { background: #EB661C; }                  /* 联合 */
+.tag-PK { background: #664193; }                     /* 对抗 */
+.tag-SB { background: #FFCC01; color: #3D3000; }     /* 减速带 */
+/* 模板中没有的类型，选与上面不冲突的颜色 */
+.tag-UT { background: #4338CA; }                     /* 回转点 */
+.tag-YD { background: #78350F; }                     /* 让路点 */
+.tag-Trap { background: #1E293B; }                   /* 陷阱 */
+.tag-PS { background: #DB2777; }                     /* 中继站 */
+.tag-Shuffle { background: #6B7280; }                /* 洗牌 */
 
 /* 赛段选择 */
 .ep-selector { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; scrollbar-width: none; }
