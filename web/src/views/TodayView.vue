@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useRecord } from '@/composables/record';
-import { fmtTime } from '@/utils/time';
+import { fmtTime, fmtTimeSec } from '@/utils/time';
 import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
 import RecordTable from '@/components/RecordTable.vue';
@@ -67,7 +67,7 @@ const stats = computed(() => ({
               <td><LegTag :type="leg.type" /> <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: leg.id } }">{{ leg.name }}</router-link></td>
               <td>{{ single ? (p?.completed_at ? `已${label}` : `未${label}`) : p?.completed_at ? '已完成' : p?.arrived_at ? '已到达' : '未到达' }}</td>
               <td><span class="record-time">{{ single ? '-' : fmtTime(p?.arrived_at) }}</span></td>
-              <td><span class="record-time">{{ fmtTime(p?.completed_at) }}</span></td>
+              <td><span class="record-time">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td>
               <td>
                 <template v-if="single">
                   <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.single(myTeam!.id, leg.id, label)">记录{{ label }}</button>

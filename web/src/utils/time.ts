@@ -4,13 +4,30 @@ const timeFmt = new Intl.DateTimeFormat('zh-CN', { timeZone: TZ, hour12: false, 
 const dateTimeFmt = new Intl.DateTimeFormat('zh-CN', { timeZone: TZ, hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 const dateMinuteFmt = new Intl.DateTimeFormat('zh-CN', { timeZone: TZ, hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 
+const timeMinFmt = new Intl.DateTimeFormat('zh-CN', { timeZone: TZ, hour12: false, hour: '2-digit', minute: '2-digit' });
+/** 时刻，精确到分钟（默认） */
 export function fmtTime(iso?: string | null): string {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '-';
+  return timeMinFmt.format(d).replace(/^24:/, '00:');
+}
+/** 时刻，精确到秒（只用于中继站签到与最终成绩） */
+export function fmtTimeSec(iso?: string | null): string {
   if (!iso) return '-';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '-';
   return timeFmt.format(d).replace(/^24:/, '00:');
 }
+/** 日期时刻，精确到分钟 */
 export function fmtDateTime(iso?: string | null): string {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '-';
+  return dateMinuteFmt.format(d).replace(/\//g, '-');
+}
+/** 日期时刻，精确到秒 */
+export function fmtDateTimeSec(iso?: string | null): string {
   if (!iso) return '-';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '-';

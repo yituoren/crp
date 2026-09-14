@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { all, get, run, tx, now, fromCents } from '../db.js';
-import { canAdjustCurrency, type Env } from '../auth.js';
+import { canAdjustCurrency, hostOnly, type Env } from '../auth.js';
 import { audit, body, str, int, notify, bad, forbidden, notFound, money } from '../util.js';
 import { teamLabelMap } from './teams.js';
 
@@ -51,4 +51,30 @@ ledgerRoutes.post('/ledger', async (c) => {
   notify('ledger', episodeId);
   notify('teams');
   return c.json({ id, balance: fromCents(balance) });
+});
+
+/** 撤销一条经费变动（主办）：写一条反向流水，原记录标记为已撤销 */
+ledgerRoutes.post('/ledger/:id/revert', hostOnly, (c) => {
+  const id = int(c.req.param('id'), 0);
+  const user = c.get('user');
+  const orig = get('SELECT * FROM currency_ledger WHERE id = ?', id);
+  if (!orig) throw notFound('流水不存在');
+  if (orig.reverted) throw bad('这条变动已经撤销过了');
+  if (orig.reverts_id) throw bad('撤销记录本身不能再撤销');
+  const team = get('SELECT * FROM teams WHERE id = ?', orig.team_id);
+  if (!team) throw notFound('队伍不存在');
+  const balance = team.currency - orig.delta;
+  const newId = tx(() => {
+    run('UPDATE teams SET currency = ? WHERE id = ?', balance, orig.team_id);
+    run('UPDATE currency_ledger SET reverted = 1 WHERE id = ?', id);
+    const r = run(
+      'INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at, reverts_id) VALUES (?,?,?,?,?,?,?,?,?)',
+      orig.episode_id, orig.team_id, -orig.delta, balance, `撤销：${orig.reason || '手动调整'}`, user.id, user.displayName, now(), id,
+    );
+    return Number(r.lastInsertRowid);
+  });
+  audit(user, 'currency_revert', 'ledger', id, { delta: fromCents(orig.delta) }, { revertId: newId, balance: fromCents(balance) });
+  notify('ledger', orig.episode_id);
+  notify('teams');
+  return c.json({ id: newId, balance: fromCents(balance) });
 });

@@ -4,7 +4,7 @@ import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
-import { fmtTime, toLocalInput, fromLocalInput } from '@/utils/time';
+import { fmtTime, fmtTimeSec, toLocalInput, fromLocalInput } from '@/utils/time';
 import { typeCode, type PitstopRow } from '@/types';
 import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
@@ -30,10 +30,10 @@ function fmtDur(ms: number): string {
   const h = Math.floor(m / 60);
   return h ? `${h}:${String(m % 60).padStart(2, '0')}` : `${m} 分`;
 }
-function cell(teamId: number, legId: number, single: boolean) {
+function cell(teamId: number, legId: number, single: boolean, isPs = false) {
   const p = race.progressOf(teamId, legId);
   if (!p || !p.arrived_at) return { start: '-', end: '-', dur: '-', cls: '' };
-  if (single) return { start: fmtTime(p.completed_at), end: '-', dur: '-', cls: 'mx-done' };
+  if (single) return { start: (isPs ? fmtTimeSec : fmtTime)(p.completed_at), end: '-', dur: '-', cls: 'mx-done' };
   const startMs = new Date(p.arrived_at).getTime();
   if (p.completed_at) return { start: fmtTime(p.arrived_at), end: fmtTime(p.completed_at), dur: fmtDur(new Date(p.completed_at).getTime() - startMs), cls: 'mx-done' };
   return { start: fmtTime(p.arrived_at), end: '进行中', dur: fmtDur(now.value - startMs), cls: 'mx-arrived' };
@@ -107,7 +107,7 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
             </td>
             <template v-for="l in legs" :key="l.id">
               <template v-if="l.record_mode === 'single'">
-                <td class="mx2-cell mx2-first mx2-last" :class="cell(t.id, l.id, true).cls">{{ cell(t.id, l.id, true).start }}</td>
+                <td class="mx2-cell mx2-first mx2-last" :class="cell(t.id, l.id, true, l.type === 'PS').cls">{{ cell(t.id, l.id, true, l.type === 'PS').start }}</td>
               </template>
               <template v-else>
                 <td class="mx2-cell mx2-first" :class="cell(t.id, l.id, false).cls">{{ cell(t.id, l.id, false).start }}</td>
@@ -139,9 +139,9 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
             <td :class="r.rank ? 'rank-' + r.rank : ''">{{ r.rank ? '#' + r.rank : '-' }}</td>
             <td><strong>{{ r.team_name }}</strong></td>
             <td><TeamStatus :status="r.team_status" /></td>
-            <td><span class="record-time">{{ fmtTime(r.checkin_at) }}</span> <span v-if="r.checkin_source === 'manual'" class="text-xs text-gray">手工</span></td>
+            <td><span class="record-time">{{ fmtTimeSec(r.checkin_at) }}</span> <span v-if="r.checkin_source === 'manual'" class="text-xs text-gray">手工</span></td>
             <td>{{ r.penalty_minutes > 0 ? `+${r.penalty_minutes} 分` : r.penalty_minutes < 0 ? `${r.penalty_minutes} 分（补时）` : '-' }}</td>
-            <td><span class="record-time">{{ fmtTime(r.final_time) }}</span></td>
+            <td><span class="record-time">{{ fmtTimeSec(r.final_time) }}</span></td>
             <td>{{ r.eliminated ? '淘汰' : '' }}</td>
             <td class="wrap">{{ r.note }}</td>
             <td v-if="auth.isHost"><button class="btn btn-outline btn-sm" @click="open(r)">编辑</button></td>

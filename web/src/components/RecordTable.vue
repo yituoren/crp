@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useRecord } from '@/composables/record';
-import { fmtTime } from '@/utils/time';
+import { fmtTime, fmtTimeSec } from '@/utils/time';
 import { singleLabel, type Leg, type Progress, type Team } from '@/types';
 import TeamStatus from './TeamStatus.vue';
 import ProgressEditModal from './ProgressEditModal.vue';
@@ -50,7 +50,7 @@ function detourOptions(): string[] {
         <tr v-for="{ team, p, can, block } in rows" :key="team.id" :style="team.status !== 'alive' ? 'opacity:.55' : ''">
           <td><strong>{{ team.label }}</strong> <TeamStatus v-if="team.status !== 'alive'" :status="team.status" /></td>
           <td>{{ stateOf(p) }}</td>
-          <template v-if="isSingle"><td><span class="record-time">{{ fmtTime(p?.completed_at) }}</span></td></template>
+          <template v-if="isSingle"><td><span class="record-time">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td></template>
           <template v-else>
             <td><span class="record-time">{{ fmtTime(p?.arrived_at) }}</span></td>
             <td><span class="record-time">{{ fmtTime(p?.completed_at) }}</span></td>

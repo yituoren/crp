@@ -2,7 +2,7 @@ import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
-import { fmtTime, toLocalInput, fromLocalInput } from '@/utils/time';
+import { fmtTime, fmtTimeSec, toLocalInput, fromLocalInput } from '@/utils/time';
 
 /** 进度记录动作（带确认） */
 export function useRecord() {
@@ -54,7 +54,8 @@ export function useRecord() {
     if (!at) return;
     try {
       const d = await post('single', teamId, legId, undefined, at);
-      ui.toast(d.already ? `已有${label}记录：${fmtTime(d.progress.completed_at)}` : `${label}时间已记录：${fmtTime(d.progress.completed_at)}`);
+      const f = label === '签到' ? fmtTimeSec : fmtTime;
+      ui.toast(d.already ? `已有${label}记录：${f(d.progress.completed_at)}` : `${label}时间已记录：${f(d.progress.completed_at)}`);
     } catch (e) { ui.error(e); }
   }
   async function undo(kind: 'undo_arrive' | 'undo_complete', teamId: number, legId: number) {
