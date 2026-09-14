@@ -6,7 +6,7 @@ import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forb
 export const progressRoutes = new Hono<Env>();
 
 /** 只有这些类型的环节是每支队伍都必须经过的；快进/减速带/回转/让路/对抗只有部分队伍会用 */
-const MANDATORY_TYPES = new Set(['SL', 'TI', 'DT', 'RB', 'Union', 'Trap', 'PS']);
+const MANDATORY_TYPES = new Set(['SL', 'TI', 'DT', 'RB', 'Union', 'Shuffle', 'Trap', 'PS']);
 
 /**
  * 检查队伍在某环节打卡前，前面的必经环节是否都已完成。

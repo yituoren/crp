@@ -38,7 +38,7 @@ function detourOptions(): string[] {
         <tr>
           <th>队伍</th><th>状态</th>
           <template v-if="isSingle"><th>{{ label }}时间</th></template>
-          <template v-else><th>到达</th><th>完成</th></template>
+          <template v-else><th>到达</th><th>{{ leg.type === 'Shuffle' ? '出发' : '完成' }}</th></template>
           <th v-if="showTarget">施加对象</th>
           <th v-if="leg.type === 'DT'">绕道选择</th>
           <th v-if="leg.type === 'RB'">路障完成人</th>
@@ -88,7 +88,7 @@ function detourOptions(): string[] {
               </template>
               <template v-else-if="can">
                 <button v-if="!p?.arrived_at" class="btn btn-sm" :disabled="!!block" :title="block ?? ''" @click="rec.arrive(team.id, leg.id)">记录到达</button>
-                <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm" @click="rec.complete(team.id, leg.id)">记录完成</button>
+                <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm" @click="rec.complete(team.id, leg.id)">{{ leg.type === 'Shuffle' ? '记录出发' : '记录完成' }}</button>
                 <button v-else-if="auth.isHost" class="btn btn-outline btn-sm" @click="editing = { team, progress: p }">修改</button>
                 <span v-else class="text-success text-sm">✔</span>
               </template>

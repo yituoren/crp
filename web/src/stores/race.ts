@@ -45,7 +45,7 @@ export const useRace = defineStore('race', () => {
   }
 
   /** 与服务端一致的打卡顺序检查：返回不能打卡的原因，null 表示可以 */
-  const MANDATORY_TYPES = new Set(['SL', 'TI', 'DT', 'RB', 'Union', 'Trap', 'PS']);
+  const MANDATORY_TYPES = new Set(['SL', 'TI', 'DT', 'RB', 'Union', 'Shuffle', 'Trap', 'PS']);
   function blockReason(teamId: number, legId: number): string | null {
     const ep = currentEpisode.value;
     if (!ep) return null;
