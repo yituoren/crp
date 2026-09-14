@@ -14,7 +14,7 @@ dashboardRoutes.get('/dashboard/:episodeId', (c) => {
   const episode = get('SELECT * FROM episodes WHERE id = ?', episodeId);
   const legs = all('SELECT id, sort, type, name, record_mode, needs_staff FROM legs WHERE episode_id = ? ORDER BY sort, id', episodeId);
   const labels = teamLabelMap();
-  const teams = all<any>('SELECT id, code, name, status, currency FROM teams ORDER BY sort, id').map((t): any => ({ ...t, name: labels.get(t.id) ?? t.name }));
+  const teams = all<any>('SELECT id, code, name, status, currency FROM teams ORDER BY sort, id').map((t): any => ({ ...t, label: labels.get(t.id) ?? t.name }));
   const progress = all('SELECT * FROM progress WHERE episode_id = ?', episodeId);
   const legIndex = new Map(legs.map((l, i) => [l.id, i]));
   const nowMs = Date.now();
@@ -49,7 +49,7 @@ dashboardRoutes.get('/dashboard/:episodeId', (c) => {
 
   const alerts: { level: string; text: string; teamId?: number }[] = [];
   for (const t of teamRows) {
-    if (t.status === 'alive' && t.currency < 0) alerts.push({ level: 'urgent', text: `${t.name} 余额为负（${fmtMoneyServer(Math.round(t.currency * 100))}）`, teamId: t.id });
+    if (t.status === 'alive' && t.currency < 0) alerts.push({ level: 'urgent', text: `${t.label} 余额为负（${fmtMoneyServer(Math.round(t.currency * 100))}）`, teamId: t.id });
   }
 
   return c.json({

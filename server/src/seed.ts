@@ -34,6 +34,14 @@ export function seed() {
       for (let i = 1; i <= 12; i++) run('INSERT INTO teams(code, name, members, status, currency, sort) VALUES (?,?,?,?,?,?)', `T${i}`, String(i).padStart(2, '0'), '[]', 'alive', 0, i);
     });
   }
+  // 一次性：把默认队名“队伍N”改成两位编号“NN”
+  if (getSetting('team_names') !== 'v1') {
+    for (const t of all('SELECT id, name FROM teams')) {
+      const m = /^队伍(\d+)$/.exec(t.name);
+      if (m) run('UPDATE teams SET name = ? WHERE id = ?', String(m[1]).padStart(2, '0'), t.id);
+    }
+    setSetting('team_names', 'v1');
+  }
   // 一次性规范旧数据：每个赛段末尾必须有中继站；只有第一个赛段保留 Starting Line
   if (getSetting('legs_structure') !== 'v1') {
     tx(() => {
