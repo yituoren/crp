@@ -72,6 +72,21 @@ async function move(leg: Leg, dir: -1 | 1) {
   try { await api(`/episodes/${ep.value!.id}/legs/order`, { method: 'PUT', body: { ids: legs.map((l) => l.id) } }); await race.loadEpisodes(); } catch (e) { ui.error(e); }
 }
 const statusLabel: Record<string, string> = { pending: '未开始', running: '进行中', finished: '已结束' };
+/** 软性检查：不阻止保存，只提醒主办 */
+const checks = computed(() => {
+  const legs = ep.value?.legs ?? [];
+  const out: string[] = [];
+  if (!legs.length) return out;
+  const psIdx = legs.map((l, i) => (l.type === 'PS' ? i : -1)).filter((i) => i >= 0);
+  if (!psIdx.length) out.push('没有「PS 中继站/终点」环节：终点结算无法自动取签到时间，只能手工填写。');
+  else if (psIdx[psIdx.length - 1] !== legs.length - 1) out.push('中继站/终点不是最后一个环节：签到后还有环节，结算会以中继站的签到时间为准，请确认这是有意安排。');
+  if (psIdx.length > 1) out.push('有多个中继站/终点环节：结算只取排序最靠后的那个。');
+  if (legs[0]!.type !== 'SL' && legs[0]!.type !== 'RI') out.push('第一个环节不是起跑线或路线信息：如果本赛段从上一段中继站直接出发，可以忽略。');
+  const staffed = new Set(race.assignments.filter((a) => a.role === 'station').map((a) => a.leg_id));
+  const unstaffed = legs.filter((l) => l.needs_staff && !staffed.has(l.id)).map((l) => l.name);
+  if (unstaffed.length) out.push(`需要站点人员但尚未排班：${unstaffed.join('、')}。`);
+  return out;
+});
 </script>
 
 <template>
@@ -91,6 +106,9 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
       <div v-if="ep.notes" class="pre mt-1">{{ ep.notes }}</div>
     </div>
 
+    <div v-if="auth.isHost && checks.length" class="alert alert-warning">
+      <div v-for="(c, i) in checks" :key="i">· {{ c }}</div>
+    </div>
     <div class="flex-between mb-2">
       <div class="section-title">环节列表（{{ ep.legs.length }}）</div>
       <button v-if="auth.isHost" class="btn" @click="addLeg">+ 添加环节</button>
