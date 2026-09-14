@@ -34,17 +34,17 @@ const legCompletion = (legId: number) => {
   <div v-if="!data" class="empty-state">加载中…</div>
   <template v-else>
     <div class="flex-between mb-2">
-      <div class="section-title">📺 {{ data.episode?.code }} 实时大屏</div>
+      <div class="section-title">{{ data.episode?.code }} 实时大屏</div>
       <span class="text-xs text-gray">更新于 {{ fmtTime(updatedAt) }} · 每 30 秒自动刷新，有记录时实时刷新</span>
     </div>
 
     <div v-if="data.alerts.length" class="mb-2">
-      <div v-for="(a, i) in data.alerts" :key="i" class="alert" :class="'alert-' + a.level">⚠️ {{ a.text }}</div>
+      <div v-for="(a, i) in data.alerts" :key="i" class="alert" :class="'alert-' + a.level">{{ a.text }}</div>
     </div>
 
     <div class="grid grid-2" style="align-items: start">
       <div class="card">
-        <div class="card-header">📍 队伍当前位置</div>
+        <div class="card-header">队伍当前位置</div>
         <div class="scroll-table">
           <table class="table">
             <thead><tr><th>队伍</th><th>状态</th><th>当前环节</th><th>最近记录</th><th>余额</th></tr></thead>
@@ -53,19 +53,19 @@ const legCompletion = (legId: number) => {
                 <td><strong>{{ t.name }}</strong></td>
                 <td><TeamStatus :status="t.status" /></td>
                 <td>
-                  <template v-if="t.finished">🏁 已到终点</template>
+                  <template v-if="t.finished">已到终点</template>
                   <template v-else-if="t.currentLeg"><LegTag :type="t.currentLeg.type" /> {{ t.currentLeg.name }} <span class="text-xs text-gray">{{ t.currentLeg.completed ? '已完成' : '进行中' }}</span></template>
                   <span v-else class="text-gray">未出发</span>
                 </td>
                 <td><span class="record-time">{{ fmtTime(t.lastActivity) }}</span> <span v-if="t.staleMinutes !== null" class="text-xs text-gray">{{ fmtAgo(t.staleMinutes) }}</span></td>
-                <td>💰 {{ t.currency }}</td>
+                <td>{{ t.currency }}</td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
       <div class="card">
-        <div class="card-header">🏆 本赛段名次 <router-link to="/pitstop" class="btn btn-outline btn-sm">去结算</router-link></div>
+        <div class="card-header">本赛段名次 <router-link to="/pitstop" class="btn btn-outline btn-sm">去结算</router-link></div>
         <div v-if="!ranking.length" class="text-gray text-sm">尚未结算。队伍到达终点并记录完成后，在「终点结算」点击自动排名。</div>
         <table v-else class="table">
           <thead><tr><th>名次</th><th>队伍</th><th>签到</th><th>罚时</th><th>最终</th></tr></thead>
@@ -83,7 +83,7 @@ const legCompletion = (legId: number) => {
     </div>
 
     <div class="card">
-      <div class="card-header">🗺️ 进度矩阵（🟩 完成 / 🟨 已到达）</div>
+      <div class="card-header">进度矩阵（绿色 = 已完成，黄色 = 已到达）</div>
       <div class="scroll-table">
         <table class="table matrix">
           <thead>

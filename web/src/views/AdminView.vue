@@ -88,7 +88,7 @@ async function importData() {
 async function importProto() {
   const data = await readJson(protoFile.value);
   if (!data) return;
-  if (!(await ui.confirm('导入原型数据', `导入旧版单页系统的备份。到达/完成时间按 ${protoDate.value} 这一天解释。${protoWipe.value ? '\n⚠️ 会先清空当前比赛数据。' : ''}`, { danger: protoWipe.value }))) return;
+  if (!(await ui.confirm('导入原型数据', `导入旧版单页系统的备份。到达/完成时间按 ${protoDate.value} 这一天解释。${protoWipe.value ? '\n会先清空当前比赛数据。' : ''}`, { danger: protoWipe.value }))) return;
   try {
     const d = await api('/admin/import-prototype', { method: 'POST', body: { data, baseDate: protoDate.value, wipe: protoWipe.value }, retries: 0 });
     const r = d.report;
@@ -99,7 +99,7 @@ async function importProto() {
 }
 async function resetAll(includeAccounts: boolean) {
   const msg = includeAccounts ? '清空所有比赛数据、公告，并删除除管理员以外的全部账号与准入名单。' : '清空赛段、环节、附件、队伍、记录、货币日志、公告，恢复默认赛段与队伍。账号保留。';
-  if (!(await ui.confirm('⚠️ 重置数据', msg + '\n请先导出备份！确定要继续吗？', { danger: true, okText: '确认重置' }))) return;
+  if (!(await ui.confirm('重置数据', msg + '\n请先导出备份！确定要继续吗？', { danger: true, okText: '确认重置' }))) return;
   try { await api('/admin/reset', { method: 'POST', body: { includeAccounts } }); ui.toast('已重置'); window.location.reload(); } catch (e) { ui.error(e); }
 }
 
@@ -108,15 +108,15 @@ onMounted(() => { loadAccess(); loadUsers(); loadSettings(); if (auth.isAdmin) l
 
 <template>
   <div class="nav">
-    <a href="#" :class="{ 'router-link-active': tab === 'access' }" @click.prevent="tab = 'access'">🔐 准入名单</a>
-    <a href="#" :class="{ 'router-link-active': tab === 'users' }" @click.prevent="tab = 'users'">👤 账号管理</a>
-    <a href="#" :class="{ 'router-link-active': tab === 'settings' }" @click.prevent="tab = 'settings'">🎛️ 赛事设置</a>
-    <a v-if="auth.isAdmin" href="#" :class="{ 'router-link-active': tab === 'audit' }" @click.prevent="tab = 'audit'; loadAudit()">🧾 操作日志</a>
-    <a v-if="auth.isAdmin" href="#" :class="{ 'router-link-active': tab === 'backup' }" @click.prevent="tab = 'backup'">💾 备份与重置</a>
+    <a href="#" :class="{ 'router-link-active': tab === 'access' }" @click.prevent="tab = 'access'">准入名单</a>
+    <a href="#" :class="{ 'router-link-active': tab === 'users' }" @click.prevent="tab = 'users'">账号管理</a>
+    <a href="#" :class="{ 'router-link-active': tab === 'settings' }" @click.prevent="tab = 'settings'">赛事设置</a>
+    <a v-if="auth.isAdmin" href="#" :class="{ 'router-link-active': tab === 'audit' }" @click.prevent="tab = 'audit'; loadAudit()">操作日志</a>
+    <a v-if="auth.isAdmin" href="#" :class="{ 'router-link-active': tab === 'backup' }" @click.prevent="tab = 'backup'">备份与重置</a>
   </div>
 
   <div v-if="tab === 'access'" class="card">
-    <div class="card-header">🔐 准入名单（在名单内的ID才能注册）</div>
+    <div class="card-header">准入名单（在名单内的ID才能注册）</div>
     <div class="flex mb-2">
       <input v-model="newIds" placeholder="添加准入ID，多个用逗号分隔：小明, 小红" style="flex: 1; min-width: 200px" @keyup.enter="addAccess" />
       <button class="btn" @click="addAccess">添加</button>
@@ -131,7 +131,7 @@ onMounted(() => { loadAccess(); loadUsers(); loadSettings(); if (auth.isAdmin) l
   </div>
 
   <div v-if="tab === 'users'" class="card">
-    <div class="card-header">👤 账号管理</div>
+    <div class="card-header">账号管理</div>
     <div class="scroll-table">
       <table class="table">
         <thead><tr><th>幕后ID</th><th>角色</th><th>状态</th><th>注册时间</th><th>操作</th></tr></thead>
@@ -162,7 +162,7 @@ onMounted(() => { loadAccess(); loadUsers(); loadSettings(); if (auth.isAdmin) l
   </div>
 
   <div v-if="tab === 'settings'" class="card" style="max-width: 520px">
-    <div class="card-header">🎛️ 赛事设置</div>
+    <div class="card-header">赛事设置</div>
     <div class="form-group"><label>赛事名称</label><input v-model="settings.eventName" /></div>
     <div class="form-group"><label>队伍初始货币（新增/重置队伍时使用）</label><input v-model.number="settings.initialCurrency" type="number" /></div>
     <div class="form-group"><label>主办名单（逗号分隔；名单内的ID注册即为主办，且自动加入准入名单）</label><input v-model="settings.hosts" /></div>
@@ -170,7 +170,7 @@ onMounted(() => { loadAccess(); loadUsers(); loadSettings(); if (auth.isAdmin) l
   </div>
 
   <div v-if="tab === 'audit'" class="card">
-    <div class="card-header"><span>🧾 操作日志（最近 200 条 / 共 {{ auditTotal }}）</span><button class="btn btn-outline btn-sm" @click="loadAudit">刷新</button></div>
+    <div class="card-header"><span>操作日志（最近 200 条 / 共 {{ auditTotal }}）</span><button class="btn btn-outline btn-sm" @click="loadAudit">刷新</button></div>
     <div class="scroll-table">
       <table class="table">
         <thead><tr><th>时间</th><th>操作人</th><th>动作</th><th>对象</th><th>变更前</th><th>变更后</th></tr></thead>
@@ -186,16 +186,16 @@ onMounted(() => { loadAccess(); loadUsers(); loadSettings(); if (auth.isAdmin) l
 
   <template v-if="tab === 'backup'">
     <div class="card">
-      <div class="card-header">💾 数据备份与恢复</div>
+      <div class="card-header">数据备份与恢复</div>
       <p class="text-gray text-sm">建议每个赛段结束后导出一次备份。备份包含全部数据（账号、赛程、记录、货币日志、操作日志），不含附件文件本身。</p>
       <div class="flex">
-        <button class="btn" @click="exportData">📥 导出全部数据备份</button>
+        <button class="btn" @click="exportData">导出全部数据备份</button>
         <span class="text-sm text-gray">恢复备份：</span><input ref="importFile" type="file" accept=".json" class="input-inline" style="width: 220px" />
         <button class="btn btn-warning" @click="importData">覆盖恢复</button>
       </div>
     </div>
     <div class="card">
-      <div class="card-header">📦 导入旧版单页系统（BJ20_CommandCenter.html）的备份</div>
+      <div class="card-header">导入旧版单页系统（BJ20_CommandCenter.html）的备份</div>
       <div class="flex">
         <input ref="protoFile" type="file" accept=".json" class="input-inline" style="width: 220px" />
         <span class="text-sm text-gray">记录日期：</span><input v-model="protoDate" type="date" class="input-inline" style="width: 160px" />
@@ -205,10 +205,10 @@ onMounted(() => { loadAccess(); loadUsers(); loadSettings(); if (auth.isAdmin) l
       <p class="info-text">旧版的到达/完成时间只有时分秒，需要指定这些记录属于哪一天。账号的旧密码会被加密后沿用。</p>
     </div>
     <div class="card" style="border-color: #fecaca">
-      <div class="card-header text-danger">🔥 危险操作区</div>
+      <div class="card-header text-danger">危险操作区</div>
       <div class="flex">
-        <button class="btn btn-danger" @click="resetAll(false)">🗑️ 重置比赛数据（保留账号）</button>
-        <button class="btn btn-danger" @click="resetAll(true)">💣 重置全部（含账号）</button>
+        <button class="btn btn-danger" @click="resetAll(false)">重置比赛数据（保留账号）</button>
+        <button class="btn btn-danger" @click="resetAll(true)">重置全部（含账号）</button>
       </div>
       <p class="text-gray text-sm mt-2">重置不可逆，请先导出备份。</p>
     </div>

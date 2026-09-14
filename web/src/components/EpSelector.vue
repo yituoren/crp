@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRace } from '@/stores/race';
 const race = useRace();
-const statusIcon: Record<string, string> = { pending: '', running: '🟢', finished: '✔' };
+const statusIcon: Record<string, string> = { pending: '', running: '●', finished: '✔' };
 </script>
 
 <template>

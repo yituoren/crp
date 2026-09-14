@@ -22,7 +22,7 @@ export function useRecord() {
     if (!(await ui.confirm('记录到达', `为「${team}」记录到达「${leg}」的时间（以服务器当前时间为准）？\n此操作会实时同步给所有幕后。`))) return;
     try {
       const d = await post('arrive', teamId, legId);
-      ui.toast(d.already ? `已有到达记录：${fmtTime(d.progress.arrived_at)}` : `✅ 到达时间已记录：${fmtTime(d.progress.arrived_at)}`);
+      ui.toast(d.already ? `已有到达记录：${fmtTime(d.progress.arrived_at)}` : `到达时间已记录：${fmtTime(d.progress.arrived_at)}`);
     } catch (e) { ui.error(e); }
   }
   async function complete(teamId: number, legId: number) {
@@ -31,7 +31,7 @@ export function useRecord() {
     if (!(await ui.confirm('记录完成', `确认「${team}」已完成「${leg}」？将记录服务器当前时间为完成时间。`))) return;
     try {
       const d = await post('complete', teamId, legId);
-      ui.toast(d.already ? `已有完成记录：${fmtTime(d.progress.completed_at)}` : `✅ 完成时间已记录：${fmtTime(d.progress.completed_at)}`);
+      ui.toast(d.already ? `已有完成记录：${fmtTime(d.progress.completed_at)}` : `完成时间已记录：${fmtTime(d.progress.completed_at)}`);
     } catch (e) { ui.error(e); }
   }
   async function single(teamId: number, legId: number, label: string) {
@@ -40,7 +40,7 @@ export function useRecord() {
     if (!(await ui.confirm(`记录${label}`, `为「${team}」记录在「${leg}」的${label}时间（以服务器当前时间为准）？`))) return;
     try {
       const d = await post('single', teamId, legId);
-      ui.toast(d.already ? `已有${label}记录：${fmtTime(d.progress.completed_at)}` : `✅ ${label}时间已记录：${fmtTime(d.progress.completed_at)}`);
+      ui.toast(d.already ? `已有${label}记录：${fmtTime(d.progress.completed_at)}` : `${label}时间已记录：${fmtTime(d.progress.completed_at)}`);
     } catch (e) { ui.error(e); }
   }
   async function undo(kind: 'undo_arrive' | 'undo_complete', teamId: number, legId: number) {

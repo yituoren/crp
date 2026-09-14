@@ -80,9 +80,9 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
   <template v-else>
     <div class="card">
       <div class="card-header">
-        <span>📋 {{ ep.code }} · {{ ep.name }} <span class="badge" :class="ep.status === 'running' ? 'badge-station' : ep.status === 'finished' ? 'badge-crew' : 'badge-info'">{{ statusLabel[ep.status] }}</span></span>
+        <span>{{ ep.code }} · {{ ep.name }} <span class="badge" :class="ep.status === 'running' ? 'badge-station' : ep.status === 'finished' ? 'badge-crew' : 'badge-info'">{{ statusLabel[ep.status] }}</span></span>
         <div v-if="auth.isHost" class="flex">
-          <button class="btn btn-outline btn-sm" @click="openEpEdit">✏️ 编辑赛段</button>
+          <button class="btn btn-outline btn-sm" @click="openEpEdit">编辑赛段</button>
           <button class="btn btn-outline btn-sm" @click="addEpisode">+ 新增赛段</button>
           <button class="btn btn-danger btn-sm" @click="deleteEpisode">删除赛段</button>
         </div>
@@ -104,12 +104,12 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
         </div>
         <div style="font-weight: 700; font-size: 15px">{{ leg.name }}</div>
         <div class="text-sm text-gray">站点：<template v-if="leg.needs_staff">{{ staffOf(leg.id).join('、') || '未分配' }}</template><span v-else>无需站点</span></div>
-        <div v-if="leg.address" class="text-sm text-gray">📍 {{ leg.address }}</div>
+        <div v-if="leg.address" class="text-sm text-gray">地址：{{ leg.address }}</div>
         <div class="text-xs text-gray mt-1">
           <template v-if="leg.record_mode === 'none'">不记录时间</template>
-          <template v-else-if="leg.record_mode === 'single'">✅ {{ doneCount(leg.id) }} 已打卡</template>
-          <template v-else>✅ {{ doneCount(leg.id) }} 完成 · ⏳ {{ arrivedCount(leg.id) }} 进行中</template>
-          · 📎 {{ leg.attachments.length }} 附件
+          <template v-else-if="leg.record_mode === 'single'">{{ doneCount(leg.id) }} 已打卡</template>
+          <template v-else>{{ doneCount(leg.id) }} 完成 · {{ arrivedCount(leg.id) }} 进行中</template>
+          · {{ leg.attachments.length }} 附件
         </div>
         <div v-if="auth.isHost" class="flex mt-2" @click.stop>
           <button class="btn btn-outline btn-sm" @click="openLegEdit(leg)">编辑</button>

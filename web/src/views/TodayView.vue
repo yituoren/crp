@@ -55,7 +55,7 @@ const levelLabel: Record<string, string> = { info: '通知', warning: '注意', 
 
   <!-- 公告 -->
   <div class="card">
-    <div class="card-header">📢 公告</div>
+    <div class="card-header">公告</div>
     <div v-if="auth.isHost" class="flex mb-2" style="align-items: stretch">
       <input v-model="annForm.content" placeholder="发布一条公告给所有幕后…" style="flex: 1; min-width: 200px" @keyup.enter="postAnnouncement" />
       <select v-model="annForm.level" class="input-inline" style="width: 90px"><option value="info">通知</option><option value="warning">注意</option><option value="urgent">紧急</option></select>
@@ -72,7 +72,7 @@ const levelLabel: Record<string, string> = { info: '通知', warning: '注意', 
 
   <!-- 我的分工 -->
   <div class="card">
-    <div class="card-header">🎯 我在 {{ ep?.code }} 的分工</div>
+    <div class="card-header">我在 {{ ep?.code }} 的分工</div>
     <template v-if="auth.isHost">
       <div class="grid grid-stat">
         <div class="team-card"><div class="text-gray text-sm">存活队伍</div><div class="stat-num" style="color: var(--success)">{{ stats.alive }}<span class="text-gray text-sm"> / {{ stats.total }}</span></div></div>
@@ -81,21 +81,21 @@ const levelLabel: Record<string, string> = { info: '通知', warning: '注意', 
         <div class="team-card"><div class="text-gray text-sm">已到终点</div><div class="stat-num" style="color: #db2777">{{ stats.finished }}</div></div>
       </div>
       <div class="flex mt-2">
-        <router-link to="/dashboard" class="btn">📺 打开实时大屏</router-link>
-        <router-link to="/schedule" class="btn btn-outline">📅 去排班</router-link>
-        <router-link to="/pitstop" class="btn btn-outline">🏁 终点结算</router-link>
+        <router-link to="/dashboard" class="btn">打开实时大屏</router-link>
+        <router-link to="/schedule" class="btn btn-outline">去排班</router-link>
+        <router-link to="/pitstop" class="btn btn-outline">终点结算</router-link>
       </div>
     </template>
 
     <template v-else-if="my?.role === 'follow' && myTeam">
-      <p><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.name }}</strong>（{{ myTeam.members || '成员未填写' }}），当前余额 <strong class="text-warning">💰 {{ myTeam.currency }}</strong></p>
+      <p><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.name }}</strong>（{{ myTeam.members || '成员未填写' }}），当前余额 <strong class="text-warning">{{ myTeam.currency }}</strong></p>
       <div class="scroll-table">
         <table class="table">
           <thead><tr><th>环节</th><th>状态</th><th>到达</th><th>完成 / 打卡</th><th style="min-width: 110px">操作</th></tr></thead>
           <tbody>
             <tr v-for="{ leg, p, single, label } in legRows" :key="leg.id">
               <td><LegTag :type="leg.type" /> <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: leg.id } }">{{ leg.name }}</router-link></td>
-              <td>{{ single ? (p?.completed_at ? `✅ 已${label}` : `⏹ 未${label}`) : p?.completed_at ? '✅ 已完成' : p?.arrived_at ? '⏳ 已到达' : '⏹ 未到达' }}</td>
+              <td>{{ single ? (p?.completed_at ? `已${label}` : `未${label}`) : p?.completed_at ? '已完成' : p?.arrived_at ? '已到达' : '未到达' }}</td>
               <td><span class="record-time">{{ single ? '-' : fmtTime(p?.arrived_at) }}</span></td>
               <td><span class="record-time">{{ fmtTime(p?.completed_at) }}</span></td>
               <td>
@@ -119,8 +119,8 @@ const levelLabel: Record<string, string> = { info: '通知', warning: '注意', 
       <p><span class="badge badge-station">站点</span> 你本赛段驻守 <LegTag :type="myLeg.type" full /> <strong>{{ myLeg.name }}</strong>
         <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: myLeg.id } }" class="btn btn-outline btn-sm" style="margin-left: 8px">查看环节详情 / 附件</router-link>
       </p>
-      <p v-if="myLeg.address" class="text-sm text-gray">📍 {{ myLeg.address }} <a v-if="myLeg.map_url" :href="myLeg.map_url" target="_blank">地图</a></p>
-      <p v-if="myLeg.open_time || myLeg.close_time" class="text-sm text-gray">🕐 开放时间：{{ myLeg.open_time || '-' }} ~ {{ myLeg.close_time || '-' }}</p>
+      <p v-if="myLeg.address" class="text-sm text-gray">地址：{{ myLeg.address }} <a v-if="myLeg.map_url" :href="myLeg.map_url" target="_blank">地图</a></p>
+      <p v-if="myLeg.open_time || myLeg.close_time" class="text-sm text-gray">开放时间：{{ myLeg.open_time || '-' }} ~ {{ myLeg.close_time || '-' }}</p>
       <div v-if="myLeg.judge_criteria" class="alert alert-info pre">判定标准：{{ myLeg.judge_criteria }}</div>
       <RecordTable :leg="myLeg" />
     </template>

@@ -29,7 +29,7 @@ async function logout() {
 <template>
   <div class="container">
     <div class="page-header">
-      <h1>🏃 {{ auth.event.name }}</h1>
+      <h1>{{ auth.event.name }}</h1>
       <div class="user-bar">
         <span class="sync-status" :class="ui.online ? 'online' : 'offline'">● {{ ui.online ? '实时同步中' : '连接中断' }}</span>
         <span class="badge" :class="auth.isHost ? 'badge-host' : 'badge-crew'">{{ auth.isAdmin ? '管理员' : auth.isHost ? '主办' : '幕后' }}</span>
@@ -39,14 +39,14 @@ async function logout() {
       </div>
     </div>
     <nav class="nav">
-      <router-link to="/" active-class="" exact-active-class="router-link-active">🏠 我的今日</router-link>
-      <router-link to="/episodes" :class="{ 'router-link-active': $route.name === 'leg' }">📋 赛段信息</router-link>
-      <router-link to="/schedule">📅 排班</router-link>
-      <router-link to="/teams">👥 队伍</router-link>
-      <router-link to="/currency">💰 货币</router-link>
-      <router-link v-if="auth.isHost" to="/dashboard">📺 实时大屏</router-link>
-      <router-link v-if="auth.isHost" to="/pitstop">🏁 终点结算</router-link>
-      <router-link v-if="auth.isHost" to="/admin">⚙️ 主办后台</router-link>
+      <router-link to="/" active-class="" exact-active-class="router-link-active">我的今日</router-link>
+      <router-link to="/episodes" :class="{ 'router-link-active': $route.name === 'leg' }">赛段信息</router-link>
+      <router-link to="/schedule">排班</router-link>
+      <router-link to="/teams">队伍</router-link>
+      <router-link to="/currency">货币</router-link>
+      <router-link v-if="auth.isHost" to="/dashboard">实时大屏</router-link>
+      <router-link v-if="auth.isHost" to="/pitstop">终点结算</router-link>
+      <router-link v-if="auth.isHost" to="/admin">主办后台</router-link>
     </nav>
     <router-view v-if="race.loaded" />
     <div v-else class="empty-state">加载中…</div>

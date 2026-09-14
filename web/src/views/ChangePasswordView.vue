@@ -22,7 +22,7 @@ async function submit() {
 
 <template>
   <div class="card" style="max-width: 420px; margin: 0 auto">
-    <div class="card-header">🔑 修改密码</div>
+    <div class="card-header">修改密码</div>
     <form @submit.prevent="submit">
       <div class="form-group"><label>当前密码</label><input v-model="form.oldPassword" type="password" autocomplete="current-password" /></div>
       <div class="form-group"><label>新密码</label><input v-model="form.newPassword" type="password" autocomplete="new-password" /></div>

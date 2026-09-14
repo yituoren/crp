@@ -61,8 +61,8 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
   <div v-if="!hasPsLeg" class="alert alert-warning">本赛段没有「PS 终点」类型的环节。请在赛段信息里添加一个终点环节，跟队记录完成后这里会自动带出签到时间；也可以直接在下方手工填写签到时间。</div>
   <div class="card">
     <div class="card-header">
-      <span>🏁 {{ ep?.code }} 终点结算</span>
-      <button class="btn" @click="autoRank">⚡ 按时间自动排名</button>
+      <span>{{ ep?.code }} 终点结算</span>
+      <button class="btn" @click="autoRank">按时间自动排名</button>
     </div>
     <div class="scroll-table">
       <table class="table">
@@ -75,7 +75,7 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
             <td><span class="record-time">{{ fmtTime(r.checkin_at) }}</span> <span v-if="r.checkin_source === 'manual'" class="text-xs text-gray">手工</span></td>
             <td>{{ r.penalty_minutes ? `+${r.penalty_minutes} 分` : '-' }}</td>
             <td><span class="record-time">{{ fmtTime(r.final_time) }}</span></td>
-            <td>{{ r.eliminated ? '💀 淘汰' : '' }}</td>
+            <td>{{ r.eliminated ? '淘汰' : '' }}</td>
             <td class="wrap">{{ r.note }}</td>
             <td><button class="btn btn-outline btn-sm" @click="open(r)">编辑</button></td>
           </tr>
@@ -85,7 +85,7 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
   </div>
 
   <div class="card">
-    <div class="card-header">⏱️ 罚时记录</div>
+    <div class="card-header">罚时记录</div>
     <div class="flex mb-2">
       <select v-model="penForm.teamId" class="input-inline" style="width: 140px"><option value="">选择队伍</option><option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.name }}</option></select>
       <input v-model="penForm.minutes" type="number" inputmode="numeric" class="input-inline" placeholder="分钟" style="width: 90px" />

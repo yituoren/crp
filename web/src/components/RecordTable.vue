@@ -22,7 +22,7 @@ const isSingle = computed(() => props.leg.record_mode === 'single');
 const isNone = computed(() => props.leg.record_mode === 'none');
 const showTarget = computed(() => props.leg.type === 'UT' || props.leg.type === 'YD');
 const label = computed(() => singleLabel(props.leg.type));
-const stateOf = (p: Progress | null) => (isSingle.value ? (p?.completed_at ? `✅ 已${label.value}` : `⏹ 未${label.value}`) : p?.completed_at ? '✅ 已完成' : p?.arrived_at ? '⏳ 已到达' : '⏹ 未到达');
+const stateOf = (p: Progress | null) => (isSingle.value ? (p?.completed_at ? `已${label.value}` : `未${label.value}`) : p?.completed_at ? '已完成' : p?.arrived_at ? '已到达' : '未到达');
 
 function detourOptions(): string[] {
   const l = props.leg;

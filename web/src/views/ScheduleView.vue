@@ -53,7 +53,7 @@ async function save() {
   try {
     await api(`/episodes/${ep.value.id}/assignments`, { method: 'PUT', body: { items: form.rows } });
     await race.loadAssignments();
-    ui.toast('✅ 排班已保存并同步');
+    ui.toast('排班已保存并同步');
   } catch (e) { ui.error(e); }
 }
 async function copyPrev() {
@@ -70,10 +70,10 @@ async function copyPrev() {
   <EpSelector />
   <div class="card">
     <div class="card-header">
-      <span>📅 {{ ep?.code }} 排班表</span>
+      <span>{{ ep?.code }} 排班表</span>
       <div v-if="auth.isHost" class="flex">
         <button class="btn btn-outline" @click="copyPrev">复制上一赛段跟队</button>
-        <button class="btn" @click="save">💾 保存排班</button>
+        <button class="btn" @click="save">保存排班</button>
       </div>
     </div>
     <div v-if="!race.users.length" class="empty-state">暂无注册幕后</div>
@@ -106,8 +106,8 @@ async function copyPrev() {
       </table>
     </div>
     <div v-if="auth.isHost" class="mt-2 text-sm">
-      <div v-if="conflicts.length" class="alert alert-warning">⚠️ 以下队伍被分配了多个跟队：{{ conflicts.join('、') }}</div>
-      <div v-if="unassignedTeams.length" class="alert alert-info">ℹ️ 尚无跟队的存活队伍：{{ unassignedTeams.join('、') }}</div>
+      <div v-if="conflicts.length" class="alert alert-warning">以下队伍被分配了多个跟队：{{ conflicts.join('、') }}</div>
+      <div v-if="unassignedTeams.length" class="alert alert-info">尚无跟队的存活队伍：{{ unassignedTeams.join('、') }}</div>
     </div>
   </div>
 </template>
