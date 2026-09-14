@@ -21,20 +21,24 @@ function onPagerScroll() {
   const el = pager.value; if (!el) return;
   page.value = el.scrollLeft > el.clientWidth / 2 ? 1 : 0;
 }
-function goPage(i: number) {
+function goPage(i: number, smooth = true) {
   const el = pager.value; if (!el) return;
-  el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
+  el.scrollTo({ left: i * el.clientWidth, behavior: smooth ? 'smooth' : 'auto' });
 }
+// 宽窄布局切换（含电脑端缩小窗口）时，重新停到常规页面
+const narrowQuery = window.matchMedia('(max-width: 1000px)');
+function onLayoutChange() { requestAnimationFrame(() => goPage(1, false)); }
 
 onMounted(async () => {
   setUnauthorizedHandler(() => { auth.user = null; router.replace('/login'); });
   // 默认停在右屏（常规页面）
   await nextTick();
-  if (pager.value) pager.value.scrollLeft = pager.value.clientWidth;
+  goPage(1, false);
+  narrowQuery.addEventListener('change', onLayoutChange);
   try { await race.loadAll(); } catch (e) { ui.error(e); }
   connectRealtime();
 });
-onUnmounted(() => disconnectRealtime());
+onUnmounted(() => { disconnectRealtime(); narrowQuery.removeEventListener('change', onLayoutChange); });
 
 async function logout() {
   disconnectRealtime();
@@ -82,7 +86,7 @@ async function logout() {
   </div>
   <!-- 手机端页码指示 -->
   <div class="pager-dots">
-    <button :class="{ active: page === 0 }" aria-label="实时大屏" @click="goPage(0)"></button>
-    <button :class="{ active: page === 1 }" aria-label="页面" @click="goPage(1)"></button>
+    <button :class="{ active: page === 0 }" @click="goPage(0)"><span class="dot"></span>大屏</button>
+    <button :class="{ active: page === 1 }" @click="goPage(1)"><span class="dot"></span>页面</button>
   </div>
 </template>

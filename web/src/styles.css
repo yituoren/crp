@@ -208,7 +208,6 @@ html, body { overscroll-behavior: none; }
 .live-row-head { flex: 0 0 auto; min-height: 34px; font-size: 12px; font-weight: 600; color: var(--gray-500); background: var(--gray-50); border-radius: 6px; border-bottom: none; }
 .live-team { display: flex; align-items: center; gap: 6px; font-size: 14px; }
 .live-legname { font-weight: 500; }
-.live-right { text-align: right; }
 .live-money { font-weight: 700; color: var(--warning); font-family: ui-monospace, Menlo, monospace; }
 .mx-dead { opacity: .45; }
 .scroll-table, .matrix-scroll { overscroll-behavior-x: contain; }
@@ -220,9 +219,11 @@ html, body { overscroll-behavior: none; }
   .live-row { grid-template-columns: minmax(90px, 1.2fr) minmax(120px, 1.6fr) minmax(110px, 1.3fr) 70px; gap: 6px; font-size: 12px; }
   .pane-main .container { min-height: 100%; }
   .container-fixed { height: 100%; }
-  .pager-dots { display: flex; position: fixed; left: 0; right: 0; bottom: 8px; justify-content: center; gap: 8px; z-index: 120; pointer-events: none; }
-  .pager-dots button { pointer-events: auto; width: 8px; height: 8px; border-radius: 50%; border: none; padding: 0; background: rgba(15,23,42,.25); }
-  .pager-dots button.active { background: var(--primary); }
+  .pager-dots { display: flex; position: fixed; left: 0; right: 0; bottom: 10px; justify-content: center; gap: 6px; z-index: 120; pointer-events: none; }
+  .pager-dots button { pointer-events: auto; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--gray-200); background: rgba(255,255,255,.92); color: var(--gray-500); font-size: 12px; cursor: pointer; box-shadow: 0 2px 8px rgba(15,23,42,.12); }
+  .pager-dots button .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gray-300); }
+  .pager-dots button.active { color: var(--primary); border-color: var(--primary); }
+  .pager-dots button.active .dot { background: var(--primary); }
 }
 
 /* 进度页矩阵：队伍列固定在左，其余横向滚动；每个环节用实线分组 */
