@@ -71,9 +71,9 @@ const levelLabel: Record<string, string> = { info: '通知', warning: '注意', 
     </div>
   </div>
 
-  <!-- 我的分工 -->
-  <div class="card">
-    <div class="card-header">我在 {{ ep?.code }} 的分工</div>
+  <!-- 主办概览 -->
+  <div v-if="auth.isHost" class="card">
+    <div class="card-header">{{ ep?.code }} 概览</div>
     <template v-if="auth.isHost">
       <div class="grid grid-stat">
         <div class="team-card"><div class="text-gray text-sm">存活队伍</div><div class="stat-num" style="color: var(--success)">{{ stats.alive }}<span class="text-gray text-sm"> / {{ stats.total }}</span></div></div>
@@ -87,8 +87,12 @@ const levelLabel: Record<string, string> = { info: '通知', warning: '注意', 
         <router-link to="/pitstop" class="btn btn-outline">终点结算</router-link>
       </div>
     </template>
+  </div>
 
-    <template v-else-if="my?.role === 'follow' && myTeam">
+  <!-- 我的分工（按排班，主办也可能被排为跟队/站点） -->
+  <div class="card">
+    <div class="card-header">我在 {{ ep?.code }} 的分工</div>
+    <template v-if="my?.role === 'follow' && myTeam">
       <p><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.name }}</strong>（{{ myTeam.members || '成员未填写' }}），当前余额 <strong class="text-warning">{{ fmtMoney(myTeam.currency) }} 元</strong></p>
       <div class="scroll-table">
         <table class="table">
@@ -128,8 +132,8 @@ const levelLabel: Record<string, string> = { info: '通知', warning: '注意', 
     </template>
 
     <div v-else class="empty-state">
-      本赛段你没有跟队或站点任务（机动幕后）。<br />
-      <span class="text-sm">可以在「赛段信息」查看环节安排，排班有变动会实时更新。</span>
+      <template v-if="auth.isHost">本赛段没有给你排跟队或站点任务。</template>
+      <template v-else>本赛段你没有跟队或站点任务（机动幕后）。<br /><span class="text-sm">可以在「赛段信息」查看环节安排，排班有变动会实时更新。</span></template>
     </div>
   </div>
 </template>
