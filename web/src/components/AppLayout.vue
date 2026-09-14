@@ -6,6 +6,7 @@ import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { connectRealtime, disconnectRealtime } from '@/realtime';
 import { setUnauthorizedHandler } from '@/api';
+import { moneyLabel } from '@/utils/money';
 
 const auth = useAuth();
 const race = useRace();
@@ -44,7 +45,7 @@ async function logout() {
       <router-link to="/episodes" :class="{ 'router-link-active': $route.name === 'leg' }">赛段信息</router-link>
       <router-link to="/schedule">排班</router-link>
       <router-link to="/teams">队伍</router-link>
-      <router-link to="/currency">货币与罚时</router-link>
+      <router-link to="/currency">{{ moneyLabel() }}与罚时</router-link>
       <router-link v-if="auth.isHost" to="/dashboard">实时大屏</router-link>
       <router-link v-if="auth.isHost" to="/pitstop">终点结算</router-link>
       <router-link v-if="auth.isHost" to="/admin">主办后台</router-link>

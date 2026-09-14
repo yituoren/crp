@@ -1,5 +1,5 @@
 import type { Context } from 'hono';
-import { run, now, toCents } from './db.js';
+import { run, now, toCents, getSetting } from './db.js';
 import type { AuthUser } from './auth.js';
 import { io } from './realtime.js';
 
@@ -53,6 +53,15 @@ export const isoOrNull = (v: unknown): string | null => {
   if (Number.isNaN(d.getTime())) throw bad(`时间格式无效：${v}`);
   return d.toISOString();
 };
+export const currencyMode = (): 'yuan' | 'coin' => (getSetting('currency_mode', 'yuan') === 'coin' ? 'coin' : 'yuan');
+/** 金额格式化（服务端提示用）：经费两位小数，货币整数 */
+export function fmtMoneyServer(cents: number): string {
+  const v = cents / 100;
+  return currencyMode() === 'coin' ? `${Math.round(v)} 币` : `${v.toFixed(2)} 元`;
+}
 export function money(v: unknown, label = '金额'): number {
-  try { return toCents(v, label); } catch (e) { throw bad((e as Error).message); }
+  let cents: number;
+  try { cents = toCents(v, label); } catch (e) { throw bad((e as Error).message); }
+  if (currencyMode() === 'coin' && cents % 100 !== 0) throw bad(`${label}必须是整数（当前为货币模式，以币计）`);
+  return cents;
 }

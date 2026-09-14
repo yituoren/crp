@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { api } from '@/api';
 import { useRace } from '@/stores/race';
 import { fmtTime, fmtDateTime, fmtAgo } from '@/utils/time';
-import { fmtMoney } from '@/utils/money';
+import { fmtMoney, moneyUnit } from '@/utils/money';
 import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
 import TeamStatus from '@/components/TeamStatus.vue';
@@ -48,7 +48,7 @@ const legCompletion = (legId: number) => {
         <div class="card-header">队伍当前位置</div>
         <div class="scroll-table">
           <table class="table">
-            <thead><tr><th>队伍</th><th>状态</th><th>当前环节</th><th>最近记录</th><th>余额（元）</th></tr></thead>
+            <thead><tr><th>队伍</th><th>状态</th><th>当前环节</th><th>最近记录</th><th>余额（{{ moneyUnit() }}）</th></tr></thead>
             <tbody>
               <tr v-for="t in data.teams" :key="t.id">
                 <td><strong>{{ t.label }}</strong></td>

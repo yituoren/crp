@@ -6,6 +6,7 @@ export function seed() {
   if (!getSetting('event_name')) setSetting('event_name', process.env.EVENT_NAME ?? 'BJ20 全明星赛');
   if (!getSetting('hosts')) setSetting('hosts', DEFAULT_HOSTS.join(','));
   if (!getSetting('team_size')) setSetting('team_size', '2');
+  if (!getSetting('currency_mode')) setSetting('currency_mode', 'yuan'); // yuan: 经费(元, 两位小数) | coin: 货币(币, 整数)
 
   const hosts = getSetting('hosts').split(',').map((s) => s.trim()).filter(Boolean);
   for (const h of hosts) {

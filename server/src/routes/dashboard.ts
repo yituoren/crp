@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { all, get, fromCents } from '../db.js';
 import type { Env } from '../auth.js';
-import { intParam } from '../util.js';
+import { intParam, fmtMoneyServer } from '../util.js';
 import { pitstopRows } from './progress.js';
 import { teamLabelMap } from './teams.js';
 
@@ -49,7 +49,7 @@ dashboardRoutes.get('/dashboard/:episodeId', (c) => {
 
   const alerts: { level: string; text: string; teamId?: number }[] = [];
   for (const t of teamRows) {
-    if (t.status === 'alive' && t.currency < 0) alerts.push({ level: 'urgent', text: `${t.name} 货币余额为负（${t.currency.toFixed(2)}）`, teamId: t.id });
+    if (t.status === 'alive' && t.currency < 0) alerts.push({ level: 'urgent', text: `${t.name} 余额为负（${fmtMoneyServer(Math.round(t.currency * 100))}）`, teamId: t.id });
   }
 
   return c.json({

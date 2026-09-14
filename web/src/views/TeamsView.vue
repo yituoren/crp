@@ -7,7 +7,7 @@ import { useUi } from '@/stores/ui';
 import type { Team } from '@/types';
 import Modal from '@/components/Modal.vue';
 import TeamStatus from '@/components/TeamStatus.vue';
-import { fmtMoney } from '@/utils/money';
+import { fmtMoney, moneyUnit } from '@/utils/money';
 
 const auth = useAuth();
 const race = useRace();
@@ -41,7 +41,7 @@ async function remove(t: Team) {
   try { await api(`/teams/${t.id}`, { method: 'DELETE' }); await race.loadTeams(); ui.toast('已删除'); } catch (e) { ui.error(e); }
 }
 async function resetAll() {
-  if (!(await ui.confirm('重置队伍数据', '所有队伍恢复为存活、货币清零（队名保留）。确定？', { danger: true }))) return;
+  if (!(await ui.confirm('重置队伍数据', '所有队伍恢复为存活、余额清零（队名保留）。确定？', { danger: true }))) return;
   try { await api('/teams/reset', { method: 'POST' }); await race.loadTeams(); ui.toast('已重置'); } catch (e) { ui.error(e); }
 }
 </script>
@@ -60,7 +60,7 @@ async function resetAll() {
         <span style="font-weight: 700; font-size: 16px">{{ t.label }}</span>
         <TeamStatus :status="t.status" />
       </div>
-      <div class="currency-box mt-1">{{ fmtMoney(t.currency) }} <span class="text-sm text-gray">元</span></div>
+      <div class="currency-box mt-1">{{ fmtMoney(t.currency) }} <span class="text-sm text-gray">{{ moneyUnit() }}</span></div>
       <div v-if="auth.isHost" class="flex mt-2" style="gap: 6px">
         <button class="btn btn-outline btn-sm" @click="open(t)">编辑</button>
         <button v-if="t.status !== 'alive'" class="btn btn-success btn-sm" @click="setStatus(t, 'alive')">恢复</button>

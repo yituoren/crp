@@ -1,7 +1,7 @@
 export type Role = 'admin' | 'host' | 'crew';
 export const ROLE_LABEL: Record<Role, string> = { admin: '管理员', host: '主办', crew: '幕后' };
 export interface User { id: number; username: string; displayName: string; role: Role; disabled?: number }
-export interface EventInfo { name: string; hosts: string[]; teamSize: number }
+export interface EventInfo { name: string; hosts: string[]; teamSize: number; currencyMode: 'yuan' | 'coin' }
 
 export const LEG_TYPES = ['SL', 'RI', 'TI', 'DT', 'RB', 'FO', 'Union', 'Shuffle', 'UT', 'YD', 'SB', 'PK', 'Trap', 'PS'] as const;
 export type LegType = (typeof LEG_TYPES)[number];

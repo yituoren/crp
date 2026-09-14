@@ -59,6 +59,7 @@ authRoutes.get('/me', authRequired, (c) => {
       name: getSetting('event_name', '城市飞奔'),
       hosts: hostNames(),
       teamSize: Math.max(1, Number(getSetting('team_size', '2')) || 2),
+      currencyMode: getSetting('currency_mode', 'yuan') === 'coin' ? 'coin' : 'yuan',
     },
     serverTime: now(),
   });

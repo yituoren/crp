@@ -4,7 +4,7 @@ import { api } from '@/api';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
-import { fmtMoney, parseMoney } from '@/utils/money';
+import { fmtMoney, parseMoney, moneyUnit, moneyLabel, moneyMode } from '@/utils/money';
 import EpSelector from '@/components/EpSelector.vue';
 import type { Team } from '@/types';
 import PenaltyPanel from '@/components/PenaltyPanel.vue';
@@ -19,15 +19,15 @@ const get = (id: number) => (inputs[id] ??= { amount: '', reason: '' });
 async function apply(t: Team, sign: 1 | -1) {
   const inp = get(t.id);
   const amount = parseMoney(inp.amount);
-  if (amount === null) { ui.toast('金额必须是正数，最多两位小数；扣除请用「扣除」按钮', 'error'); return; }
+  if (amount === null) { ui.toast(moneyMode() === 'coin' ? '数量必须是正整数；扣除请用「扣除」按钮' : '金额必须是正数，最多两位小数；扣除请用「扣除」按钮', 'error'); return; }
   const delta = amount * sign;
   const reason = inp.reason.trim() || (sign > 0 ? '任务奖励' : '手动扣除');
-  if (!(await ui.confirm(sign > 0 ? '增加货币' : '扣除货币', `「${t.label}」${sign > 0 ? '增加' : '扣除'} ${fmtMoney(amount)} 元，原因：${reason}\n当前余额 ${fmtMoney(t.currency)} → ${fmtMoney(t.currency + delta)}`))) return;
+  if (!(await ui.confirm(sign > 0 ? '增加货币' : '扣除货币', `「${t.label}」${sign > 0 ? '增加' : '扣除'} ${fmtMoney(amount)} ${moneyUnit()}，原因：${reason}\n当前余额 ${fmtMoney(t.currency)} → ${fmtMoney(t.currency + delta)}`))) return;
   try {
     await api('/ledger', { method: 'POST', body: { episodeId: ep.value?.id, teamId: t.id, delta, reason } });
     inp.amount = ''; inp.reason = '';
     await Promise.all([race.loadTeams(), race.loadLedger()]);
-    ui.toast(`已${sign > 0 ? '增加' : '扣除'} ${fmtMoney(amount)} 元`);
+    ui.toast(`已${sign > 0 ? '增加' : '扣除'} ${fmtMoney(amount)} ${moneyUnit()}`);
   } catch (e) { ui.error(e); }
 }
 const rows = computed(() => (filterTeam.value ? race.ledger.filter((l) => l.team_id === filterTeam.value) : race.ledger));
@@ -36,8 +36,8 @@ const rows = computed(() => (filterTeam.value ? race.ledger.filter((l) => l.team
 <template>
   <EpSelector />
   <div class="flex-between mb-2">
-    <div class="section-title">{{ ep?.code }} 货币操作</div>
-    <span v-if="!race.canAdjustCurrency && race.myAssignment?.role !== 'follow'" class="text-sm text-gray">主办与本赛段站点可操作所有队伍的货币，跟队只能操作所跟队伍</span>
+    <div class="section-title">{{ ep?.code }} {{ moneyLabel() }}操作</div>
+    <span v-if="!race.canAdjustCurrency && race.myAssignment?.role !== 'follow'" class="text-sm text-gray">主办与本赛段站点可操作所有队伍，跟队只能操作所跟队伍</span>
   </div>
   <div class="grid grid-4">
     <div v-for="t in race.teams" :key="t.id" class="team-card" :class="'team-' + t.status">
@@ -45,7 +45,7 @@ const rows = computed(() => (filterTeam.value ? race.ledger.filter((l) => l.team
       <div class="currency-box">{{ fmtMoney(t.currency) }}</div>
       <div v-if="race.canAdjustCurrencyFor(t.id) && t.status === 'alive'" class="mt-1">
         <div class="flex" style="gap: 6px; flex-wrap: nowrap">
-          <input v-model="get(t.id).amount" type="number" inputmode="decimal" min="0.01" step="0.01" class="input-sm" placeholder="金额" style="width: 90px" />
+          <input v-model="get(t.id).amount" type="number" :inputmode="moneyMode() === 'coin' ? 'numeric' : 'decimal'" min="0" step="1" class="input-sm" :placeholder="moneyUnit() === '币' ? '数量' : '金额'" style="width: 90px" />
           <input v-model="get(t.id).reason" class="input-sm" placeholder="原因" style="flex: 1; min-width: 60px" />
         </div>
         <div class="flex mt-1" style="gap: 6px">
@@ -58,13 +58,13 @@ const rows = computed(() => (filterTeam.value ? race.ledger.filter((l) => l.team
 
   <div class="card mt-3">
     <div class="card-header">
-      <span>货币变动日志（{{ ep?.code }}）</span>
+      <span>{{ moneyLabel() }}变动日志（{{ ep?.code }}）</span>
       <select v-model="filterTeam" class="input-sm input-inline" style="width: 140px"><option value="">全部队伍</option><option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.label }}</option></select>
     </div>
     <div v-if="!rows.length" class="empty-state">暂无货币变动记录</div>
     <div v-else class="scroll-table">
       <table class="table">
-        <thead><tr><th>时间</th><th>队伍</th><th>变动（元）</th><th>余额（元）</th><th>操作人</th><th>原因</th></tr></thead>
+        <thead><tr><th>时间</th><th>队伍</th><th>变动（{{ moneyUnit() }}）</th><th>余额（{{ moneyUnit() }}）</th><th>操作人</th><th>原因</th></tr></thead>
         <tbody>
           <tr v-for="l in rows" :key="l.id">
             <td>{{ fmtDateTime(l.created_at) }}</td><td>{{ l.team_name }}</td>

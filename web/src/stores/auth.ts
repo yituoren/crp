@@ -2,10 +2,11 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { api } from '@/api';
 import type { EventInfo, User } from '@/types';
+import { setMoneyMode } from '@/utils/money';
 
 export const useAuth = defineStore('auth', () => {
   const user = ref<User | null>(null);
-  const event = ref<EventInfo>({ name: '城市飞奔', hosts: [], teamSize: 2 });
+  const event = ref<EventInfo>({ name: '城市飞奔', hosts: [], teamSize: 2, currencyMode: 'yuan' });
   const ready = ref(false);
   /** 服务器时间 - 本机时间（毫秒），用于给记录表单填默认时间 */
   const serverOffsetMs = ref(0);
@@ -18,6 +19,7 @@ export const useAuth = defineStore('auth', () => {
       const d = await api('/auth/me');
       user.value = d.user;
       event.value = d.event;
+      setMoneyMode(d.event?.currencyMode === 'coin' ? 'coin' : 'yuan');
       if (d.serverTime) serverOffsetMs.value = new Date(d.serverTime).getTime() - Date.now();
     } catch {
       user.value = null;
