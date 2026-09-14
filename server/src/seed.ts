@@ -34,6 +34,14 @@ export function seed() {
       for (let i = 1; i <= 12; i++) run('INSERT INTO teams(code, name, members, status, currency, sort) VALUES (?,?,?,?,?,?)', `T${i}`, String(i).padStart(2, '0'), '[]', 'alive', 0, i);
     });
   }
+  // 一次性：类型缩写更正——快进由 FO 改为 FF，对抗由 PK 改为 FO（先改快进再改对抗，避免混淆）
+  if (getSetting('leg_types') !== 'v2') {
+    tx(() => {
+      run("UPDATE legs SET type = 'FF' WHERE type = 'FO'");
+      run("UPDATE legs SET type = 'FO' WHERE type = 'PK'");
+    });
+    setSetting('leg_types', 'v2');
+  }
   // 一次性：把默认队名“队伍N”改成两位编号“NN”
   if (getSetting('team_names') !== 'v1') {
     for (const t of all('SELECT id, name FROM teams')) {

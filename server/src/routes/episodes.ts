@@ -6,7 +6,7 @@ import { hostOnly, canUploadToLeg, type Env } from '../auth.js';
 import { audit, body, str, int, intParam, notify, bad, notFound, forbidden, money } from '../util.js';
 import { teamLabelMap } from './teams.js';
 
-export const LEG_TYPES = ['SL', 'RI', 'TI', 'DT', 'RB', 'FO', 'Union', 'Shuffle', 'UT', 'YD', 'SB', 'PK', 'Trap', 'PS'] as const;
+export const LEG_TYPES = ['SL', 'RI', 'TI', 'DT', 'RB', 'FF', 'Union', 'Shuffle', 'UT', 'YD', 'SB', 'FO', 'Trap', 'PS'] as const;
 export type RecordMode = 'none' | 'single' | 'full';
 /** 各类型环节的默认行为：是否需要站点人员、记录方式 */
 export const TYPE_DEFAULTS: Record<string, { staff: 0 | 1; mode: RecordMode }> = {
@@ -15,13 +15,13 @@ export const TYPE_DEFAULTS: Record<string, { staff: 0 | 1; mode: RecordMode }> =
   TI: { staff: 1, mode: 'full' },
   DT: { staff: 1, mode: 'full' },
   RB: { staff: 1, mode: 'full' },
-  FO: { staff: 1, mode: 'full' },
+  FF: { staff: 1, mode: 'full' },     // 快进 Fast Forward
   Union: { staff: 1, mode: 'full' },
   Shuffle: { staff: 1, mode: 'full' },  // 洗牌：全员到齐后重新出发，记到达/出发
   UT: { staff: 1, mode: 'single' },   // 回转点：打卡 + 施加对象
   YD: { staff: 1, mode: 'single' },   // 让路点：打卡 + 施加对象
   SB: { staff: 1, mode: 'full' },     // 减速带
-  PK: { staff: 1, mode: 'full' },     // 对抗 / PK
+  FO: { staff: 1, mode: 'full' },     // 对抗 Face Off
   Trap: { staff: 1, mode: 'full' },
   PS: { staff: 1, mode: 'single' },   // 中继站：记签到
 };

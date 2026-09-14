@@ -52,7 +52,7 @@ async function save() {
     </div>
     <div v-if="leg.type === 'DT'" class="form-group"><label>绕道选择</label><input v-model="form.detourChoice" /></div>
     <div v-if="leg.type === 'RB'" class="form-group"><label>路障完成人</label><input v-model="form.roadblockBy" /></div>
-    <div v-if="leg.type === 'FO'" class="form-group"><label>快进结果</label>
+    <div v-if="leg.type === 'FF'" class="form-group"><label>快进结果</label>
       <select v-model="form.ffResult"><option value="">未尝试</option><option value="success">成功</option><option value="fail">失败</option></select>
     </div>
     <div class="form-group"><label>备注</label><textarea v-model="form.note" style="min-height: 60px" /></div>

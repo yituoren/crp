@@ -42,7 +42,7 @@ function detourOptions(): string[] {
           <th v-if="showTarget">施加对象</th>
           <th v-if="leg.type === 'DT'">绕道选择</th>
           <th v-if="leg.type === 'RB'">路障完成人</th>
-          <th v-if="leg.type === 'FO'">快进结果</th>
+          <th v-if="leg.type === 'FF'">快进结果</th>
           <th style="min-width: 150px">操作</th>
         </tr>
       </thead>
@@ -73,7 +73,7 @@ function detourOptions(): string[] {
             <input v-if="can" class="input-sm input-inline" style="width: 110px" :value="p?.roadblock_by ?? ''" placeholder="姓名" @change="rec.setValue('roadblock', team.id, leg.id, ($event.target as HTMLInputElement).value)" />
             <span v-else>{{ p?.roadblock_by || '-' }}</span>
           </td>
-          <td v-if="leg.type === 'FO'">
+          <td v-if="leg.type === 'FF'">
             <select v-if="can" class="input-sm input-inline" :value="p?.ff_result ?? ''" @change="rec.setValue('ff', team.id, leg.id, ($event.target as HTMLSelectElement).value)">
               <option value="">未尝试</option><option value="success">成功</option><option value="fail">失败</option>
             </select>

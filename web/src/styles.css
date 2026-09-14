@@ -104,9 +104,9 @@ textarea { min-height: 90px; resize: vertical; }
 .tag-TI { background: #33CBCC; color: #063D3E; }     /* 任务 */
 .tag-DT { background: #EAAA16; color: #3A2A00; }     /* 绕道 */
 .tag-RB { background: #AC0000; }                     /* 路障 */
-.tag-FO { background: #27CE62; color: #063A18; }     /* 快进 */
+.tag-FF { background: #27CE62; color: #063A18; }     /* 快进 Fast Forward */
 .tag-Union { background: #EB661C; }                  /* 联合 */
-.tag-PK { background: #664193; }                     /* 对抗 */
+.tag-FO { background: #664193; }                     /* 对抗 Face Off */
 .tag-SB { background: #FFCC01; color: #3D3000; }     /* 减速带 */
 /* 模板中没有的类型，选与上面不冲突的颜色 */
 .tag-UT { background: #4338CA; }                     /* 回转点 */

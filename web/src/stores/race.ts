@@ -55,7 +55,7 @@ export const useRace = defineStore('race', () => {
     for (let i = 0; i < idx; i++) {
       const l = ep.legs[i]!;
       const p = progressOf(teamId, l.id);
-      if (l.type === 'FO' && p?.ff_result === 'success') return null;
+      if (l.type === 'FF' && p?.ff_result === 'success') return null;
       if (l.record_mode === 'none' || !MANDATORY_TYPES.has(l.type)) continue;
       if (!p?.completed_at) missing.push(l.name);
     }
