@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { logger } from 'hono/logger';
+import { compress } from 'hono/compress';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import fs from 'node:fs';
@@ -28,6 +29,12 @@ console.log(`[seed] hosts=${seeded.hosts.join(',')} episodes=${seeded.episodes} 
 
 const app = new Hono<Env>();
 app.use(logger());
+app.use(compress()); // gzip/br：JSON 与 JS 体积压到 1/4 左右
+// 带哈希的静态资源可以永久缓存
+app.use('/assets/*', async (c, next) => {
+  await next();
+  c.header('Cache-Control', 'public, max-age=31536000, immutable');
+});
 
 app.onError((err, c) => {
   if (err instanceof HttpError) return c.json({ error: err.message }, err.status);
