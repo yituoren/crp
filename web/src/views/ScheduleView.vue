@@ -95,7 +95,7 @@ async function copyPrev() {
                 </select>
                 <select v-else-if="r.role === 'station'" v-model="r.legId" class="input-sm input-inline" style="width: 180px; flex: none">
                   <option value="">选择环节</option>
-                  <option v-for="l in ep?.legs ?? []" :key="l.id" :value="l.id">{{ l.type }} · {{ l.name }}</option>
+                  <option v-for="l in (ep?.legs ?? []).filter((x) => x.needs_staff)" :key="l.id" :value="l.id">{{ l.type }} · {{ l.name }}</option>
                 </select>
                 <span v-else class="text-xs text-gray" style="width: 180px; flex: none">无需分配</span>
               </div>

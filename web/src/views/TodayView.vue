@@ -9,6 +9,7 @@ import { fmtTime, fmtDateTime } from '@/utils/time';
 import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
 import RecordTable from '@/components/RecordTable.vue';
+import { singleLabel } from '@/types';
 
 const auth = useAuth();
 const race = useRace();
@@ -22,7 +23,7 @@ const myLeg = computed(() => (my.value?.leg_id ? ep.value?.legs.find((l) => l.id
 
 const legRows = computed(() => {
   if (!ep.value || !myTeam.value) return [];
-  return ep.value.legs.map((leg) => ({ leg, p: race.progressOf(myTeam.value!.id, leg.id) }));
+  return ep.value.legs.filter((leg) => leg.record_mode !== 'none').map((leg) => ({ leg, p: race.progressOf(myTeam.value!.id, leg.id), single: leg.record_mode === 'single', label: singleLabel(leg.type) }));
 });
 const stats = computed(() => ({
   alive: race.aliveTeams.length,
@@ -90,17 +91,23 @@ const levelLabel: Record<string, string> = { info: '通知', warning: '注意', 
       <p><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.name }}</strong>（{{ myTeam.members || '成员未填写' }}），当前余额 <strong class="text-warning">💰 {{ myTeam.currency }}</strong></p>
       <div class="scroll-table">
         <table class="table">
-          <thead><tr><th>环节</th><th>状态</th><th>到达</th><th>完成</th><th style="min-width: 110px">操作</th></tr></thead>
+          <thead><tr><th>环节</th><th>状态</th><th>到达</th><th>完成 / 打卡</th><th style="min-width: 110px">操作</th></tr></thead>
           <tbody>
-            <tr v-for="{ leg, p } in legRows" :key="leg.id">
+            <tr v-for="{ leg, p, single, label } in legRows" :key="leg.id">
               <td><LegTag :type="leg.type" /> <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: leg.id } }">{{ leg.name }}</router-link></td>
-              <td>{{ p?.completed_at ? '✅ 已完成' : p?.arrived_at ? '⏳ 已到达' : '⏹ 未到达' }}</td>
-              <td><span class="record-time">{{ fmtTime(p?.arrived_at) }}</span></td>
+              <td>{{ single ? (p?.completed_at ? `✅ 已${label}` : `⏹ 未${label}`) : p?.completed_at ? '✅ 已完成' : p?.arrived_at ? '⏳ 已到达' : '⏹ 未到达' }}</td>
+              <td><span class="record-time">{{ single ? '-' : fmtTime(p?.arrived_at) }}</span></td>
               <td><span class="record-time">{{ fmtTime(p?.completed_at) }}</span></td>
               <td>
-                <button v-if="!p?.arrived_at" class="btn btn-sm" @click="rec.arrive(myTeam!.id, leg.id)">记录到达</button>
-                <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm" @click="rec.complete(myTeam!.id, leg.id)">记录完成</button>
-                <span v-else class="text-success">✔</span>
+                <template v-if="single">
+                  <button v-if="!p?.completed_at" class="btn btn-sm" @click="rec.single(myTeam!.id, leg.id, label)">记录{{ label }}</button>
+                  <span v-else class="text-success">✔</span>
+                </template>
+                <template v-else>
+                  <button v-if="!p?.arrived_at" class="btn btn-sm" @click="rec.arrive(myTeam!.id, leg.id)">记录到达</button>
+                  <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm" @click="rec.complete(myTeam!.id, leg.id)">记录完成</button>
+                  <span v-else class="text-success">✔</span>
+                </template>
               </td>
             </tr>
           </tbody>

@@ -86,6 +86,7 @@ textarea { min-height: 90px; resize: vertical; }
 .tag { display: inline-block; padding: 2px 7px; border-radius: 5px; font-size: 11px; font-weight: 700; letter-spacing: .3px; color: #fff; background: var(--gray-500); }
 .tag-SL { background: #0ea5e9; } .tag-RI { background: #6366f1; } .tag-TI { background: #2563eb; } .tag-DT { background: #f59e0b; }
 .tag-RB { background: #ef4444; } .tag-FO { background: #10b981; } .tag-Union { background: #8b5cf6; } .tag-Trap { background: #1e293b; } .tag-PS { background: #db2777; }
+.tag-UT { background: #f97316; } .tag-YD { background: #eab308; color: #422006; } .tag-SB { background: #78716c; } .tag-PK { background: #dc2626; }
 
 /* 赛段选择 */
 .ep-selector { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; scrollbar-width: none; }

@@ -4,7 +4,8 @@ import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
-import { LEG_TYPES, LEG_TYPE_LABEL, type Leg } from '@/types';
+import { LEG_TYPES, LEG_TYPE_LABEL, LEG_TYPE_HINT, TYPE_DEFAULTS, RECORD_MODE_LABEL, type Leg, type LegType, type RecordMode } from '@/types';
+import { watch } from 'vue';
 import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
 import Modal from '@/components/Modal.vue';
@@ -40,10 +41,12 @@ async function deleteEpisode() {
 
 // ---- 环节编辑 ----
 const legEditing = ref<Leg | null>(null);
-const legForm = reactive({ type: 'TI', name: '', description: '', address: '', map_url: '', clue_text: '', judge_criteria: '', open_time: '', close_time: '', detour_a: '', detour_b: '' });
+const legForm = reactive({ type: 'TI' as LegType, name: '', description: '', address: '', map_url: '', clue_text: '', judge_criteria: '', open_time: '', close_time: '', detour_a: '', detour_b: '', needs_staff: true, record_mode: 'full' as RecordMode });
+// 切换类型时套用该类型的默认行为（主办仍可手动改）
+watch(() => legForm.type, (t, prev) => { if (prev !== undefined && t !== prev) { legForm.needs_staff = TYPE_DEFAULTS[t].staff; legForm.record_mode = TYPE_DEFAULTS[t].mode; } });
 function openLegEdit(leg: Leg) {
   legEditing.value = leg;
-  Object.assign(legForm, { type: leg.type, name: leg.name, description: leg.description, address: leg.address, map_url: leg.map_url, clue_text: leg.clue_text, judge_criteria: leg.judge_criteria, open_time: leg.open_time, close_time: leg.close_time, detour_a: leg.detour_a, detour_b: leg.detour_b });
+  Object.assign(legForm, { type: leg.type, name: leg.name, description: leg.description, address: leg.address, map_url: leg.map_url, clue_text: leg.clue_text, judge_criteria: leg.judge_criteria, open_time: leg.open_time, close_time: leg.close_time, detour_a: leg.detour_a, detour_b: leg.detour_b, needs_staff: !!leg.needs_staff, record_mode: leg.record_mode });
 }
 async function saveLeg() {
   try { await api(`/legs/${legEditing.value!.id}`, { method: 'PUT', body: legForm }); await race.loadEpisodes(); legEditing.value = null; ui.toast('环节已保存'); } catch (e) { ui.error(e); }
@@ -100,10 +103,13 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
           <span class="text-xs text-gray">#{{ i + 1 }}</span>
         </div>
         <div style="font-weight: 700; font-size: 15px">{{ leg.name }}</div>
-        <div class="text-sm text-gray">站点：{{ staffOf(leg.id).join('、') || '未分配' }}</div>
+        <div class="text-sm text-gray">站点：<template v-if="leg.needs_staff">{{ staffOf(leg.id).join('、') || '未分配' }}</template><span v-else>无需站点</span></div>
         <div v-if="leg.address" class="text-sm text-gray">📍 {{ leg.address }}</div>
         <div class="text-xs text-gray mt-1">
-          ✅ {{ doneCount(leg.id) }} 完成 · ⏳ {{ arrivedCount(leg.id) }} 进行中 · 📎 {{ leg.attachments.length }} 附件
+          <template v-if="leg.record_mode === 'none'">不记录时间</template>
+          <template v-else-if="leg.record_mode === 'single'">✅ {{ doneCount(leg.id) }} 已打卡</template>
+          <template v-else>✅ {{ doneCount(leg.id) }} 完成 · ⏳ {{ arrivedCount(leg.id) }} 进行中</template>
+          · 📎 {{ leg.attachments.length }} 附件
         </div>
         <div v-if="auth.isHost" class="flex mt-2" @click.stop>
           <button class="btn btn-outline btn-sm" @click="openLegEdit(leg)">编辑</button>
@@ -129,6 +135,15 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
         <select v-model="legForm.type"><option v-for="t in LEG_TYPES" :key="t" :value="t">{{ t }} · {{ LEG_TYPE_LABEL[t] }}</option></select>
       </div>
       <div class="form-group"><label>名称</label><input v-model="legForm.name" /></div>
+    </div>
+    <div class="info-text" style="margin: -6px 0 10px">{{ LEG_TYPE_HINT[legForm.type] }}</div>
+    <div class="grid grid-2">
+      <div class="form-group"><label>记录方式</label>
+        <select v-model="legForm.record_mode"><option v-for="(l, m) in RECORD_MODE_LABEL" :key="m" :value="m">{{ l }}</option></select>
+      </div>
+      <div class="form-group"><label>站点人员</label>
+        <select v-model="legForm.needs_staff"><option :value="true">需要安排站点人员</option><option :value="false">无需站点（无人值守）</option></select>
+      </div>
     </div>
     <div class="form-group"><label>环节说明（任务内容、流程）</label><textarea v-model="legForm.description" /></div>
     <div class="grid grid-2">

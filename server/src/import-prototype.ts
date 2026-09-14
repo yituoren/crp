@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { all, get, run, tx, now, getSetting, UPLOAD_DIR } from './db.js';
+import { LEG_TYPES, TYPE_DEFAULTS } from './routes/episodes.js';
 
 export interface ImportOptions {
   baseDate?: string;           // YYYY-MM-DD
@@ -76,8 +77,9 @@ export async function importPrototype(data: any, opts: ImportOptions = {}) {
       const legIds = new Map<string, number>();
       const legs = Object.values<any>(ep.legs ?? {}).sort((a, b) => String(a.id).localeCompare(String(b.id)));
       legs.forEach((leg, i) => {
-        const type = ['SL', 'RI', 'TI', 'DT', 'RB', 'FO', 'Union', 'Trap', 'PS'].includes(leg.type) ? leg.type : 'TI';
-        const r = run('INSERT INTO legs(episode_id, sort, type, name, description) VALUES (?,?,?,?,?)', epId, i + 1, type, leg.name ?? leg.id, leg.desc ?? '');
+        const type = LEG_TYPES.includes(leg.type) ? leg.type : 'TI';
+        const d = TYPE_DEFAULTS[type] ?? { staff: 1, mode: 'full' };
+        const r = run('INSERT INTO legs(episode_id, sort, type, name, description, needs_staff, record_mode) VALUES (?,?,?,?,?,?,?)', epId, i + 1, type, leg.name ?? leg.id, leg.desc ?? '', d.staff, d.mode);
         const legId = Number(r.lastInsertRowid);
         legIds.set(leg.id, legId);
         report.legs++;

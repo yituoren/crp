@@ -21,6 +21,7 @@ onUnmounted(() => clearInterval(timer));
 watch(() => [race.currentEpisodeId, race.progress, race.teams, race.pitstop], load, { deep: true });
 
 const cell = (teamId: number, legId: number) => data.value?.progress.find((p: any) => p.team_id === teamId && p.leg_id === legId);
+const matrixLegs = computed(() => (data.value?.legs ?? []).filter((l: any) => l.record_mode !== 'none'));
 const ranking = computed(() => (data.value?.pitstop ?? []).filter((r: any) => r.rank).sort((a: any, b: any) => a.rank - b.rank));
 const legCompletion = (legId: number) => {
   const alive = (data.value?.teams ?? []).filter((t: any) => t.status === 'alive');
@@ -88,13 +89,13 @@ const legCompletion = (legId: number) => {
           <thead>
             <tr>
               <th>队伍</th>
-              <th v-for="l in data.legs" :key="l.id" style="text-align: center"><LegTag :type="l.type" /><br /><span class="text-xs">{{ l.name }}</span><br /><span class="text-xs text-gray">{{ legCompletion(l.id) }}</span></th>
+              <th v-for="l in matrixLegs" :key="l.id" style="text-align: center"><LegTag :type="l.type" /><br /><span class="text-xs">{{ l.name }}</span><br /><span class="text-xs text-gray">{{ legCompletion(l.id) }}</span></th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="t in data.teams" :key="t.id" :style="t.status !== 'alive' ? 'opacity:.5' : ''">
               <td><strong>{{ t.name }}</strong></td>
-              <td v-for="l in data.legs" :key="l.id" class="cell" :class="cell(t.id, l.id)?.completed_at ? 'cell-done' : cell(t.id, l.id)?.arrived_at ? 'cell-arrived' : 'cell-empty'" :title="cell(t.id, l.id) ? `到达 ${fmtDateTime(cell(t.id, l.id).arrived_at)} / 完成 ${fmtDateTime(cell(t.id, l.id).completed_at)}` : ''">
+              <td v-for="l in matrixLegs" :key="l.id" class="cell" :class="cell(t.id, l.id)?.completed_at ? 'cell-done' : cell(t.id, l.id)?.arrived_at ? 'cell-arrived' : 'cell-empty'" :title="cell(t.id, l.id) ? `到达 ${fmtDateTime(cell(t.id, l.id).arrived_at)} / 完成 ${fmtDateTime(cell(t.id, l.id).completed_at)}` : ''">
                 <template v-if="cell(t.id, l.id)?.completed_at">{{ fmtTime(cell(t.id, l.id).completed_at) }}</template>
                 <template v-else-if="cell(t.id, l.id)?.arrived_at">{{ fmtTime(cell(t.id, l.id).arrived_at) }}</template>
                 <template v-else>·</template>

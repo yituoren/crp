@@ -19,8 +19,8 @@ export function seed() {
       for (let i = 1; i <= 5; i++) {
         const r = run('INSERT INTO episodes(code, name, budget, sort, status, notes) VALUES (?,?,?,?,?,?)', `EP${i}`, `第 ${i} 赛段`, 0, i, 'pending', '');
         const epId = Number(r.lastInsertRowid);
-        const legs: [string, string][] = [['SL', '起跑线'], ['RI', '路线信息 1'], ['TI', '任务点 1'], ['PS', '终点']];
-        legs.forEach(([type, name], j) => run('INSERT INTO legs(episode_id, sort, type, name) VALUES (?,?,?,?)', epId, j + 1, type, name));
+        const legs: [string, string, number, string][] = [['SL', '起跑线', 1, 'single'], ['RI', '路线信息 1', 0, 'none'], ['TI', '任务点 1', 1, 'full'], ['PS', '中继站', 1, 'single']];
+        legs.forEach(([type, name, staff, mode], j) => run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,?,?)', epId, j + 1, type, name, staff, mode));
       }
     });
   }

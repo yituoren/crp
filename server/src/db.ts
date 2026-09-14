@@ -52,7 +52,9 @@ CREATE TABLE IF NOT EXISTS legs (
   open_time TEXT NOT NULL DEFAULT '',
   close_time TEXT NOT NULL DEFAULT '',
   detour_a TEXT NOT NULL DEFAULT '',
-  detour_b TEXT NOT NULL DEFAULT ''
+  detour_b TEXT NOT NULL DEFAULT '',
+  needs_staff INTEGER NOT NULL DEFAULT 1,      -- 是否需要站点人员
+  record_mode TEXT NOT NULL DEFAULT 'full'     -- none | single | full
 );
 CREATE INDEX IF NOT EXISTS idx_legs_ep ON legs(episode_id, sort);
 CREATE TABLE IF NOT EXISTS attachments (
@@ -93,6 +95,7 @@ CREATE TABLE IF NOT EXISTS progress (
   detour_choice TEXT,
   roadblock_by TEXT,
   ff_result TEXT,                             -- success | fail | null
+  target_team_id INTEGER,                     -- 回转/让路的施加对象
   note TEXT NOT NULL DEFAULT '',
   recorded_by INTEGER,
   updated_at TEXT NOT NULL,
@@ -149,6 +152,20 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 );
 `;
 db.exec(SCHEMA);
+
+/** 给旧库补列（幂等）。返回 true 表示本次新加了该列。 */
+function ensureColumn(table: string, col: string, ddl: string): boolean {
+  const cols = (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((r) => r.name);
+  if (cols.includes(col)) return false;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${ddl}`);
+  return true;
+}
+if (ensureColumn('legs', 'needs_staff', 'INTEGER NOT NULL DEFAULT 1') || ensureColumn('legs', 'record_mode', "TEXT NOT NULL DEFAULT 'full'")) {
+  // 老数据按类型套用默认：路线信息不排站点也不记时间；起跑线/终点只记一次
+  db.exec("UPDATE legs SET needs_staff = 0, record_mode = 'none' WHERE type = 'RI'");
+  db.exec("UPDATE legs SET record_mode = 'single' WHERE type IN ('SL', 'PS')");
+}
+ensureColumn('progress', 'target_team_id', 'INTEGER');
 
 type Param = string | number | null;
 export type Row = Record<string, any>;

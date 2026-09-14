@@ -28,10 +28,12 @@ progressRoutes.post('/progress', async (c) => {
   const user = c.get('user');
   const b = await body(c);
   const episodeId = int(b.episodeId), teamId = int(b.teamId), legId = int(b.legId);
-  const action = String(b.action ?? '');
+  let action = String(b.action ?? '');
   if (!episodeId || !teamId || !legId) throw bad('缺少赛段/队伍/环节');
   const leg = get('SELECT * FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId);
   if (!leg) throw notFound('环节不存在');
+  if (leg.record_mode === 'none' && ['arrive', 'complete', 'single'].includes(action)) throw bad('本环节不记录时间');
+  if (leg.record_mode === 'single' && ['arrive', 'complete'].includes(action)) action = 'single';
   const team = get('SELECT * FROM teams WHERE id = ?', teamId);
   if (!team) throw notFound('队伍不存在');
   if (!canRecordProgress(user, episodeId, teamId, legId)) throw forbidden('你没有该队伍/站点的记录权限');
@@ -41,7 +43,7 @@ progressRoutes.post('/progress', async (c) => {
   const before = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, legId);
   const t = now();
   const cur = before ?? {
-    arrived_at: null, completed_at: null, detour_choice: null, roadblock_by: null, ff_result: null, note: '',
+    arrived_at: null, completed_at: null, detour_choice: null, roadblock_by: null, ff_result: null, target_team_id: null, note: '',
   };
   const next = { ...cur };
   let already = false; // 幂等：重复点击/断网重试不报错，保留第一次的时间
@@ -57,10 +59,20 @@ progressRoutes.post('/progress', async (c) => {
         if (!next.arrived_at) next.arrived_at = t;
       }
       break;
+    case 'single': // 只记一次：出发 / 打卡 / 签到
+      if (cur.completed_at) already = true;
+      else { next.arrived_at = t; next.completed_at = t; }
+      break;
     case 'undo_arrive':
       next.arrived_at = null;
       next.completed_at = null;
       break;
+    case 'target': {
+      const tid = int(b.value, 0);
+      if (tid && !get('SELECT 1 FROM teams WHERE id = ?', tid)) throw notFound('目标队伍不存在');
+      next.target_team_id = tid || null;
+      break;
+    }
     case 'undo_complete':
       next.completed_at = null;
       break;
@@ -90,13 +102,13 @@ progressRoutes.post('/progress', async (c) => {
 
 function upsertProgress(episodeId: number, teamId: number, legId: number, p: any, userId: number) {
   run(
-    `INSERT INTO progress(episode_id, team_id, leg_id, arrived_at, completed_at, detour_choice, roadblock_by, ff_result, note, recorded_by, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    `INSERT INTO progress(episode_id, team_id, leg_id, arrived_at, completed_at, detour_choice, roadblock_by, ff_result, target_team_id, note, recorded_by, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
      ON CONFLICT(episode_id, team_id, leg_id) DO UPDATE SET
        arrived_at = excluded.arrived_at, completed_at = excluded.completed_at, detour_choice = excluded.detour_choice,
-       roadblock_by = excluded.roadblock_by, ff_result = excluded.ff_result, note = excluded.note,
+       roadblock_by = excluded.roadblock_by, ff_result = excluded.ff_result, target_team_id = excluded.target_team_id, note = excluded.note,
        recorded_by = excluded.recorded_by, updated_at = excluded.updated_at`,
-    episodeId, teamId, legId, p.arrived_at, p.completed_at, p.detour_choice, p.roadblock_by, p.ff_result, p.note ?? '', userId, now(),
+    episodeId, teamId, legId, p.arrived_at, p.completed_at, p.detour_choice, p.roadblock_by, p.ff_result, p.target_team_id ?? null, p.note ?? '', userId, now(),
   );
 }
 
@@ -112,6 +124,7 @@ progressRoutes.put('/progress/:episodeId/:teamId/:legId', hostOnly, async (c) =>
     detour_choice: str(b.detourChoice, 100) || null,
     roadblock_by: str(b.roadblockBy, 100) || null,
     ff_result: ['success', 'fail'].includes(b.ffResult) ? b.ffResult : null,
+    target_team_id: int(b.targetTeamId, 0) || null,
     note: str(b.note, 1000),
   };
   if (next.completed_at && !next.arrived_at) next.arrived_at = next.completed_at;
