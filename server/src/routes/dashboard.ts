@@ -6,12 +6,7 @@ import { pitstopRows } from './progress.js';
 
 export const dashboardRoutes = new Hono<Env>();
 
-const STALE_MINUTES = 30;
-export function fmtAgo(min: number): string {
-  if (min < 60) return `${min} 分钟`;
-  if (min < 1440) return `${Math.floor(min / 60)} 小时 ${min % 60} 分钟`;
-  return `${Math.floor(min / 1440)} 天 ${Math.floor((min % 1440) / 60)} 小时`;
-}
+
 
 dashboardRoutes.get('/dashboard/:episodeId', (c) => {
   const episodeId = intParam(c, 'episodeId');
@@ -46,13 +41,11 @@ dashboardRoutes.get('/dashboard/:episodeId', (c) => {
       lastActivity,
       staleMinutes: staleMin,
       finished,
-      stale: t.status === 'alive' && !finished && lastActivity !== null && staleMin! >= STALE_MINUTES,
     };
   });
 
   const alerts: { level: string; text: string; teamId?: number }[] = [];
   for (const t of teamRows) {
-    if (t.stale) alerts.push({ level: 'warning', text: `${t.name} 已 ${fmtAgo(t.staleMinutes)} 没有新记录（当前：${t.currentLeg?.name ?? '-'}）`, teamId: t.id });
     if (t.status === 'alive' && episode && episode.budget > 0 && t.currency < 0) alerts.push({ level: 'urgent', text: `${t.name} 货币余额为负（${t.currency}）`, teamId: t.id });
   }
 
