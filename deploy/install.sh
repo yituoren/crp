@@ -32,6 +32,7 @@ if [ ! -d "$APP_DIR/.git" ]; then
 fi
 
 cd "$APP_DIR"
+git config --global --add safe.directory "$APP_DIR" >/dev/null 2>&1 || true
 echo "==> 安装依赖并构建"
 npm ci
 npm run build
