@@ -89,6 +89,44 @@ episodeRoutes.delete('/episodes/:id', hostOnly, (c) => {
   return c.json({ ok: true });
 });
 
+/** 开始赛段：状态改为进行中，记录开始时间，并给每支存活队伍发放本赛段经费（只发一次） */
+episodeRoutes.post('/episodes/:id/start', hostOnly, (c) => {
+  const id = intParam(c, 'id');
+  const ep = get('SELECT * FROM episodes WHERE id = ?', id);
+  if (!ep) throw notFound('赛段不存在');
+  const user = c.get('user');
+  const t = now();
+  const issued: string[] = [];
+  tx(() => {
+    run("UPDATE episodes SET status = 'running', started_at = COALESCE(started_at, ?) WHERE id = ?", t, id);
+    if (!ep.started_at && ep.budget > 0) {
+      for (const team of all("SELECT id, name, currency FROM teams WHERE status = 'alive' ORDER BY sort, id")) {
+        const balance = team.currency + ep.budget;
+        run('UPDATE teams SET currency = ? WHERE id = ?', balance, team.id);
+        run(
+          'INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at) VALUES (?,?,?,?,?,?,?,?)',
+          id, team.id, ep.budget, balance, `${ep.code} 赛段经费`, user.id, user.displayName, t,
+        );
+        issued.push(team.name);
+      }
+    }
+  });
+  audit(user, 'start', 'episode', id, { status: ep.status, started_at: ep.started_at }, { issuedBudgetTo: issued });
+  notify('episodes'); notify('teams'); notify('ledger', id);
+  return c.json({ ok: true, issuedBudgetTo: issued, alreadyStarted: !!ep.started_at });
+});
+
+/** 结束赛段：状态改为已结束，记录结束时间 */
+episodeRoutes.post('/episodes/:id/finish', hostOnly, (c) => {
+  const id = intParam(c, 'id');
+  const ep = get('SELECT * FROM episodes WHERE id = ?', id);
+  if (!ep) throw notFound('赛段不存在');
+  run("UPDATE episodes SET status = 'finished', finished_at = COALESCE(finished_at, ?) WHERE id = ?", now(), id);
+  audit(c.get('user'), 'finish', 'episode', id, { status: ep.status });
+  notify('episodes');
+  return c.json({ ok: true });
+});
+
 function legFields(b: any, before?: any) {
   const pick = (k: string, max = 5000) => (b[k] === undefined ? (before?.[k] ?? '') : str(b[k], max));
   const type = LEG_TYPES.includes(b.type) ? b.type : (before?.type ?? 'TI');

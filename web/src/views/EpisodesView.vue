@@ -7,6 +7,7 @@ import { useUi } from '@/stores/ui';
 import { LEG_TYPES, LEG_TYPE_LABEL, LEG_TYPE_HINT, TYPE_DEFAULTS, RECORD_MODE_LABEL, type Leg, type LegType, type RecordMode } from '@/types';
 import { watch } from 'vue';
 import { fmtMoney } from '@/utils/money';
+import { fmtDateTime } from '@/utils/time';
 import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
 import Modal from '@/components/Modal.vue';
@@ -30,6 +31,26 @@ function openEpEdit() {
 }
 async function saveEp() {
   try { await api(`/episodes/${ep.value!.id}`, { method: 'PUT', body: epForm }); await race.loadEpisodes(); epEditing.value = false; ui.toast('赛段已保存'); } catch (e) { ui.error(e); }
+}
+async function startEpisode() {
+  if (!ep.value) return;
+  const alive = race.aliveTeams.length;
+  const msg = ep.value.started_at
+    ? `${ep.value.code} 之前已经开始过，经费不会重复发放，只把状态改回「进行中」。确定？`
+    : ep.value.budget > 0
+      ? `将 ${ep.value.code} 标记为进行中，并给 ${alive} 支存活队伍各发放 ${fmtMoney(ep.value.budget)} 元赛段经费（写入货币流水）。确定？`
+      : `${ep.value.code} 未设置经费，只把状态标记为进行中，不发放货币。确定？`;
+  if (!(await ui.confirm('开始赛段', msg))) return;
+  try {
+    const d = await api(`/episodes/${ep.value.id}/start`, { method: 'POST' });
+    await Promise.all([race.loadEpisodes(), race.loadTeams(), race.loadLedger()]);
+    ui.toast(d.issuedBudgetTo.length ? `赛段已开始，已向 ${d.issuedBudgetTo.length} 支队伍发放经费` : '赛段已开始');
+  } catch (e) { ui.error(e); }
+}
+async function finishEpisode() {
+  if (!ep.value) return;
+  if (!(await ui.confirm('结束赛段', `将 ${ep.value.code} 标记为已结束？不影响任何记录，之后仍可修改。`))) return;
+  try { await api(`/episodes/${ep.value.id}/finish`, { method: 'POST' }); await race.loadEpisodes(); ui.toast('赛段已结束'); } catch (e) { ui.error(e); }
 }
 async function addEpisode() {
   try { await api('/episodes', { method: 'POST', body: {} }); await race.loadEpisodes(); ui.toast('已新增赛段'); } catch (e) { ui.error(e); }
@@ -98,12 +119,19 @@ const checks = computed(() => {
       <div class="card-header">
         <span>{{ ep.code }} · {{ ep.name }} <span class="badge" :class="ep.status === 'running' ? 'badge-station' : ep.status === 'finished' ? 'badge-crew' : 'badge-info'">{{ statusLabel[ep.status] }}</span></span>
         <div v-if="auth.isHost" class="flex">
+          <button v-if="ep.status !== 'running'" class="btn btn-success btn-sm" @click="startEpisode">开始赛段</button>
+          <button v-else class="btn btn-secondary btn-sm" @click="finishEpisode">结束赛段</button>
           <button class="btn btn-outline btn-sm" @click="openEpEdit">编辑赛段</button>
           <button class="btn btn-outline btn-sm" @click="addEpisode">+ 新增赛段</button>
           <button class="btn btn-danger btn-sm" @click="deleteEpisode">删除赛段</button>
         </div>
       </div>
-      <div class="text-sm text-gray">经费：{{ ep.budget ? `${fmtMoney(ep.budget)} 元/队` : '未设置' }}</div>
+      <div class="text-sm text-gray">
+        经费：{{ ep.budget ? `${fmtMoney(ep.budget)} 元/队` : '未设置' }}
+        <template v-if="ep.started_at"> · 开始于 {{ fmtDateTime(ep.started_at) }}{{ ep.budget ? '（经费已发放）' : '' }}</template>
+        <template v-else> · 点「开始赛段」时自动发放给所有存活队伍</template>
+        <template v-if="ep.finished_at"> · 结束于 {{ fmtDateTime(ep.finished_at) }}</template>
+      </div>
       <div v-if="ep.notes" class="pre mt-1">{{ ep.notes }}</div>
     </div>
 
@@ -143,7 +171,7 @@ const checks = computed(() => {
   <Modal v-if="epEditing" title="编辑赛段" small @close="epEditing = false">
     <div class="form-group"><label>名称</label><input v-model="epForm.name" /></div>
     <div class="form-group"><label>每队经费（元，最多两位小数）</label><input v-model.number="epForm.budget" type="number" min="0" step="0.01" inputmode="decimal" /></div>
-    <div class="form-group"><label>状态</label><select v-model="epForm.status"><option value="pending">未开始</option><option value="running">进行中</option><option value="finished">已结束</option></select></div>
+    <div class="form-group"><label>状态（一般用「开始赛段 / 结束赛段」按钮切换，这里可手工修正）</label><select v-model="epForm.status"><option value="pending">未开始</option><option value="running">进行中</option><option value="finished">已结束</option></select></div>
     <div class="form-group"><label>赛段说明（所有幕后可见）</label><textarea v-model="epForm.notes" /></div>
     <div class="modal-actions"><button class="btn btn-secondary" @click="epEditing = false">取消</button><button class="btn" @click="saveEp">保存</button></div>
   </Modal>

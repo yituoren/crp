@@ -57,7 +57,7 @@ authRoutes.get('/me', authRequired, (c) => {
     user: c.get('user'),
     event: {
       name: getSetting('event_name', '城市飞奔'),
-      initialCurrency: fromCents(Number(getSetting('initial_currency', '100000'))),
+      initialCurrency: fromCents(Number(getSetting('initial_currency', '0'))),
       hosts: hostNames(),
     },
     serverTime: now(),

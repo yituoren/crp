@@ -11,7 +11,7 @@ adminRoutes.use('/admin/*', hostOnly);
 
 // ---------- 设置 ----------
 adminRoutes.get('/admin/settings', (c) =>
-  c.json({ eventName: getSetting('event_name'), initialCurrency: fromCents(Number(getSetting('initial_currency', '100000'))), hosts: getSetting('hosts') }),
+  c.json({ eventName: getSetting('event_name'), initialCurrency: fromCents(Number(getSetting('initial_currency', '0'))), hosts: getSetting('hosts') }),
 );
 adminRoutes.put('/admin/settings', async (c) => {
   const b = await body(c);

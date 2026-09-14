@@ -36,7 +36,9 @@ CREATE TABLE IF NOT EXISTS episodes (
   budget INTEGER NOT NULL DEFAULT 0,
   sort INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'pending',     -- pending | running | finished
-  notes TEXT NOT NULL DEFAULT ''
+  notes TEXT NOT NULL DEFAULT '',
+  started_at TEXT,
+  finished_at TEXT
 );
 CREATE TABLE IF NOT EXISTS legs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -166,6 +168,8 @@ if (ensureColumn('legs', 'needs_staff', 'INTEGER NOT NULL DEFAULT 1') || ensureC
   db.exec("UPDATE legs SET record_mode = 'single' WHERE type IN ('SL', 'PS')");
 }
 ensureColumn('progress', 'target_team_id', 'INTEGER');
+ensureColumn('episodes', 'started_at', 'TEXT');
+ensureColumn('episodes', 'finished_at', 'TEXT');
 
 type Param = string | number | null;
 export type Row = Record<string, any>;

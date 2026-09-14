@@ -17,7 +17,7 @@ teamRoutes.post('/teams', hostOnly, async (c) => {
   const count = get<{ n: number }>('SELECT COUNT(*) AS n FROM teams')!.n;
   let code = str(b.code, 20) || `T${count + 1}`;
   while (get('SELECT 1 FROM teams WHERE code = ?', code)) code = code + '_';
-  const currency = b.currency === undefined ? Number(getSetting('initial_currency', '100000')) : money(b.currency, '初始货币');
+  const currency = b.currency === undefined ? Number(getSetting('initial_currency', '0')) : money(b.currency, '初始货币');
   const r = run(
     'INSERT INTO teams(code, name, members, status, currency, sort) VALUES (?,?,?,?,?,?)',
     code, name, str(b.members, 200), 'alive', currency, count + 1,
@@ -54,7 +54,7 @@ teamRoutes.delete('/teams/:id', hostOnly, (c) => {
 
 /** 重置全部队伍：状态恢复存活、货币恢复初始值（不改队名） */
 teamRoutes.post('/teams/reset', hostOnly, (c) => {
-  const initial = Number(getSetting('initial_currency', '100000'));
+  const initial = Number(getSetting('initial_currency', '0'));
   tx(() => {
     run('UPDATE teams SET status = ?, currency = ?', 'alive', initial);
   });
