@@ -1,4 +1,5 @@
-export type Role = 'host' | 'crew';
+export type Role = 'admin' | 'host' | 'crew';
+export const ROLE_LABEL: Record<Role, string> = { admin: '管理员', host: '主办', crew: '幕后' };
 export interface User { id: number; username: string; displayName: string; role: Role; disabled?: number }
 export interface EventInfo { name: string; initialCurrency: number; hosts: string[] }
 

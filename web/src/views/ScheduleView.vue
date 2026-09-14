@@ -27,7 +27,8 @@ const roleLabel: Record<string, [string, string]> = { host: ['主办', 'badge-ho
 function displayRole(userId: number) {
   const a = race.assignments.find((x) => x.user_id === userId);
   if (a) return roleLabel[a.role]!;
-  return userById.value.get(userId)?.role === 'host' ? roleLabel.host! : roleLabel.crew!;
+  const r = userById.value.get(userId)?.role;
+  return r === 'host' || r === 'admin' ? roleLabel.host! : roleLabel.crew!;
 }
 function assignText(userId: number) {
   const a = race.assignments.find((x) => x.user_id === userId);
@@ -81,7 +82,7 @@ async function copyPrev() {
         <thead><tr><th style="width: 22%">幕后</th><th style="width: 12%">角色</th><th style="width: 26%">分配详情</th><th v-if="auth.isHost" style="min-width: 290px">编辑</th></tr></thead>
         <tbody>
           <tr v-for="r in form.rows" :key="r.userId">
-            <td><strong>{{ userById.get(r.userId)?.displayName }}</strong> <span v-if="userById.get(r.userId)?.role === 'host'" class="badge badge-host">主办</span></td>
+            <td><strong>{{ userById.get(r.userId)?.displayName }}</strong> <span v-if="userById.get(r.userId)?.role === 'admin'" class="badge badge-host">管理员</span><span v-else-if="userById.get(r.userId)?.role === 'host'" class="badge badge-host">主办</span></td>
             <td><span class="badge" :class="displayRole(r.userId)[1]">{{ displayRole(r.userId)[0] }}</span></td>
             <td>{{ assignText(r.userId) }}</td>
             <td v-if="auth.isHost">

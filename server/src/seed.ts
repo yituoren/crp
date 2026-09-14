@@ -11,7 +11,7 @@ export function seed() {
   for (const h of hosts) {
     run('INSERT OR IGNORE INTO access_list(username, added_by, added_at) VALUES (?,?,?)', h, 'system', now());
     // 已注册的主办名单成员保证是主办角色
-    run("UPDATE users SET role = 'host' WHERE username = ?", h);
+    run("UPDATE users SET role = 'host' WHERE username = ? AND role != 'admin'", h);
   }
 
   if (!get('SELECT 1 FROM episodes LIMIT 1')) {

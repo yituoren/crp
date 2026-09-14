@@ -32,7 +32,7 @@ async function logout() {
       <h1>🏃 {{ auth.event.name }}</h1>
       <div class="user-bar">
         <span class="sync-status" :class="ui.online ? 'online' : 'offline'">● {{ ui.online ? '实时同步中' : '连接中断' }}</span>
-        <span class="badge" :class="auth.isHost ? 'badge-host' : 'badge-crew'">{{ auth.isHost ? '主办' : '幕后' }}</span>
+        <span class="badge" :class="auth.isHost ? 'badge-host' : 'badge-crew'">{{ auth.isAdmin ? '管理员' : auth.isHost ? '主办' : '幕后' }}</span>
         <strong>{{ auth.user?.displayName }}</strong>
         <router-link to="/password" class="btn btn-outline btn-sm">改密</router-link>
         <button class="btn btn-danger btn-sm" @click="logout">退出</button>

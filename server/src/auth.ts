@@ -9,8 +9,9 @@ export interface AuthUser {
   id: number;
   username: string;
   displayName: string;
-  role: 'host' | 'crew';
+  role: 'admin' | 'host' | 'crew';
 }
+export const isHostRole = (r: string) => r === 'host' || r === 'admin';
 
 export type Env = { Variables: { user: AuthUser } };
 
@@ -56,7 +57,11 @@ export const authRequired: MiddlewareHandler<Env> = async (c, next) => {
 };
 
 export const hostOnly: MiddlewareHandler<Env> = async (c, next) => {
-  if (c.get('user').role !== 'host') return c.json({ error: '仅主办可操作' }, 403);
+  if (!isHostRole(c.get('user').role)) return c.json({ error: '仅主办可操作' }, 403);
+  await next();
+};
+export const adminOnly: MiddlewareHandler<Env> = async (c, next) => {
+  if (c.get('user').role !== 'admin') return c.json({ error: '仅管理员可操作' }, 403);
   await next();
 };
 
@@ -70,7 +75,7 @@ export function getAssignment(episodeId: number, userId: number) {
 }
 
 export function canRecordProgress(user: AuthUser, episodeId: number, teamId: number, legId: number) {
-  if (user.role === 'host') return true;
+  if (isHostRole(user.role)) return true;
   const a = getAssignment(episodeId, user.id);
   if (!a) return false;
   if (a.role === 'follow') return a.team_id === teamId;
@@ -79,13 +84,13 @@ export function canRecordProgress(user: AuthUser, episodeId: number, teamId: num
 }
 
 export function canAdjustCurrency(user: AuthUser, episodeId: number) {
-  if (user.role === 'host') return true;
+  if (isHostRole(user.role)) return true;
   const a = getAssignment(episodeId, user.id);
   return a?.role === 'station';
 }
 
 export function canUploadToLeg(user: AuthUser, episodeId: number, legId: number) {
-  if (user.role === 'host') return true;
+  if (isHostRole(user.role)) return true;
   const a = getAssignment(episodeId, user.id);
   return a?.role === 'station' && a.leg_id === legId;
 }

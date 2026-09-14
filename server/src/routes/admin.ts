@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import bcrypt from 'bcryptjs';
 import { all, get, run, tx, now, getSetting, setSetting, db } from '../db.js';
-import { hostOnly, type Env } from '../auth.js';
+import { hostOnly, adminOnly, type Env } from '../auth.js';
 import { audit, body, str, int, intParam, notify, bad, notFound } from '../util.js';
 import { importPrototype } from '../import-prototype.js';
 import { seed } from '../seed.js';
@@ -63,10 +63,12 @@ adminRoutes.put('/admin/users/:id', async (c) => {
   if (!before) throw notFound('账号不存在');
   const me = c.get('user');
   const b = await body(c);
-  const role = ['host', 'crew'].includes(b.role) ? b.role : before.role;
+  if (before.role === 'admin' && me.role !== 'admin') throw bad('管理员账号只能由管理员修改');
+  const allowedRoles = me.role === 'admin' ? ['admin', 'host', 'crew'] : ['host', 'crew'];
+  const role = allowedRoles.includes(b.role) ? b.role : before.role;
   const disabled = b.disabled === undefined ? before.disabled : b.disabled ? 1 : 0;
   const displayName = b.displayName === undefined ? before.display_name : str(b.displayName, 50) || before.display_name;
-  if (id === me.id && (role !== 'host' || disabled)) throw bad('不能降级或停用自己');
+  if (id === me.id && (role !== me.role || disabled)) throw bad('不能降级或停用自己');
   run('UPDATE users SET role = ?, disabled = ?, display_name = ? WHERE id = ?', role, disabled, displayName, id);
   audit(me, 'update', 'user', id, before, { role, disabled, displayName });
   notify('admin');
@@ -74,7 +76,9 @@ adminRoutes.put('/admin/users/:id', async (c) => {
 });
 adminRoutes.post('/admin/users/:id/reset-password', async (c) => {
   const id = intParam(c, 'id');
-  if (!get('SELECT 1 FROM users WHERE id = ?', id)) throw notFound('账号不存在');
+  const target = get('SELECT role FROM users WHERE id = ?', id);
+  if (!target) throw notFound('账号不存在');
+  if (target.role === 'admin' && c.get('user').role !== 'admin') throw bad('管理员密码只能由管理员重置');
   const { password } = await body(c);
   const pw = String(password ?? '');
   if (pw.length < 4) throw bad('密码至少 4 位');
@@ -87,6 +91,7 @@ adminRoutes.delete('/admin/users/:id', (c) => {
   if (id === c.get('user').id) throw bad('不能删除自己');
   const before = get('SELECT id, username, role FROM users WHERE id = ?', id);
   if (!before) throw notFound('账号不存在');
+  if (before.role === 'admin' && c.get('user').role !== 'admin') throw bad('管理员账号只能由管理员删除');
   run('DELETE FROM users WHERE id = ?', id);
   audit(c.get('user'), 'delete', 'user', id, before);
   notify('admin');
@@ -94,7 +99,7 @@ adminRoutes.delete('/admin/users/:id', (c) => {
 });
 
 // ---------- 审计 ----------
-adminRoutes.get('/admin/audit', (c) => {
+adminRoutes.get('/admin/audit', adminOnly, (c) => {
   const limit = Math.min(int(c.req.query('limit'), 200) || 200, 1000);
   const offset = int(c.req.query('offset'), 0);
   return c.json({ logs: all('SELECT * FROM audit_logs ORDER BY id DESC LIMIT ? OFFSET ?', limit, offset), total: get<{ n: number }>('SELECT COUNT(*) AS n FROM audit_logs')!.n });
@@ -103,7 +108,7 @@ adminRoutes.get('/admin/audit', (c) => {
 // ---------- 导出 / 导入 / 重置 ----------
 const TABLES = ['settings', 'users', 'access_list', 'episodes', 'legs', 'attachments', 'teams', 'assignments', 'progress', 'penalties', 'pitstop_results', 'currency_ledger', 'announcements', 'audit_logs'];
 
-adminRoutes.get('/admin/export', (c) => {
+adminRoutes.get('/admin/export', adminOnly, (c) => {
   const dump: Record<string, unknown> = { format: 'crp-v1', exportedAt: now() };
   for (const t of TABLES) dump[t] = all(`SELECT * FROM ${t}`);
   audit(c.get('user'), 'export', 'database');
@@ -111,7 +116,7 @@ adminRoutes.get('/admin/export', (c) => {
   return c.json(dump);
 });
 
-adminRoutes.post('/admin/import', async (c) => {
+adminRoutes.post('/admin/import', adminOnly, async (c) => {
   const data = await body(c);
   if (data.format !== 'crp-v1') throw bad('不是本系统导出的备份文件（缺少 format: crp-v1）');
   const me = c.get('user');
@@ -133,7 +138,7 @@ adminRoutes.post('/admin/import', async (c) => {
   return c.json({ ok: true });
 });
 
-adminRoutes.post('/admin/import-prototype', async (c) => {
+adminRoutes.post('/admin/import-prototype', adminOnly, async (c) => {
   const b = await body(c);
   const data = b.data ?? b;
   if (!data.episodes || !data.teams) throw bad('不是原型系统的备份文件（缺少 episodes / teams）');
@@ -143,14 +148,14 @@ adminRoutes.post('/admin/import-prototype', async (c) => {
   return c.json({ report });
 });
 
-adminRoutes.post('/admin/reset', async (c) => {
+adminRoutes.post('/admin/reset', adminOnly, async (c) => {
   const b = await body(c);
   const includeAccounts = !!b.includeAccounts;
   const me = c.get('user');
   tx(() => {
     for (const t of ['pitstop_results', 'penalties', 'progress', 'currency_ledger', 'assignments', 'attachments', 'legs', 'episodes', 'teams', 'announcements']) run(`DELETE FROM ${t}`);
     if (includeAccounts) {
-      run('DELETE FROM users WHERE id != ?', me.id);
+      run("DELETE FROM users WHERE id != ? AND role != 'admin'", me.id);
       run('DELETE FROM access_list');
     }
   });

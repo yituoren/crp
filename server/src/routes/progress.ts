@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { all, get, run, tx, now } from '../db.js';
-import { hostOnly, canRecordProgress, type Env } from '../auth.js';
+import { hostOnly, canRecordProgress, isHostRole, type Env } from '../auth.js';
 import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forbidden } from '../util.js';
 
 export const progressRoutes = new Hono<Env>();
@@ -37,8 +37,8 @@ progressRoutes.post('/progress', async (c) => {
   const team = get('SELECT * FROM teams WHERE id = ?', teamId);
   if (!team) throw notFound('队伍不存在');
   if (!canRecordProgress(user, episodeId, teamId, legId)) throw forbidden('你没有该队伍/站点的记录权限');
-  if (team.status !== 'alive' && user.role !== 'host') throw forbidden('该队伍已淘汰，只有主办可以修改记录');
-  if (['undo_arrive', 'undo_complete'].includes(action) && user.role !== 'host') throw forbidden('撤销记录仅主办可操作');
+  if (team.status !== 'alive' && !isHostRole(user.role)) throw forbidden('该队伍已淘汰，只有主办可以修改记录');
+  if (['undo_arrive', 'undo_complete'].includes(action) && !isHostRole(user.role)) throw forbidden('撤销记录仅主办可操作');
 
   const before = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, legId);
   const t = now();

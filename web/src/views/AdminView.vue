@@ -103,7 +103,7 @@ async function resetAll(includeAccounts: boolean) {
   try { await api('/admin/reset', { method: 'POST', body: { includeAccounts } }); ui.toast('已重置'); window.location.reload(); } catch (e) { ui.error(e); }
 }
 
-onMounted(() => { loadAccess(); loadUsers(); loadSettings(); loadAudit(); });
+onMounted(() => { loadAccess(); loadUsers(); loadSettings(); if (auth.isAdmin) loadAudit(); });
 </script>
 
 <template>
@@ -111,8 +111,8 @@ onMounted(() => { loadAccess(); loadUsers(); loadSettings(); loadAudit(); });
     <a href="#" :class="{ 'router-link-active': tab === 'access' }" @click.prevent="tab = 'access'">🔐 准入名单</a>
     <a href="#" :class="{ 'router-link-active': tab === 'users' }" @click.prevent="tab = 'users'">👤 账号管理</a>
     <a href="#" :class="{ 'router-link-active': tab === 'settings' }" @click.prevent="tab = 'settings'">🎛️ 赛事设置</a>
-    <a href="#" :class="{ 'router-link-active': tab === 'audit' }" @click.prevent="tab = 'audit'; loadAudit()">🧾 操作日志</a>
-    <a href="#" :class="{ 'router-link-active': tab === 'backup' }" @click.prevent="tab = 'backup'">💾 备份与重置</a>
+    <a v-if="auth.isAdmin" href="#" :class="{ 'router-link-active': tab === 'audit' }" @click.prevent="tab = 'audit'; loadAudit()">🧾 操作日志</a>
+    <a v-if="auth.isAdmin" href="#" :class="{ 'router-link-active': tab === 'backup' }" @click.prevent="tab = 'backup'">💾 备份与重置</a>
   </div>
 
   <div v-if="tab === 'access'" class="card">
@@ -138,19 +138,27 @@ onMounted(() => { loadAccess(); loadUsers(); loadSettings(); loadAudit(); });
         <tbody>
           <tr v-for="u in users" :key="u.id">
             <td><strong>{{ u.username }}</strong><span v-if="u.id === auth.user?.id" class="text-xs text-gray">（我）</span></td>
-            <td><select class="input-sm input-inline" :value="u.role" :disabled="u.id === auth.user?.id" @change="setRole(u, ($event.target as HTMLSelectElement).value)"><option value="crew">幕后</option><option value="host">主办</option></select></td>
+            <td>
+              <span v-if="u.role === 'admin' && !auth.isAdmin" class="badge badge-host">管理员</span>
+              <select v-else class="input-sm input-inline" :value="u.role" :disabled="u.id === auth.user?.id" @change="setRole(u, ($event.target as HTMLSelectElement).value)">
+                <option value="crew">幕后</option><option value="host">主办</option><option v-if="auth.isAdmin" value="admin">管理员</option>
+              </select>
+            </td>
             <td><span :class="u.disabled ? 'status-eliminated' : 'status-alive'">{{ u.disabled ? '已停用' : '正常' }}</span></td>
             <td>{{ fmtDateTime(u.created_at) }}</td>
             <td class="flex" style="gap: 6px">
-              <button class="btn btn-outline btn-sm" @click="resetPassword(u)">重置密码</button>
-              <button v-if="u.id !== auth.user?.id" class="btn btn-outline btn-sm" @click="toggleDisabled(u)">{{ u.disabled ? '启用' : '停用' }}</button>
-              <button v-if="u.id !== auth.user?.id" class="btn btn-danger btn-sm" @click="deleteUser(u)">删除</button>
+              <template v-if="u.role !== 'admin' || auth.isAdmin">
+                <button class="btn btn-outline btn-sm" @click="resetPassword(u)">重置密码</button>
+                <button v-if="u.id !== auth.user?.id" class="btn btn-outline btn-sm" @click="toggleDisabled(u)">{{ u.disabled ? '启用' : '停用' }}</button>
+                <button v-if="u.id !== auth.user?.id" class="btn btn-danger btn-sm" @click="deleteUser(u)">删除</button>
+              </template>
+              <span v-else class="text-xs text-gray">仅管理员可操作</span>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
-    <p class="info-text">密码经过加密存储，无法查看；忘记密码只能重置。</p>
+    <p class="info-text">密码经过加密存储，无法查看；忘记密码只能重置。管理员账号在服务器上用 create-admin 命令创建，操作日志与备份/重置仅管理员可见。</p>
   </div>
 
   <div v-if="tab === 'settings'" class="card" style="max-width: 520px">

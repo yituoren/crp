@@ -7,7 +7,8 @@ export const useAuth = defineStore('auth', () => {
   const user = ref<User | null>(null);
   const event = ref<EventInfo>({ name: '城市飞奔', initialCurrency: 1000, hosts: [] });
   const ready = ref(false);
-  const isHost = computed(() => user.value?.role === 'host');
+  const isHost = computed(() => user.value?.role === 'host' || user.value?.role === 'admin');
+  const isAdmin = computed(() => user.value?.role === 'admin');
 
   async function fetchMe() {
     try {
@@ -34,5 +35,5 @@ export const useAuth = defineStore('auth', () => {
     try { await api('/auth/logout', { method: 'POST' }); } catch { /* ignore */ }
     user.value = null;
   }
-  return { user, event, ready, isHost, fetchMe, login, register, logout };
+  return { user, event, ready, isHost, isAdmin, fetchMe, login, register, logout };
 });
