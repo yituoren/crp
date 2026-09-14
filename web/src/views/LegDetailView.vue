@@ -122,9 +122,9 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
         <div class="edit-col">
           <div class="edit-section edit-section-fill">
             <div class="edit-section-title">文字内容</div>
-            <div class="form-group"><label>环节说明<span class="text-gray">（任务内容、流程，所有幕后可见）</span></label><textarea v-model="form.description" class="ta-md" /></div>
-            <div class="form-group"><label>线索原文<span class="text-gray">（发给选手的内容）</span></label><textarea v-model="form.clue_text" class="ta-md" /></div>
-            <div class="form-group" style="margin-bottom: 0"><label>判定标准<span class="text-gray">（站点人员看）</span></label><textarea v-model="form.judge_criteria" class="ta-md" /></div>
+            <div class="form-group ta-group"><label>环节说明<span class="text-gray">（任务内容、流程，所有幕后可见）</span></label><textarea v-model="form.description" class="ta-md" /></div>
+            <div class="form-group ta-group"><label>线索原文<span class="text-gray">（发给选手的内容）</span></label><textarea v-model="form.clue_text" class="ta-md" /></div>
+            <div class="form-group ta-group" style="margin-bottom: 0"><label>判定标准<span class="text-gray">（站点人员看）</span></label><textarea v-model="form.judge_criteria" class="ta-md" /></div>
           </div>
         </div>
       </div>

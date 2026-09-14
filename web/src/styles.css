@@ -179,11 +179,14 @@ textarea { min-height: 90px; resize: vertical; }
 .leg-edit .edit-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 20px; align-items: stretch; }
 .leg-edit .edit-col { display: flex; flex-direction: column; gap: 14px; }
 .leg-edit .edit-section { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 14px 16px 4px; }
-.leg-edit .edit-section-fill { flex: 1; }
+.leg-edit .edit-col > .edit-section:last-child { flex: 1; }
+.leg-edit .edit-section-fill { display: flex; flex-direction: column; padding-bottom: 14px; }
+.leg-edit .ta-group { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.leg-edit .ta-group textarea { flex: 1; }
 .leg-edit .edit-section-title { font-weight: 700; font-size: 13px; color: var(--gray-600); margin-bottom: 10px; letter-spacing: .3px; }
 .leg-edit .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .leg-edit .edit-hint { margin: -4px 0 12px; }
 .leg-edit .form-group label .text-gray { font-weight: 400; margin-left: 4px; }
-.leg-edit .ta-md { min-height: 120px; }
+.leg-edit .ta-md { min-height: 96px; resize: none; }
 .leg-edit .form-group { margin-bottom: 12px; }
 @media (max-width: 900px) { .leg-edit .edit-grid { grid-template-columns: 1fr; } }
