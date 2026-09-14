@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { api } from '@/api';
 import { useAuth } from './auth';
+import { useUi } from './ui';
 import type { Announcement, Assignment, Episode, LedgerEntry, Penalty, PitstopRow, Progress, Team, User } from '@/types';
 
 const EP_KEY = 'crp.currentEpisodeId';
@@ -65,9 +66,22 @@ export const useRace = defineStore('race', () => {
     return auth.isHost || (myAssignment.value?.role === 'station' && myAssignment.value.leg_id === legId);
   }
 
+  let lastRunningId: number | null = null;
   async function loadEpisodes() {
     episodes.value = (await api('/episodes')).episodes;
-    if (!episodes.value.some((e) => e.id === currentEpisodeId.value) && episodes.value[0]) selectEpisode(episodes.value[0].id);
+    const running = episodes.value.find((e) => e.status === 'running') ?? null;
+    if (!loaded.value) {
+      // 首次加载：优先选进行中的赛段，其次沿用上次选择，最后选第一个
+      if (running) selectEpisode(running.id);
+      else if (!episodes.value.some((e) => e.id === currentEpisodeId.value) && episodes.value[0]) selectEpisode(episodes.value[0].id);
+    } else if (running && running.id !== lastRunningId && running.id !== currentEpisodeId.value) {
+      // 主办开始了新赛段：所有在线页面自动跟过去
+      selectEpisode(running.id);
+      useUi().toast(`${running.code} 已开始，已自动切换到该赛段`, 'info');
+    } else if (!episodes.value.some((e) => e.id === currentEpisodeId.value) && episodes.value[0]) {
+      selectEpisode(episodes.value[0].id);
+    }
+    lastRunningId = running?.id ?? null;
   }
   async function loadTeams() { teams.value = (await api('/teams')).teams; }
   async function loadUsers() { users.value = (await api('/auth/users')).users; }
