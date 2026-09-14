@@ -123,8 +123,8 @@ onMounted(() => { loadAccess(); loadUsers(); loadSettings(); if (auth.isAdmin) l
     </div>
     <div class="grid grid-4">
       <div v-for="a in accessList" :key="a.username" class="flex-between" style="padding: 8px 12px; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 8px">
-        <span><strong>{{ a.username }}</strong> <span v-if="a.user_id" class="badge" :class="a.role === 'host' ? 'badge-host' : 'badge-crew'">{{ a.role === 'host' ? '主办' : '已注册' }}</span><span v-else class="text-xs text-gray">未注册</span></span>
-        <span v-if="hosts.includes(a.username)" class="text-xs text-gray">主办</span>
+        <span><strong>{{ a.username }}</strong> <span v-if="a.user_id" class="badge" :class="a.role === 'host' || a.role === 'admin' ? 'badge-host' : 'badge-crew'">{{ a.role === 'admin' ? '管理员' : a.role === 'host' ? '主办' : '已注册' }}</span><span v-else class="text-xs text-gray">未注册</span></span>
+        <span v-if="hosts.includes(a.username) || a.role === 'admin'" class="text-xs text-gray">{{ a.role === 'admin' ? '管理员' : '主办' }}</span>
         <button v-else class="btn btn-outline btn-sm" @click="removeAccess(a.username)">移除</button>
       </div>
     </div>
