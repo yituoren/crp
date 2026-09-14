@@ -30,7 +30,7 @@ p { margin: 0 0 8px; }
 .btn-slot { min-width: 92px; }
 
 /* 卡片、布局 */
-.container { max-width: 1200px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; }
+.container { max-width: 1200px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; flex: 1; min-width: 0; width: 100%; }
 .container-fixed { height: 100vh; height: 100dvh; overflow: hidden; }
 .page-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .fill-page { flex: 1; display: flex; flex-direction: column; min-height: 0; }
@@ -190,3 +190,31 @@ textarea { min-height: 90px; resize: vertical; }
 .leg-edit .ta-md { min-height: 96px; resize: none; }
 .leg-edit .form-group { margin-bottom: 12px; }
 @media (max-width: 900px) { .leg-edit .edit-grid { grid-template-columns: 1fr; } }
+
+/* ---------- 进度矩阵面板 ---------- */
+.app-shell { display: flex; align-items: flex-start; min-height: 100vh; }
+.matrix-panel { flex: none; width: 360px; position: sticky; top: 0; height: 100vh; height: 100dvh; overflow: auto; background: #fff; border-right: 1px solid var(--gray-200); padding: 12px; }
+.matrix-panel-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.matrix-close, .matrix-handle, .matrix-backdrop { display: none; }
+.matrix-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.matrix-scroll { overflow-x: auto; }
+.mx-table { border-collapse: collapse; font-size: 11px; width: 100%; }
+.mx-table th, .mx-table td { border: 1px solid var(--gray-200); padding: 3px 4px; text-align: center; white-space: nowrap; }
+.mx-table th { background: var(--gray-50); font-weight: 600; vertical-align: bottom; }
+.mx-team { text-align: left !important; position: sticky; left: 0; background: #fff; min-width: 40px; }
+.mx-tag { font-size: 10px; padding: 1px 4px; }
+.mx-count { font-size: 10px; color: var(--gray-400); font-weight: 400; margin-top: 2px; }
+.mx-cell { min-width: 40px; font-family: ui-monospace, Menlo, monospace; }
+.mx-done { background: #dcfce7; color: #166534; }
+.mx-arrived { background: #fef9c3; color: #854d0e; }
+.mx-empty { color: var(--gray-300); }
+.mx-dead { opacity: .45; }
+@media (max-width: 1000px) {
+  .matrix-panel { position: fixed; top: 0; right: 0; bottom: 0; left: auto; height: 100vh; height: 100dvh; width: min(92vw, 420px); border-right: none; border-left: 1px solid var(--gray-200); box-shadow: -8px 0 24px rgba(15,23,42,.18); transform: translateX(100%); transition: transform .22s ease; z-index: 150; }
+  .matrix-panel.open { transform: none; }
+  .matrix-close { display: inline-flex; }
+  .matrix-backdrop { display: block; position: fixed; inset: 0; background: rgba(15,23,42,.35); opacity: 0; pointer-events: none; transition: opacity .22s; z-index: 149; }
+  .matrix-backdrop.open { opacity: 1; pointer-events: auto; }
+  .matrix-handle { display: block; position: fixed; right: 0; top: 42%; z-index: 148; writing-mode: vertical-rl; padding: 12px 6px; background: var(--primary); color: #fff; border: none; border-radius: 8px 0 0 8px; font-size: 13px; letter-spacing: 2px; box-shadow: -2px 0 8px rgba(0,0,0,.15); cursor: pointer; }
+  .matrix-handle.open { display: none; }
+}

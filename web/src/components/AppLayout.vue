@@ -7,6 +7,26 @@ import { useUi } from '@/stores/ui';
 import { connectRealtime, disconnectRealtime } from '@/realtime';
 import { setUnauthorizedHandler } from '@/api';
 import { moneyLabel } from '@/utils/money';
+import ProgressMatrix from './ProgressMatrix.vue';
+import { ref } from 'vue';
+
+// 手机端：进度矩阵做成从右侧拉出的抽屉
+const matrixOpen = ref(false);
+let touchStartX = 0, touchStartY = 0, tracking = false;
+function onTouchStart(e: TouchEvent) {
+  const t = e.touches[0]; if (!t) return;
+  touchStartX = t.clientX; touchStartY = t.clientY;
+  tracking = matrixOpen.value || t.clientX > window.innerWidth - 28; // 从右边缘起手才算拉出
+}
+function onTouchEnd(e: TouchEvent) {
+  if (!tracking) return;
+  tracking = false;
+  const t = e.changedTouches[0]; if (!t) return;
+  const dx = t.clientX - touchStartX, dy = Math.abs(t.clientY - touchStartY);
+  if (dy > 80) return;
+  if (!matrixOpen.value && dx < -50) matrixOpen.value = true;
+  else if (matrixOpen.value && dx > 60) matrixOpen.value = false;
+}
 
 const auth = useAuth();
 const race = useRace();
@@ -15,10 +35,16 @@ const router = useRouter();
 
 onMounted(async () => {
   setUnauthorizedHandler(() => { auth.user = null; router.replace('/login'); });
+  document.addEventListener('touchstart', onTouchStart, { passive: true });
+  document.addEventListener('touchend', onTouchEnd, { passive: true });
   try { await race.loadAll(); } catch (e) { ui.error(e); }
   connectRealtime();
 });
-onUnmounted(() => disconnectRealtime());
+onUnmounted(() => {
+  disconnectRealtime();
+  document.removeEventListener('touchstart', onTouchStart);
+  document.removeEventListener('touchend', onTouchEnd);
+});
 
 async function logout() {
   disconnectRealtime();
@@ -28,6 +54,18 @@ async function logout() {
 </script>
 
 <template>
+  <div class="app-shell">
+    <!-- 进度矩阵：电脑端固定在左侧，手机端为右侧抽屉 -->
+    <div class="matrix-backdrop" :class="{ open: matrixOpen }" @click="matrixOpen = false"></div>
+    <aside class="matrix-panel" :class="{ open: matrixOpen }">
+      <div class="matrix-panel-top">
+        <span class="text-sm text-gray">实时进度（所有人可见）</span>
+        <button class="btn btn-outline btn-sm matrix-close" @click="matrixOpen = false">收起</button>
+      </div>
+      <ProgressMatrix v-if="race.loaded" />
+    </aside>
+    <button class="matrix-handle" :class="{ open: matrixOpen }" @click="matrixOpen = !matrixOpen">进度</button>
+
   <div class="container" :class="{ 'container-fixed': $route.meta.fillPage }">
     <div class="page-header">
       <h1>{{ auth.event.name }}</h1>
@@ -54,5 +92,6 @@ async function logout() {
       <router-view v-if="race.loaded" />
       <div v-else class="empty-state">加载中…</div>
     </div>
+  </div>
   </div>
 </template>
