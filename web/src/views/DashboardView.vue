@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { api } from '@/api';
 import { useRace } from '@/stores/race';
-import { fmtTime, fmtDateTime } from '@/utils/time';
+import { fmtTime, fmtDateTime, fmtAgo } from '@/utils/time';
 import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
 import TeamStatus from '@/components/TeamStatus.vue';
@@ -56,7 +56,7 @@ const legCompletion = (legId: number) => {
                   <template v-else-if="t.currentLeg"><LegTag :type="t.currentLeg.type" /> {{ t.currentLeg.name }} <span class="text-xs text-gray">{{ t.currentLeg.completed ? '已完成' : '进行中' }}</span></template>
                   <span v-else class="text-gray">未出发</span>
                 </td>
-                <td><span class="record-time">{{ fmtTime(t.lastActivity) }}</span> <span v-if="t.staleMinutes !== null" class="text-xs" :class="t.stale ? 'text-danger' : 'text-gray'">{{ t.staleMinutes }} 分钟前</span></td>
+                <td><span class="record-time">{{ fmtTime(t.lastActivity) }}</span> <span v-if="t.staleMinutes !== null" class="text-xs" :class="t.stale ? 'text-danger' : 'text-gray'">{{ fmtAgo(t.staleMinutes) }}</span></td>
                 <td>💰 {{ t.currency }}</td>
               </tr>
             </tbody>

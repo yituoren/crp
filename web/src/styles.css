@@ -127,6 +127,10 @@ textarea { min-height: 90px; resize: vertical; }
 .nav::-webkit-scrollbar { display: none; }
 .nav a { flex: 0 0 auto; padding: 8px 14px; border-radius: 8px; background: #fff; border: 1px solid var(--gray-200); color: var(--gray-700); font-weight: 600; font-size: 13px; }
 .nav a.router-link-active { background: var(--primary); color: #fff; border-color: var(--primary); }
+@media (max-width: 640px) { .nav { flex-wrap: wrap; overflow: visible; } }
+.grid-stat { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 760px) { .grid-stat { grid-template-columns: repeat(2, 1fr); } }
+.stat-num { font-size: 22px; font-weight: 800; }
 
 /* 登录 */
 .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }

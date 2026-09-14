@@ -78,25 +78,26 @@ async function copyPrev() {
     <div v-if="!race.users.length" class="empty-state">暂无注册幕后</div>
     <div v-else class="scroll-table">
       <table class="table">
-        <thead><tr><th>幕后</th><th>角色</th><th>分配详情</th><th v-if="auth.isHost">编辑</th></tr></thead>
+        <thead><tr><th style="width: 22%">幕后</th><th style="width: 12%">角色</th><th style="width: 26%">分配详情</th><th v-if="auth.isHost" style="min-width: 290px">编辑</th></tr></thead>
         <tbody>
           <tr v-for="r in form.rows" :key="r.userId">
             <td><strong>{{ userById.get(r.userId)?.displayName }}</strong> <span v-if="userById.get(r.userId)?.role === 'host'" class="badge badge-host">主办</span></td>
             <td><span class="badge" :class="displayRole(r.userId)[1]">{{ displayRole(r.userId)[0] }}</span></td>
             <td>{{ assignText(r.userId) }}</td>
             <td v-if="auth.isHost">
-              <div class="flex" style="gap: 6px">
-                <select v-model="r.role" class="input-sm input-inline" style="width: 90px">
+              <div class="flex" style="gap: 6px; flex-wrap: nowrap">
+                <select v-model="r.role" class="input-sm input-inline" style="width: 90px; flex: none">
                   <option value="crew">机动</option><option value="follow">跟队</option><option value="station">站点</option>
                 </select>
-                <select v-if="r.role === 'follow'" v-model="r.teamId" class="input-sm input-inline" style="width: 130px">
+                <select v-if="r.role === 'follow'" v-model="r.teamId" class="input-sm input-inline" style="width: 180px; flex: none">
                   <option value="">选择队伍</option>
                   <option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.name }}{{ t.status !== 'alive' ? '（已淘汰）' : '' }}</option>
                 </select>
-                <select v-if="r.role === 'station'" v-model="r.legId" class="input-sm input-inline" style="width: 160px">
+                <select v-else-if="r.role === 'station'" v-model="r.legId" class="input-sm input-inline" style="width: 180px; flex: none">
                   <option value="">选择环节</option>
                   <option v-for="l in ep?.legs ?? []" :key="l.id" :value="l.id">{{ l.type }} · {{ l.name }}</option>
                 </select>
+                <span v-else class="text-xs text-gray" style="width: 180px; flex: none">无需分配</span>
               </div>
             </td>
           </tr>

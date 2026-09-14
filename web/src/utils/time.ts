@@ -40,3 +40,9 @@ export function fmtDuration(a?: string | null, b?: string | null): string {
   if (m < 60) return `${m} 分钟`;
   return `${Math.floor(m / 60)} 小时 ${m % 60} 分`;
 }
+export function fmtAgo(min?: number | null): string {
+  if (min === null || min === undefined) return '';
+  if (min < 60) return `${min} 分钟前`;
+  if (min < 1440) return `${Math.floor(min / 60)} 小时 ${min % 60} 分前`;
+  return `${Math.floor(min / 1440)} 天 ${Math.floor((min % 1440) / 60)} 小时前`;
+}

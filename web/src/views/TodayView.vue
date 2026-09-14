@@ -73,11 +73,11 @@ const levelLabel: Record<string, string> = { info: '通知', warning: '注意', 
   <div class="card">
     <div class="card-header">🎯 我在 {{ ep?.code }} 的分工</div>
     <template v-if="auth.isHost">
-      <div class="grid grid-4">
-        <div class="team-card"><div class="text-gray text-sm">存活队伍</div><div class="currency-box" style="color: var(--success)">{{ stats.alive }}<span class="text-gray text-sm"> / {{ stats.total }}</span></div></div>
-        <div class="team-card"><div class="text-gray text-sm">本赛段环节</div><div class="currency-box" style="color: var(--primary)">{{ stats.legs }}</div></div>
-        <div class="team-card"><div class="text-gray text-sm">已排班幕后</div><div class="currency-box" style="color: var(--primary)">{{ stats.staffed }}</div></div>
-        <div class="team-card"><div class="text-gray text-sm">已到终点</div><div class="currency-box" style="color: #db2777">{{ stats.finished }}</div></div>
+      <div class="grid grid-stat">
+        <div class="team-card"><div class="text-gray text-sm">存活队伍</div><div class="stat-num" style="color: var(--success)">{{ stats.alive }}<span class="text-gray text-sm"> / {{ stats.total }}</span></div></div>
+        <div class="team-card"><div class="text-gray text-sm">本赛段环节</div><div class="stat-num" style="color: var(--primary)">{{ stats.legs }}</div></div>
+        <div class="team-card"><div class="text-gray text-sm">已排班幕后</div><div class="stat-num" style="color: var(--primary)">{{ stats.staffed }}</div></div>
+        <div class="team-card"><div class="text-gray text-sm">已到终点</div><div class="stat-num" style="color: #db2777">{{ stats.finished }}</div></div>
       </div>
       <div class="flex mt-2">
         <router-link to="/dashboard" class="btn">📺 打开实时大屏</router-link>
@@ -90,7 +90,7 @@ const levelLabel: Record<string, string> = { info: '通知', warning: '注意', 
       <p><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.name }}</strong>（{{ myTeam.members || '成员未填写' }}），当前余额 <strong class="text-warning">💰 {{ myTeam.currency }}</strong></p>
       <div class="scroll-table">
         <table class="table">
-          <thead><tr><th>环节</th><th>状态</th><th>到达</th><th>完成</th><th>操作</th></tr></thead>
+          <thead><tr><th>环节</th><th>状态</th><th>到达</th><th>完成</th><th style="min-width: 110px">操作</th></tr></thead>
           <tbody>
             <tr v-for="{ leg, p } in legRows" :key="leg.id">
               <td><LegTag :type="leg.type" /> <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: leg.id } }">{{ leg.name }}</router-link></td>

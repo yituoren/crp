@@ -35,7 +35,7 @@ function detourOptions(): string[] {
           <th v-if="leg.type === 'DT'">绕道选择</th>
           <th v-if="leg.type === 'RB'">路障完成人</th>
           <th v-if="leg.type === 'FO'">快进结果</th>
-          <th>操作</th>
+          <th style="min-width: 150px">操作</th>
         </tr>
       </thead>
       <tbody>
@@ -62,7 +62,7 @@ function detourOptions(): string[] {
             <span v-else>{{ p?.ff_result === 'success' ? '成功' : p?.ff_result === 'fail' ? '失败' : '-' }}</span>
           </td>
           <td>
-            <div class="flex" style="gap: 6px">
+            <div class="flex" style="gap: 6px; flex-wrap: nowrap">
               <template v-if="can">
                 <button v-if="!p?.arrived_at" class="btn btn-sm" @click="rec.arrive(team.id, leg.id)">记录到达</button>
                 <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm" @click="rec.complete(team.id, leg.id)">记录完成</button>
