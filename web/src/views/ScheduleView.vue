@@ -23,12 +23,12 @@ function rebuild() {
 watch(() => [race.assignments, race.users, ep.value?.id], rebuild, { immediate: true, deep: true });
 
 const userById = computed(() => new Map(race.users.map((u) => [u.id, u])));
-const roleLabel: Record<string, [string, string]> = { host: ['主办', 'badge-host'], follow: ['跟队', 'badge-follow'], station: ['站点', 'badge-station'], crew: ['机动', 'badge-crew'] };
+const roleLabel: Record<string, [string, string]> = { admin: ['管理员', 'badge-host'], host: ['主办', 'badge-host'], follow: ['跟队', 'badge-follow'], station: ['站点', 'badge-station'], crew: ['机动', 'badge-crew'] };
 function displayRole(userId: number) {
   const a = race.assignments.find((x) => x.user_id === userId);
   if (a) return roleLabel[a.role]!;
   const r = userById.value.get(userId)?.role;
-  return r === 'host' || r === 'admin' ? roleLabel.host! : roleLabel.crew!;
+  return r === 'admin' ? roleLabel.admin! : r === 'host' ? roleLabel.host! : roleLabel.crew!;
 }
 function assignText(userId: number) {
   const a = race.assignments.find((x) => x.user_id === userId);
@@ -72,7 +72,7 @@ async function copyPrev() {
     <div class="card-header">
       <span>📅 {{ ep?.code }} 排班表</span>
       <div v-if="auth.isHost" class="flex">
-        <button class="btn btn-outline btn-sm" @click="copyPrev">复制上一赛段跟队</button>
+        <button class="btn btn-outline" @click="copyPrev">复制上一赛段跟队</button>
         <button class="btn" @click="save">💾 保存排班</button>
       </div>
     </div>

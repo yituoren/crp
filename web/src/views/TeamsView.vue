@@ -47,7 +47,7 @@ async function resetAll() {
     <div class="section-title">👥 队伍列表（共 {{ race.teams.length }} 支，存活 {{ race.aliveTeams.length }}）</div>
     <div v-if="auth.isHost" class="flex">
       <button class="btn" @click="open('new')">+ 新增队伍</button>
-      <button class="btn btn-outline btn-sm" @click="resetAll">🔄 重置队伍数据</button>
+      <button class="btn btn-outline" @click="resetAll">🔄 重置队伍数据</button>
     </div>
   </div>
   <div class="grid grid-4">
