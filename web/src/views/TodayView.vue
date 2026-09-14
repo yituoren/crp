@@ -70,12 +70,12 @@ const stats = computed(() => ({
               <td><span class="record-time">{{ fmtTime(p?.completed_at) }}</span></td>
               <td>
                 <template v-if="single">
-                  <button v-if="!p?.completed_at" class="btn btn-sm" :disabled="!!block" :title="block ?? ''" @click="rec.single(myTeam!.id, leg.id, label)">记录{{ label }}</button>
+                  <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.single(myTeam!.id, leg.id, label)">记录{{ label }}</button>
                   <span v-else class="text-success">✔</span>
                 </template>
                 <template v-else>
-                  <button v-if="!p?.arrived_at" class="btn btn-sm" :disabled="!!block" :title="block ?? ''" @click="rec.arrive(myTeam!.id, leg.id)">记录到达</button>
-                  <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm" @click="rec.complete(myTeam!.id, leg.id)">记录完成</button>
+                  <button v-if="!p?.arrived_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.arrive(myTeam!.id, leg.id)">记录到达</button>
+                  <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm btn-slot" @click="rec.complete(myTeam!.id, leg.id)">记录完成</button>
                   <span v-else class="text-success">✔</span>
                 </template>
                 <div v-if="block && !p?.arrived_at" class="text-xs text-gray">{{ block }}</div>

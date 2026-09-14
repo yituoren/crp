@@ -26,6 +26,8 @@ p { margin: 0 0 8px; }
 .btn-sm { padding: 5px 10px; font-size: 12px; min-height: 28px; }
 .btn-lg { padding: 14px 20px; font-size: 16px; min-height: 48px; }
 .btn-block { width: 100%; }
+/* 同一位置先后出现的按钮统一宽度，避免文字长短不同导致跳动 */
+.btn-slot { min-width: 92px; }
 
 /* 卡片、布局 */
 .container { max-width: 1200px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; }

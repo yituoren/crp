@@ -82,18 +82,18 @@ function detourOptions(): string[] {
           <td>
             <div class="flex" style="gap: 6px; flex-wrap: nowrap">
               <template v-if="can && isSingle">
-                <button v-if="!p?.completed_at" class="btn btn-sm" :disabled="!!block" :title="block ?? ''" @click="rec.single(team.id, leg.id, label)">记录{{ label }}</button>
-                <button v-else-if="auth.isHost" class="btn btn-outline btn-sm" @click="editing = { team, progress: p }">修改</button>
+                <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.single(team.id, leg.id, label)">记录{{ label }}</button>
+                <button v-else-if="auth.isHost" class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改时间</button>
                 <span v-else class="text-success text-sm">✔</span>
               </template>
               <template v-else-if="can">
-                <button v-if="!p?.arrived_at" class="btn btn-sm" :disabled="!!block" :title="block ?? ''" @click="rec.arrive(team.id, leg.id)">记录到达</button>
-                <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm" @click="rec.complete(team.id, leg.id)">{{ leg.type === 'Shuffle' ? '记录出发' : '记录完成' }}</button>
-                <button v-else-if="auth.isHost" class="btn btn-outline btn-sm" @click="editing = { team, progress: p }">修改</button>
+                <button v-if="!p?.arrived_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.arrive(team.id, leg.id)">记录到达</button>
+                <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm btn-slot" @click="rec.complete(team.id, leg.id)">{{ leg.type === 'Shuffle' ? '记录出发' : '记录完成' }}</button>
+                <button v-else-if="auth.isHost" class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改时间</button>
                 <span v-else class="text-success text-sm">✔</span>
               </template>
               <template v-else-if="auth.isHost && p?.completed_at">
-                <button class="btn btn-outline btn-sm" @click="editing = { team, progress: p }">修改</button>
+                <button class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改时间</button>
               </template>
               <span v-if="can && block && !p?.arrived_at" class="text-xs text-gray">{{ block }}</span>
             </div>
