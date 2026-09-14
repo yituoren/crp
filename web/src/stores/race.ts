@@ -79,6 +79,15 @@ export const useRace = defineStore('race', () => {
   async function loadTeams() { teams.value = (await api('/teams')).teams; }
   async function loadUsers() { users.value = (await api('/auth/users')).users; }
   async function loadAnnouncements() { announcements.value = (await api('/announcements')).announcements; }
+  // 未读公告：按账号在本机记录最后已读的公告 id
+  const readKey = () => `crp.annRead.${auth.user?.id ?? 0}`;
+  const lastReadId = ref<number>(0);
+  function loadReadMark() { lastReadId.value = Number(localStorage.getItem(readKey()) ?? 0) || 0; }
+  const unreadAnnouncements = computed(() => announcements.value.filter((a) => a.id > lastReadId.value).length);
+  function markAnnouncementsRead() {
+    const max = Math.max(0, ...announcements.value.map((a) => a.id));
+    if (max > lastReadId.value) { lastReadId.value = max; localStorage.setItem(readKey(), String(max)); }
+  }
   async function loadAssignments() {
     if (!currentEpisode.value) return;
     assignments.value = (await api(`/episodes/${currentEpisode.value.id}/assignments`)).assignments;
@@ -96,6 +105,7 @@ export const useRace = defineStore('race', () => {
     await Promise.all([loadAssignments(), loadProgress(), loadLedger()]);
   }
   async function loadAll() {
+    loadReadMark();
     await Promise.all([loadEpisodes(), loadTeams(), loadUsers(), loadAnnouncements()]);
     await loadEpisodeScoped();
     loaded.value = true;
@@ -122,7 +132,7 @@ export const useRace = defineStore('race', () => {
   }
 
   return {
-    episodes, teams, users, announcements, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
+    episodes, teams, users, announcements, unreadAnnouncements, markAnnouncementsRead, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
     aliveTeams, myAssignment, teamById, legById, progressOf, canRecord, canAdjustCurrency, canAdjustCurrencyFor, canUploadTo, blockReason,
     loadAll, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
   };

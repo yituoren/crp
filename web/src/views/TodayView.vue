@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { computed, reactive } from 'vue';
-import { api } from '@/api';
+import { computed } from 'vue';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
-import { useUi } from '@/stores/ui';
 import { useRecord } from '@/composables/record';
-import { fmtTime, fmtDateTime } from '@/utils/time';
+import { fmtTime } from '@/utils/time';
 import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
 import RecordTable from '@/components/RecordTable.vue';
@@ -14,7 +12,6 @@ import { fmtMoney } from '@/utils/money';
 
 const auth = useAuth();
 const race = useRace();
-const ui = useUi();
 const rec = useRecord();
 
 const ep = computed(() => race.currentEpisode);
@@ -34,42 +31,10 @@ const stats = computed(() => ({
   finished: ep.value ? race.teams.filter((t) => ep.value!.legs.some((l) => l.type === 'PS' && race.progressOf(t.id, l.id)?.completed_at)).length : 0,
 }));
 
-const annForm = reactive({ content: '', level: 'info' });
-async function postAnnouncement() {
-  if (!annForm.content.trim()) return;
-  try {
-    await api('/announcements', { method: 'POST', body: annForm });
-    annForm.content = '';
-    await race.loadAnnouncements();
-    ui.toast('公告已发布');
-  } catch (e) { ui.error(e); }
-}
-async function removeAnnouncement(id: number) {
-  if (!(await ui.confirm('删除公告', '确定删除这条公告？', { danger: true }))) return;
-  try { await api(`/announcements/${id}`, { method: 'DELETE' }); await race.loadAnnouncements(); } catch (e) { ui.error(e); }
-}
-const levelLabel: Record<string, string> = { info: '通知', warning: '注意', urgent: '紧急' };
 </script>
 
 <template>
   <EpSelector />
-
-  <!-- 公告 -->
-  <div class="card">
-    <div class="card-header">公告</div>
-    <div v-if="auth.isHost" class="flex mb-2" style="align-items: stretch">
-      <input v-model="annForm.content" placeholder="发布一条公告给所有幕后…" style="flex: 1; min-width: 200px" @keyup.enter="postAnnouncement" />
-      <select v-model="annForm.level" class="input-inline" style="width: 90px"><option value="info">通知</option><option value="warning">注意</option><option value="urgent">紧急</option></select>
-      <button class="btn" @click="postAnnouncement">发布</button>
-    </div>
-    <div v-if="!race.announcements.length" class="text-gray text-sm">暂无公告</div>
-    <div v-for="a in race.announcements.slice(0, 5)" :key="a.id" class="alert" :class="'alert-' + a.level">
-      <div class="flex-between">
-        <span class="pre"><span class="badge" :class="'badge-' + a.level">{{ levelLabel[a.level] }}</span> {{ a.content }}</span>
-        <span class="text-xs text-gray">{{ a.created_by }} · {{ fmtDateTime(a.created_at) }} <button v-if="auth.isHost" class="btn btn-outline btn-sm" @click="removeAnnouncement(a.id)">删</button></span>
-      </div>
-    </div>
-  </div>
 
   <!-- 主办概览 -->
   <div v-if="auth.isHost" class="card">
