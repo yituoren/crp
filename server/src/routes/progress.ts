@@ -78,7 +78,13 @@ progressRoutes.post('/progress', async (c) => {
   if (['undo_arrive', 'undo_complete'].includes(action) && !isHostRole(user.role)) throw forbidden('撤销记录仅主办可操作');
 
   const before = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, legId);
-  const t = now();
+  // 记录时间：前端弹表单让人确认/修改，默认服务器当前时间；不允许填未来时间
+  let t = now();
+  const at = isoOrNull(b.at);
+  if (at) {
+    if (new Date(at).getTime() > Date.now() + 2 * 60 * 1000) throw bad('记录时间不能晚于当前时间');
+    t = at;
+  }
   const cur = before ?? {
     arrived_at: null, completed_at: null, detour_choice: null, roadblock_by: null, ff_result: null, target_team_id: null, note: '',
   };
@@ -92,6 +98,7 @@ progressRoutes.post('/progress', async (c) => {
     case 'complete':
       if (cur.completed_at) already = true;
       else {
+        if (cur.arrived_at && t < cur.arrived_at) throw bad(`完成时间不能早于到达时间（${cur.arrived_at}）`);
         next.completed_at = t;
         if (!next.arrived_at) next.arrived_at = t;
       }

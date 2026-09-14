@@ -7,6 +7,9 @@ export const useAuth = defineStore('auth', () => {
   const user = ref<User | null>(null);
   const event = ref<EventInfo>({ name: '城市飞奔', initialCurrency: 1000, hosts: [] });
   const ready = ref(false);
+  /** 服务器时间 - 本机时间（毫秒），用于给记录表单填默认时间 */
+  const serverOffsetMs = ref(0);
+  const serverNow = () => new Date(Date.now() + serverOffsetMs.value);
   const isHost = computed(() => user.value?.role === 'host' || user.value?.role === 'admin');
   const isAdmin = computed(() => user.value?.role === 'admin');
 
@@ -15,6 +18,7 @@ export const useAuth = defineStore('auth', () => {
       const d = await api('/auth/me');
       user.value = d.user;
       event.value = d.event;
+      if (d.serverTime) serverOffsetMs.value = new Date(d.serverTime).getTime() - Date.now();
     } catch {
       user.value = null;
     } finally {
@@ -35,5 +39,5 @@ export const useAuth = defineStore('auth', () => {
     try { await api('/auth/logout', { method: 'POST' }); } catch { /* ignore */ }
     user.value = null;
   }
-  return { user, event, ready, isHost, isAdmin, fetchMe, login, register, logout };
+  return { user, event, ready, isHost, isAdmin, serverOffsetMs, serverNow, fetchMe, login, register, logout };
 });
