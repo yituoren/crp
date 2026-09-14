@@ -90,12 +90,12 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
         <thead>
           <tr>
             <th class="mx2-team" rowspan="2">队伍</th>
-            <th v-for="l in legs" :key="l.id" :colspan="l.record_mode === 'single' ? 1 : 3" class="mx2-leg"><LegTag :type="l.type" /> {{ l.name }}</th>
+            <th v-for="l in legs" :key="l.id" :colspan="l.record_mode === 'single' ? 1 : 3" class="mx2-leg mx2-first mx2-last"><LegTag :type="l.type" /> {{ l.name }}</th>
           </tr>
           <tr>
             <template v-for="l in legs" :key="l.id">
-              <th v-if="l.record_mode === 'single'" class="mx2-sub">{{ typeCode(l.type) === 'Starting Line' ? '出发' : l.type === 'PS' ? '签到' : '打卡' }}</th>
-              <template v-else><th class="mx2-sub">开始</th><th class="mx2-sub">结束</th><th class="mx2-sub mx2-last">用时</th></template>
+              <th v-if="l.record_mode === 'single'" class="mx2-sub mx2-first mx2-last">{{ typeCode(l.type) === 'Starting Line' ? '出发' : l.type === 'PS' ? '签到' : '打卡' }}</th>
+              <template v-else><th class="mx2-sub mx2-first">开始</th><th class="mx2-sub">结束</th><th class="mx2-sub mx2-last">用时</th></template>
             </template>
           </tr>
         </thead>
@@ -107,10 +107,10 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
             </td>
             <template v-for="l in legs" :key="l.id">
               <template v-if="l.record_mode === 'single'">
-                <td class="mx2-cell mx2-last" :class="cell(t.id, l.id, true).cls">{{ cell(t.id, l.id, true).start }}</td>
+                <td class="mx2-cell mx2-first mx2-last" :class="cell(t.id, l.id, true).cls">{{ cell(t.id, l.id, true).start }}</td>
               </template>
               <template v-else>
-                <td class="mx2-cell" :class="cell(t.id, l.id, false).cls">{{ cell(t.id, l.id, false).start }}</td>
+                <td class="mx2-cell mx2-first" :class="cell(t.id, l.id, false).cls">{{ cell(t.id, l.id, false).start }}</td>
                 <td class="mx2-cell" :class="cell(t.id, l.id, false).cls">{{ cell(t.id, l.id, false).end }}</td>
                 <td class="mx2-cell mx2-last" :class="cell(t.id, l.id, false).cls">{{ cell(t.id, l.id, false).dur }}</td>
               </template>
