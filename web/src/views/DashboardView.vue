@@ -69,13 +69,13 @@ const legCompletion = (legId: number) => {
         <div class="card-header">本赛段名次 <router-link to="/pitstop" class="btn btn-outline btn-sm">去结算</router-link></div>
         <div v-if="!ranking.length" class="text-gray text-sm">尚未结算。队伍到达终点并记录完成后，在「终点结算」点击自动排名。</div>
         <table v-else class="table">
-          <thead><tr><th>名次</th><th>队伍</th><th>签到</th><th>罚时</th><th>最终</th></tr></thead>
+          <thead><tr><th>名次</th><th>队伍</th><th>签到</th><th>净罚时</th><th>最终</th></tr></thead>
           <tbody>
             <tr v-for="r in ranking" :key="r.team_id">
               <td :class="'rank-' + r.rank">#{{ r.rank }}</td>
               <td>{{ r.team_name }} <span v-if="r.eliminated" class="status-eliminated">淘汰</span></td>
               <td class="record-time">{{ fmtTime(r.checkin_at) }}</td>
-              <td>{{ r.penalty_minutes ? `+${r.penalty_minutes}min` : '-' }}</td>
+              <td>{{ r.penalty_minutes > 0 ? `+${r.penalty_minutes} 分` : r.penalty_minutes < 0 ? `${r.penalty_minutes} 分` : '-' }}</td>
               <td class="record-time">{{ fmtTime(r.final_time) }}</td>
             </tr>
           </tbody>

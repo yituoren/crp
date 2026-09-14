@@ -53,14 +53,14 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
     </div>
     <div class="scroll-table">
       <table class="table">
-        <thead><tr><th>名次</th><th>队伍</th><th>状态</th><th>签到时间</th><th>罚时</th><th>最终成绩</th><th>本段淘汰</th><th>备注</th><th></th></tr></thead>
+        <thead><tr><th>名次</th><th>队伍</th><th>状态</th><th>签到时间</th><th>净罚时</th><th>最终成绩</th><th>本段淘汰</th><th>备注</th><th></th></tr></thead>
         <tbody>
           <tr v-for="r in sorted" :key="r.team_id">
             <td :class="r.rank ? 'rank-' + r.rank : ''">{{ r.rank ? '#' + r.rank : '-' }}</td>
             <td><strong>{{ r.team_name }}</strong></td>
             <td><TeamStatus :status="r.team_status" /></td>
             <td><span class="record-time">{{ fmtTime(r.checkin_at) }}</span> <span v-if="r.checkin_source === 'manual'" class="text-xs text-gray">手工</span></td>
-            <td>{{ r.penalty_minutes ? `+${r.penalty_minutes} 分` : '-' }}</td>
+            <td>{{ r.penalty_minutes > 0 ? `+${r.penalty_minutes} 分` : r.penalty_minutes < 0 ? `${r.penalty_minutes} 分（补时）` : '-' }}</td>
             <td><span class="record-time">{{ fmtTime(r.final_time) }}</span></td>
             <td>{{ r.eliminated ? '淘汰' : '' }}</td>
             <td class="wrap">{{ r.note }}</td>
