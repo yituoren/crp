@@ -194,7 +194,8 @@ textarea { min-height: 90px; resize: vertical; }
 @media (max-width: 900px) { .leg-edit .edit-grid { grid-template-columns: 1fr; } }
 
 /* ---------- 左右两屏 / 左栏 ---------- */
-.pager { display: flex; align-items: stretch; height: 100vh; height: 100dvh; overflow: hidden; }
+.pager { height: 100vh; height: 100dvh; overflow: hidden; }
+.pager-track { display: flex; align-items: stretch; height: 100%; transform: none !important; }
 .pane-live { flex: none; width: 600px; height: 100%; overflow: auto; padding: 16px 0 16px 16px; display: flex; flex-direction: column; overscroll-behavior: contain; }
 .pane-main { flex: 1; min-width: 0; height: 100%; overflow-y: auto; overscroll-behavior: contain; }
 html, body { overscroll-behavior: none; }
@@ -212,9 +213,9 @@ html, body { overscroll-behavior: none; }
 .mx-dead { opacity: .45; }
 .scroll-table, .matrix-scroll { overscroll-behavior-x: contain; }
 @media (max-width: 1000px) {
-  .pager { display: flex; align-items: stretch; width: 100vw; height: 100vh; height: 100dvh; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; min-height: 0; }
-  .pager::-webkit-scrollbar { display: none; }
-  .pane { flex: none; width: 100vw; height: 100%; overflow-y: auto; overflow-x: hidden; scroll-snap-align: start; scroll-snap-stop: always; overscroll-behavior-y: contain; }
+  .pager { width: 100vw; height: 100vh; height: 100dvh; overflow: hidden; }
+  .pager-track { width: 200vw; will-change: transform; transform: translateX(calc(var(--page, 1) * -100vw + var(--drag, 0px))) !important; }
+  .pane { flex: none; width: 100vw; height: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
   .pane-live { position: static; padding: 16px 16px 40px; }
   .live-row { grid-template-columns: minmax(90px, 1.2fr) minmax(120px, 1.6fr) minmax(110px, 1.3fr) 70px; gap: 6px; font-size: 12px; }
   .pane-main .container { min-height: 100%; }
