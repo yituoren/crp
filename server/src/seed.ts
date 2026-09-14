@@ -18,7 +18,10 @@ export function seed() {
       for (let i = 1; i <= 5; i++) {
         const r = run('INSERT INTO episodes(code, name, budget, sort, status, notes) VALUES (?,?,?,?,?,?)', `EP${i}`, `第 ${i} 赛段`, 0, i, 'pending', '');
         const epId = Number(r.lastInsertRowid);
-        const legs: [string, string, number, string][] = [['SL', '起跑线', 1, 'single'], ['RI', '路线信息 1', 0, 'none'], ['TI', '任务点 1', 1, 'full'], ['PS', '中继站', 1, 'single']];
+        const legs: [string, string, number, string][] = [
+          ...(i === 1 ? [['SL', 'Starting Line', 1, 'single'] as [string, string, number, string]] : []),
+          ['RI', '路线信息 1', 0, 'none'], ['TI', '任务点 1', 1, 'full'], ['PS', '中继站', 1, 'single'],
+        ];
         legs.forEach(([type, name, staff, mode], j) => run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,?,?)', epId, j + 1, type, name, staff, mode));
       }
     });
@@ -28,6 +31,35 @@ export function seed() {
     tx(() => {
       for (let i = 1; i <= 12; i++) run('INSERT INTO teams(code, name, members, status, currency, sort) VALUES (?,?,?,?,?,?)', `T${i}`, `队伍${i}`, '', 'alive', 0, i);
     });
+  }
+  // 一次性规范旧数据：每个赛段末尾必须有中继站；只有第一个赛段保留 Starting Line
+  if (getSetting('legs_structure') !== 'v1') {
+    tx(() => {
+      const eps = all('SELECT id FROM episodes ORDER BY sort, id');
+      eps.forEach((ep, idx) => {
+        const legs = all('SELECT id, type, sort FROM legs WHERE episode_id = ? ORDER BY sort, id', ep.id);
+        if (!legs.some((l) => l.type === 'PS')) {
+          run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', ep.id, (legs.at(-1)?.sort ?? 0) + 1, 'PS', '中继站', 'single');
+        }
+        if (idx === 0 && !legs.some((l) => l.type === 'SL')) {
+          run('UPDATE legs SET sort = sort + 1 WHERE episode_id = ?', ep.id);
+          run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', ep.id, 1, 'SL', 'Starting Line', 'single');
+        }
+        if (idx > 0) {
+          // 非首赛段的 Starting Line：没有记录的直接删除，有记录的改为任务点保留数据
+          for (const l of legs.filter((x) => x.type === 'SL')) {
+            const used = get('SELECT 1 FROM progress WHERE leg_id = ? LIMIT 1', l.id);
+            if (used) run("UPDATE legs SET type = 'TI', record_mode = 'full' WHERE id = ?", l.id);
+            else run('DELETE FROM legs WHERE id = ?', l.id);
+          }
+        }
+        // 重新排序：SL 第一、PS 最后
+        const cur = all('SELECT id, type FROM legs WHERE episode_id = ? ORDER BY sort, id', ep.id);
+        const order = [...cur.filter((l) => l.type === 'SL'), ...cur.filter((l) => l.type !== 'SL' && l.type !== 'PS'), ...cur.filter((l) => l.type === 'PS')];
+        order.forEach((l, i) => run('UPDATE legs SET sort = ? WHERE id = ?', i + 1, l.id));
+      });
+    });
+    setSetting('legs_structure', 'v1');
   }
   return { hosts, episodes: all('SELECT code FROM episodes').length, teams: all('SELECT id FROM teams').length };
 }

@@ -63,6 +63,16 @@ async function deleteEpisode() {
 
 // ---- 环节编辑 ----
 const legEditing = ref<Leg | null>(null);
+const isFixed = (l: Leg) => l.type === 'SL' || l.type === 'PS';
+const selectableTypes = LEG_TYPES.filter((t) => t !== 'SL' && t !== 'PS');
+// 可移动范围：Starting Line 永远第一、中继站永远最后
+function canMove(i: number, dir: -1 | 1) {
+  const legs = ep.value?.legs ?? [];
+  const j = i + dir;
+  if (j < 0 || j >= legs.length) return false;
+  if (isFixed(legs[i]!) || isFixed(legs[j]!)) return false;
+  return true;
+}
 const legForm = reactive({ type: 'TI' as LegType, name: '', description: '', address: '', map_url: '', clue_text: '', judge_criteria: '', open_time: '', close_time: '', detour_a: '', detour_b: '', needs_staff: true, record_mode: 'full' as RecordMode });
 // 切换类型时套用该类型的默认行为（主办仍可手动改）
 watch(() => legForm.type, (t, prev) => { if (prev !== undefined && t !== prev) { legForm.needs_staff = TYPE_DEFAULTS[t].staff; legForm.record_mode = TYPE_DEFAULTS[t].mode; } });
@@ -78,7 +88,7 @@ async function addLeg() {
     const n = (ep.value?.legs.length ?? 0) + 1;
     await api(`/episodes/${ep.value!.id}/legs`, { method: 'POST', body: { type: 'TI', name: `新环节 ${n}` } });
     await race.loadEpisodes();
-    ui.toast('已添加环节，点击卡片上的「编辑」完善信息');
+    ui.toast('已在中继站前添加环节，点击卡片上的「编辑」完善信息');
   } catch (e) { ui.error(e); }
 }
 async function deleteLeg(leg: Leg) {
@@ -94,21 +104,6 @@ async function move(leg: Leg, dir: -1 | 1) {
   try { await api(`/episodes/${ep.value!.id}/legs/order`, { method: 'PUT', body: { ids: legs.map((l) => l.id) } }); await race.loadEpisodes(); } catch (e) { ui.error(e); }
 }
 const statusLabel: Record<string, string> = { pending: '未开始', running: '进行中', finished: '已结束' };
-/** 软性检查：不阻止保存，只提醒主办 */
-const checks = computed(() => {
-  const legs = ep.value?.legs ?? [];
-  const out: string[] = [];
-  if (!legs.length) return out;
-  const psIdx = legs.map((l, i) => (l.type === 'PS' ? i : -1)).filter((i) => i >= 0);
-  if (!psIdx.length) out.push('没有「PS 中继站/终点」环节：终点结算无法自动取签到时间，只能手工填写。');
-  else if (psIdx[psIdx.length - 1] !== legs.length - 1) out.push('中继站/终点不是最后一个环节：签到后还有环节，结算会以中继站的签到时间为准，请确认这是有意安排。');
-  if (psIdx.length > 1) out.push('有多个中继站/终点环节：结算只取排序最靠后的那个。');
-  if (legs[0]!.type !== 'SL' && legs[0]!.type !== 'RI') out.push('第一个环节不是起跑线或路线信息：如果本赛段从上一段中继站直接出发，可以忽略。');
-  const staffed = new Set(race.assignments.filter((a) => a.role === 'station').map((a) => a.leg_id));
-  const unstaffed = legs.filter((l) => l.needs_staff && !staffed.has(l.id)).map((l) => l.name);
-  if (unstaffed.length) out.push(`需要站点人员但尚未排班：${unstaffed.join('、')}。`);
-  return out;
-});
 </script>
 
 <template>
@@ -135,9 +130,6 @@ const checks = computed(() => {
       <div v-if="ep.notes" class="pre mt-1">{{ ep.notes }}</div>
     </div>
 
-    <div v-if="auth.isHost && checks.length" class="alert alert-warning">
-      <div v-for="(c, i) in checks" :key="i">· {{ c }}</div>
-    </div>
     <div class="flex-between mb-2">
       <div class="section-title">环节列表（{{ ep.legs.length }}）</div>
       <button v-if="auth.isHost" class="btn" @click="addLeg">+ 添加环节</button>
@@ -160,9 +152,12 @@ const checks = computed(() => {
         </div>
         <div v-if="auth.isHost" class="flex mt-2" @click.stop>
           <button class="btn btn-outline btn-sm" @click="openLegEdit(leg)">编辑</button>
-          <button class="btn btn-outline btn-sm" :disabled="i === 0" @click="move(leg, -1)">↑</button>
-          <button class="btn btn-outline btn-sm" :disabled="i === ep.legs.length - 1" @click="move(leg, 1)">↓</button>
-          <button class="btn btn-danger btn-sm" @click="deleteLeg(leg)">删除</button>
+          <template v-if="!isFixed(leg)">
+            <button class="btn btn-outline btn-sm" :disabled="!canMove(i, -1)" @click="move(leg, -1)">↑</button>
+            <button class="btn btn-outline btn-sm" :disabled="!canMove(i, 1)" @click="move(leg, 1)">↓</button>
+            <button class="btn btn-danger btn-sm" @click="deleteLeg(leg)">删除</button>
+          </template>
+          <span v-else class="text-xs text-gray">固定环节</span>
         </div>
       </div>
     </div>
@@ -179,7 +174,8 @@ const checks = computed(() => {
   <Modal v-if="legEditing" :title="`编辑环节 · ${legEditing.name}`" @close="legEditing = null">
     <div class="grid grid-2">
       <div class="form-group"><label>类型</label>
-        <select v-model="legForm.type"><option v-for="t in LEG_TYPES" :key="t" :value="t">{{ t }} · {{ LEG_TYPE_LABEL[t] }}</option></select>
+        <input v-if="legEditing && isFixed(legEditing)" :value="`${legForm.type} · ${LEG_TYPE_LABEL[legForm.type]}（固定）`" disabled />
+        <select v-else v-model="legForm.type"><option v-for="t in selectableTypes" :key="t" :value="t">{{ t }} · {{ LEG_TYPE_LABEL[t] }}</option></select>
       </div>
       <div class="form-group"><label>名称</label><input v-model="legForm.name" /></div>
     </div>

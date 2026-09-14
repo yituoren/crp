@@ -52,11 +52,19 @@ episodeRoutes.post('/episodes', hostOnly, async (c) => {
   const count = get<{ n: number }>('SELECT COUNT(*) AS n FROM episodes')!.n;
   const code = str(b.code, 20) || `EP${count + 1}`;
   if (get('SELECT 1 FROM episodes WHERE code = ?', code)) throw bad(`赛段编号 ${code} 已存在`);
-  const r = run(
-    'INSERT INTO episodes(code, name, budget, sort, status, notes) VALUES (?,?,?,?,?,?)',
-    code, str(b.name, 50) || code, b.budget === undefined ? 0 : money(b.budget, '经费'), count + 1, 'pending', str(b.notes),
-  );
-  audit(c.get('user'), 'create', 'episode', Number(r.lastInsertRowid), undefined, { code });
+  const epId = tx(() => {
+    const r = run(
+      'INSERT INTO episodes(code, name, budget, sort, status, notes) VALUES (?,?,?,?,?,?)',
+      code, str(b.name, 50) || code, b.budget === undefined ? 0 : money(b.budget, '经费'), count + 1, 'pending', str(b.notes),
+    );
+    const id = Number(r.lastInsertRowid);
+    // 固定结构：第一个赛段以 Starting Line 开头；每个赛段以中继站结尾
+    if (count === 0) run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', id, 1, 'SL', 'Starting Line', 'single');
+    run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', id, 99, 'PS', '中继站', 'single');
+    return id;
+  });
+  const r = { lastInsertRowid: epId };
+  audit(c.get('user'), 'create', 'episode', epId, undefined, { code });
   notify('episodes');
   return c.json({ id: Number(r.lastInsertRowid) });
 });
@@ -162,14 +170,21 @@ episodeRoutes.post('/episodes/:id/legs', hostOnly, async (c) => {
   const episodeId = intParam(c, 'id');
   if (!get('SELECT 1 FROM episodes WHERE id = ?', episodeId)) throw notFound('赛段不存在');
   const b = await body(c);
+  if (b.type === 'SL' || b.type === 'PS') throw bad('Starting Line 与中继站由系统固定生成，不能手动添加');
   const f = legFields(b);
   if (!f.name) f.name = '新环节';
+  // 新环节默认插在中继站之前
+  const ps = get('SELECT id, sort FROM legs WHERE episode_id = ? AND type = ? ORDER BY sort DESC LIMIT 1', episodeId, 'PS');
   const maxSort = get<{ m: number | null }>('SELECT MAX(sort) AS m FROM legs WHERE episode_id = ?', episodeId)!.m ?? 0;
-  const r = run(
-    `INSERT INTO legs(episode_id, sort, type, name, description, address, map_url, clue_text, judge_criteria, open_time, close_time, detour_a, detour_b, needs_staff, record_mode)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    episodeId, maxSort + 1, f.type, f.name, f.description, f.address, f.map_url, f.clue_text, f.judge_criteria, f.open_time, f.close_time, f.detour_a, f.detour_b, f.needs_staff, f.record_mode,
-  );
+  const sort = ps ? ps.sort : maxSort + 1;
+  const r = tx(() => {
+    if (ps) run('UPDATE legs SET sort = sort + 1 WHERE episode_id = ? AND sort >= ?', episodeId, ps.sort);
+    return run(
+      `INSERT INTO legs(episode_id, sort, type, name, description, address, map_url, clue_text, judge_criteria, open_time, close_time, detour_a, detour_b, needs_staff, record_mode)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      episodeId, sort, f.type, f.name, f.description, f.address, f.map_url, f.clue_text, f.judge_criteria, f.open_time, f.close_time, f.detour_a, f.detour_b, f.needs_staff, f.record_mode,
+    );
+  });
   audit(c.get('user'), 'create', 'leg', Number(r.lastInsertRowid), undefined, f);
   notify('episodes', episodeId);
   return c.json({ id: Number(r.lastInsertRowid) });
@@ -179,7 +194,10 @@ episodeRoutes.put('/legs/:id', hostOnly, async (c) => {
   const id = intParam(c, 'id');
   const before = get('SELECT * FROM legs WHERE id = ?', id);
   if (!before) throw notFound('环节不存在');
-  const f = legFields(await body(c), before);
+  const b = await body(c);
+  const fixed = before.type === 'SL' || before.type === 'PS';
+  if (b.type !== undefined && b.type !== before.type && (fixed || b.type === 'SL' || b.type === 'PS')) throw bad('Starting Line 与中继站的类型固定，不能改成或改自其他类型');
+  const f = legFields(b, before);
   run(
     `UPDATE legs SET type=?, name=?, description=?, address=?, map_url=?, clue_text=?, judge_criteria=?, open_time=?, close_time=?, detour_a=?, detour_b=?, needs_staff=?, record_mode=? WHERE id=?`,
     f.type, f.name, f.description, f.address, f.map_url, f.clue_text, f.judge_criteria, f.open_time, f.close_time, f.detour_a, f.detour_b, f.needs_staff, f.record_mode, id,
@@ -193,6 +211,7 @@ episodeRoutes.delete('/legs/:id', hostOnly, (c) => {
   const id = intParam(c, 'id');
   const before = get('SELECT * FROM legs WHERE id = ?', id);
   if (!before) throw notFound('环节不存在');
+  if (before.type === 'SL' || before.type === 'PS') throw bad('Starting Line 与中继站不能删除');
   removeAttachmentFiles(all('SELECT path FROM attachments WHERE leg_id = ?', id));
   run('DELETE FROM legs WHERE id = ?', id);
   audit(c.get('user'), 'delete', 'leg', id, before);
@@ -204,8 +223,14 @@ episodeRoutes.put('/episodes/:id/legs/order', hostOnly, async (c) => {
   const episodeId = intParam(c, 'id');
   const { ids } = await body(c);
   if (!Array.isArray(ids)) throw bad('ids 必须是数组');
+  const types = new Map(all('SELECT id, type FROM legs WHERE episode_id = ?', episodeId).map((l) => [l.id, l.type]));
+  const ordered = ids.map((x: unknown) => int(x)).filter((id: number) => types.has(id));
+  const sl = ordered.filter((id: number) => types.get(id) === 'SL');
+  const ps = ordered.filter((id: number) => types.get(id) === 'PS');
+  const mid = ordered.filter((id: number) => types.get(id) !== 'SL' && types.get(id) !== 'PS');
+  const finalOrder = [...sl, ...mid, ...ps]; // Starting Line 永远第一，中继站永远最后
   tx(() => {
-    ids.forEach((legId: unknown, i: number) => run('UPDATE legs SET sort = ? WHERE id = ? AND episode_id = ?', i + 1, int(legId), episodeId));
+    finalOrder.forEach((legId: number, i: number) => run('UPDATE legs SET sort = ? WHERE id = ? AND episode_id = ?', i + 1, legId, episodeId));
   });
   audit(c.get('user'), 'reorder', 'leg', episodeId, undefined, ids);
   notify('episodes', episodeId);
