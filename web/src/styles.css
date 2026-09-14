@@ -34,7 +34,9 @@ p { margin: 0 0 8px; }
 .container-fixed { height: 100%; overflow: hidden; }
 .page-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .fill-page { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-.fill-card { flex: 1; min-height: 0; display: flex; flex-direction: column; margin-bottom: 0; }
+.fill-card.card { flex: 1; min-height: 0; display: flex; flex-direction: column; margin-bottom: 0; }
+/* 主区域最后一张卡片不再留下边距，滚到底时与左栏的 16px 边距一致 */
+.page-body > .card:last-child { margin-bottom: 0; }
 .fill-card .scroll-y { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .ann-compose { display: flex; gap: 8px; align-items: stretch; }
 .ann-compose textarea { flex: 1 1 auto; min-height: 0; }
