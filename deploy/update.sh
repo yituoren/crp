@@ -10,6 +10,12 @@ npm ci
 npm run build
 chown -R root:root /opt/crp
 chown -R crp:crp /opt/crp/data /opt/crp/backups
+# Reinstall the unit file if it changed in the repo
+if ! cmp -s deploy/crp.service /etc/systemd/system/crp.service; then
+  echo "==> Updating systemd unit"
+  cp deploy/crp.service /etc/systemd/system/crp.service
+  systemctl daemon-reload
+fi
 echo "==> Restarting service"
 systemctl restart crp
 sleep 2
