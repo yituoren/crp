@@ -38,7 +38,7 @@ async function remove(t: Team) {
   try { await api(`/teams/${t.id}`, { method: 'DELETE' }); await race.loadTeams(); ui.toast('已删除'); } catch (e) { ui.error(e); }
 }
 async function resetAll() {
-  if (!(await ui.confirm('重置队伍数据', '所有队伍恢复为存活、货币恢复初始值（队名保留）。确定？', { danger: true }))) return;
+  if (!(await ui.confirm('重置队伍数据', '所有队伍恢复为存活、货币清零（队名保留）。确定？', { danger: true }))) return;
   try { await api('/teams/reset', { method: 'POST' }); await race.loadTeams(); ui.toast('已重置'); } catch (e) { ui.error(e); }
 }
 </script>

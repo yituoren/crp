@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import bcrypt from 'bcryptjs';
-import { all, get, run, tx, now, getSetting, setSetting, db, fromCents } from '../db.js';
+import { all, get, run, tx, now, getSetting, setSetting, db } from '../db.js';
 import { hostOnly, adminOnly, type Env } from '../auth.js';
-import { audit, body, str, int, intParam, notify, bad, notFound, money } from '../util.js';
+import { audit, body, str, int, intParam, notify, bad, notFound } from '../util.js';
 import { importPrototype } from '../import-prototype.js';
 import { seed } from '../seed.js';
 
@@ -11,12 +11,11 @@ adminRoutes.use('/admin/*', hostOnly);
 
 // ---------- 设置 ----------
 adminRoutes.get('/admin/settings', (c) =>
-  c.json({ eventName: getSetting('event_name'), initialCurrency: fromCents(Number(getSetting('initial_currency', '0'))), hosts: getSetting('hosts') }),
+  c.json({ eventName: getSetting('event_name'), hosts: getSetting('hosts') }),
 );
 adminRoutes.put('/admin/settings', async (c) => {
   const b = await body(c);
   if (b.eventName !== undefined) setSetting('event_name', str(b.eventName, 50) || '城市飞奔');
-  if (b.initialCurrency !== undefined) setSetting('initial_currency', String(money(b.initialCurrency, '初始货币')));
   if (b.hosts !== undefined) {
     const hosts = String(b.hosts).split(/[,，]/).map((s) => s.trim()).filter(Boolean);
     setSetting('hosts', hosts.join(','));

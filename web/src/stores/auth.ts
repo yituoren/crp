@@ -5,7 +5,7 @@ import type { EventInfo, User } from '@/types';
 
 export const useAuth = defineStore('auth', () => {
   const user = ref<User | null>(null);
-  const event = ref<EventInfo>({ name: '城市飞奔', initialCurrency: 1000, hosts: [] });
+  const event = ref<EventInfo>({ name: '城市飞奔', hosts: [] });
   const ready = ref(false);
   /** 服务器时间 - 本机时间（毫秒），用于给记录表单填默认时间 */
   const serverOffsetMs = ref(0);

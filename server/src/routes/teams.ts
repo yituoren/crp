@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { all, get, run, tx, getSetting, fromCents } from '../db.js';
+import { all, get, run, tx, fromCents } from '../db.js';
 import { hostOnly, type Env } from '../auth.js';
 import { audit, body, str, int, intParam, notify, bad, notFound, money } from '../util.js';
 
@@ -17,7 +17,7 @@ teamRoutes.post('/teams', hostOnly, async (c) => {
   const count = get<{ n: number }>('SELECT COUNT(*) AS n FROM teams')!.n;
   let code = str(b.code, 20) || `T${count + 1}`;
   while (get('SELECT 1 FROM teams WHERE code = ?', code)) code = code + '_';
-  const currency = b.currency === undefined ? Number(getSetting('initial_currency', '0')) : money(b.currency, '初始货币');
+  const currency = b.currency === undefined ? 0 : money(b.currency, '货币');
   const r = run(
     'INSERT INTO teams(code, name, members, status, currency, sort) VALUES (?,?,?,?,?,?)',
     code, name, str(b.members, 200), 'alive', currency, count + 1,
@@ -52,11 +52,10 @@ teamRoutes.delete('/teams/:id', hostOnly, (c) => {
   return c.json({ ok: true });
 });
 
-/** 重置全部队伍：状态恢复存活、货币恢复初始值（不改队名） */
+/** 重置全部队伍：状态恢复存活、货币清零（不改队名） */
 teamRoutes.post('/teams/reset', hostOnly, (c) => {
-  const initial = Number(getSetting('initial_currency', '0'));
   tx(() => {
-    run('UPDATE teams SET status = ?, currency = ?', 'alive', initial);
+    run('UPDATE teams SET status = ?, currency = 0', 'alive');
   });
   audit(c.get('user'), 'reset', 'team', 'all');
   notify('teams');
