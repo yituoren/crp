@@ -38,13 +38,13 @@ async function startEpisode() {
   const msg = ep.value.started_at
     ? `${ep.value.code} 之前已经开始过，经费不会重复发放，只把状态改回「进行中」。确定？`
     : ep.value.budget > 0
-      ? `将 ${ep.value.code} 标记为进行中，并给 ${alive} 支存活队伍各发放 ${fmtMoney(ep.value.budget)} 元赛段经费（写入货币流水）。确定？`
+      ? `将 ${ep.value.code} 标记为进行中，并给 ${alive} 支存活队伍各补充 ${fmtMoney(ep.value.budget)} 元经费（加到现有余额上，写入货币流水）。确定？`
       : `${ep.value.code} 未设置经费，只把状态标记为进行中，不发放货币。确定？`;
   if (!(await ui.confirm('开始赛段', msg))) return;
   try {
     const d = await api(`/episodes/${ep.value.id}/start`, { method: 'POST' });
     await Promise.all([race.loadEpisodes(), race.loadTeams(), race.loadLedger()]);
-    ui.toast(d.issuedBudgetTo.length ? `赛段已开始，已向 ${d.issuedBudgetTo.length} 支队伍发放经费` : '赛段已开始');
+    ui.toast(d.issuedBudgetTo.length ? `赛段已开始，已给 ${d.issuedBudgetTo.length} 支队伍补充经费` : '赛段已开始');
   } catch (e) { ui.error(e); }
 }
 async function finishEpisode() {
@@ -127,9 +127,9 @@ const checks = computed(() => {
         </div>
       </div>
       <div class="text-sm text-gray">
-        经费：{{ ep.budget ? `${fmtMoney(ep.budget)} 元/队` : '未设置' }}
-        <template v-if="ep.started_at"> · 开始于 {{ fmtDateTime(ep.started_at) }}{{ ep.budget ? '（经费已发放）' : '' }}</template>
-        <template v-else> · 点「开始赛段」时自动发放给所有存活队伍</template>
+        补充经费：{{ ep.budget ? `${fmtMoney(ep.budget)} 元/队` : '本赛段不发' }}
+        <template v-if="ep.started_at"> · 开始于 {{ fmtDateTime(ep.started_at) }}{{ ep.budget ? '（已补充到各队余额）' : '' }}</template>
+        <template v-else-if="ep.budget"> · 点「开始赛段」时加到每支存活队伍的现有余额上</template>
         <template v-if="ep.finished_at"> · 结束于 {{ fmtDateTime(ep.finished_at) }}</template>
       </div>
       <div v-if="ep.notes" class="pre mt-1">{{ ep.notes }}</div>
@@ -170,7 +170,7 @@ const checks = computed(() => {
 
   <Modal v-if="epEditing" title="编辑赛段" small @close="epEditing = false">
     <div class="form-group"><label>名称</label><input v-model="epForm.name" /></div>
-    <div class="form-group"><label>每队经费（元，最多两位小数）</label><input v-model.number="epForm.budget" type="number" min="0" step="0.01" inputmode="decimal" /></div>
+    <div class="form-group"><label>本赛段补充经费（元/队）</label><input v-model.number="epForm.budget" type="number" min="0" step="0.01" inputmode="decimal" /><div class="info-text">点「开始赛段」时，在每支存活队伍现有余额上增加这笔钱，不清零、不重置；上赛段剩余会累积。最多两位小数，填 0 表示本赛段不发。</div></div>
     <div class="form-group"><label>状态（一般用「开始赛段 / 结束赛段」按钮切换，这里可手工修正）</label><select v-model="epForm.status"><option value="pending">未开始</option><option value="running">进行中</option><option value="finished">已结束</option></select></div>
     <div class="form-group"><label>赛段说明（所有幕后可见）</label><textarea v-model="epForm.notes" /></div>
     <div class="modal-actions"><button class="btn btn-secondary" @click="epEditing = false">取消</button><button class="btn" @click="saveEp">保存</button></div>

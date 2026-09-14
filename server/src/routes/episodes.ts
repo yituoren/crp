@@ -110,7 +110,7 @@ episodeRoutes.post('/episodes/:id/start', hostOnly, (c) => {
         run('UPDATE teams SET currency = ? WHERE id = ?', balance, team.id);
         run(
           'INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at) VALUES (?,?,?,?,?,?,?,?)',
-          id, team.id, ep.budget, balance, `${ep.code} 赛段经费`, user.id, user.displayName, t,
+          id, team.id, ep.budget, balance, `${ep.code} 补充经费`, user.id, user.displayName, t,
         );
         issued.push(team.name);
       }
