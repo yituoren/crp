@@ -37,8 +37,10 @@ echo "==> 安装依赖并构建"
 npm ci
 npm run build
 
+# 代码归 root、对所有人只读；只有数据和备份目录归运行用户 crp（最小权限）
 mkdir -p "$DATA_DIR" "$APP_DIR/backups"
-chown -R crp:crp "$APP_DIR"
+chown -R root:root "$APP_DIR"
+chown -R crp:crp "$DATA_DIR" "$APP_DIR/backups"
 
 echo "==> 允许 node 监听 80 端口"
 setcap 'cap_net_bind_service=+ep' "$(readlink -f "$(command -v node)")"
