@@ -13,8 +13,8 @@ export function parseMembers(raw: unknown): string[] {
   if (s.startsWith('[')) { try { return parseMembers(JSON.parse(s)); } catch { /* fallthrough */ } }
   return s.split(/[\/&、,，\s]+/).map((x) => x.trim()).filter(Boolean);
 }
-/** 队伍显示名：填了成员就显示 A&B&C，否则显示队名 */
-export const teamLabel = (name: string, members: string[]) => (members.length ? members.join('&') : name);
+/** 队伍显示名：填了成员就显示「编号 A&B&C」，否则只显示编号 */
+export const teamLabel = (name: string, members: string[]) => (members.length ? `${name} ${members.join('&')}` : name);
 export function teamLabelMap(): Map<number, string> {
   return new Map(all('SELECT id, name, members FROM teams').map((t) => [t.id, teamLabel(t.name, parseMembers(t.members))]));
 }
