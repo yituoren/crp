@@ -4,7 +4,7 @@ const DEFAULT_HOSTS = (process.env.HOST_USERNAMES ?? '阳秋,云缨,云影').spl
 
 export function seed() {
   if (!getSetting('event_name')) setSetting('event_name', process.env.EVENT_NAME ?? 'BJ20 全明星赛');
-  if (!getSetting('initial_currency')) setSetting('initial_currency', '1000');
+  if (!getSetting('initial_currency')) setSetting('initial_currency', '100000'); // 单位：分（1000.00 元）
   if (!getSetting('hosts')) setSetting('hosts', DEFAULT_HOSTS.join(','));
 
   const hosts = getSetting('hosts').split(',').map((s) => s.trim()).filter(Boolean);
@@ -26,7 +26,7 @@ export function seed() {
   }
 
   if (!get('SELECT 1 FROM teams LIMIT 1')) {
-    const initial = Number(getSetting('initial_currency', '1000'));
+    const initial = Number(getSetting('initial_currency', '100000'));
     tx(() => {
       for (let i = 1; i <= 12; i++) run('INSERT INTO teams(code, name, members, status, currency, sort) VALUES (?,?,?,?,?,?)', `T${i}`, `队伍${i}`, '', 'alive', initial, i);
     });

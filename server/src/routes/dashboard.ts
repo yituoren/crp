@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { all, get } from '../db.js';
+import { all, get, fromCents } from '../db.js';
 import type { Env } from '../auth.js';
 import { intParam } from '../util.js';
 import { pitstopRows } from './progress.js';
@@ -37,6 +37,7 @@ dashboardRoutes.get('/dashboard/:episodeId', (c) => {
     const finished = currentLeg?.type === 'PS' && !!current?.completed_at;
     return {
       ...t,
+      currency: fromCents(t.currency),
       currentLeg: currentLeg ? { id: currentLeg.id, name: currentLeg.name, type: currentLeg.type, arrived: current.arrived_at, completed: current.completed_at } : null,
       lastActivity,
       staleMinutes: staleMin,
@@ -46,7 +47,7 @@ dashboardRoutes.get('/dashboard/:episodeId', (c) => {
 
   const alerts: { level: string; text: string; teamId?: number }[] = [];
   for (const t of teamRows) {
-    if (t.status === 'alive' && episode && episode.budget > 0 && t.currency < 0) alerts.push({ level: 'urgent', text: `${t.name} 货币余额为负（${t.currency}）`, teamId: t.id });
+    if (t.status === 'alive' && t.currency < 0) alerts.push({ level: 'urgent', text: `${t.name} 货币余额为负（${t.currency.toFixed(2)}）`, teamId: t.id });
   }
 
   return c.json({

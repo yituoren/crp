@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
-import { all, get, run, tx, now } from '../db.js';
+import { all, get, run, tx, now, fromCents } from '../db.js';
 import { canAdjustCurrency, type Env } from '../auth.js';
-import { audit, body, str, int, notify, bad, forbidden, notFound } from '../util.js';
+import { audit, body, str, int, notify, bad, forbidden, notFound, money } from '../util.js';
 
 export const ledgerRoutes = new Hono<Env>();
 
@@ -21,7 +21,7 @@ ledgerRoutes.get('/ledger', (c) => {
      ${where} ORDER BY l.id DESC LIMIT 500`,
     ...params,
   );
-  return c.json({ ledger: rows });
+  return c.json({ ledger: rows.map((r) => ({ ...r, delta: fromCents(r.delta), balance_after: fromCents(r.balance_after) })) });
 });
 
 ledgerRoutes.post('/ledger', async (c) => {
@@ -29,10 +29,10 @@ ledgerRoutes.post('/ledger', async (c) => {
   const b = await body(c);
   const episodeId = int(b.episodeId, 0) || null;
   const teamId = int(b.teamId, 0);
-  const delta = int(b.delta, 0);
+  const delta = money(b.delta);
   const reason = str(b.reason, 200) || '手动调整';
   if (!teamId) throw bad('缺少队伍');
-  if (!delta) throw bad('金额必须是非零整数');
+  if (!delta) throw bad('金额不能为 0');
   if (!canAdjustCurrency(user, episodeId ?? 0)) throw forbidden('只有主办或本赛段的站点人员可以操作货币');
   const team = get('SELECT * FROM teams WHERE id = ?', teamId);
   if (!team) throw notFound('队伍不存在');
@@ -45,8 +45,8 @@ ledgerRoutes.post('/ledger', async (c) => {
     );
     return Number(r.lastInsertRowid);
   });
-  audit(user, 'currency', 'team', teamId, { currency: team.currency }, { delta, balance, reason });
+  audit(user, 'currency', 'team', teamId, { currency: fromCents(team.currency) }, { delta: fromCents(delta), balance: fromCents(balance), reason });
   notify('ledger', episodeId);
   notify('teams');
-  return c.json({ id, balance });
+  return c.json({ id, balance: fromCents(balance) });
 });

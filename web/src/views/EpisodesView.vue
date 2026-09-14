@@ -6,6 +6,7 @@ import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { LEG_TYPES, LEG_TYPE_LABEL, LEG_TYPE_HINT, TYPE_DEFAULTS, RECORD_MODE_LABEL, type Leg, type LegType, type RecordMode } from '@/types';
 import { watch } from 'vue';
+import { fmtMoney } from '@/utils/money';
 import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
 import Modal from '@/components/Modal.vue';
@@ -102,7 +103,7 @@ const checks = computed(() => {
           <button class="btn btn-danger btn-sm" @click="deleteEpisode">删除赛段</button>
         </div>
       </div>
-      <div class="text-sm text-gray">经费：{{ ep.budget ? `${ep.budget} 元/队` : '未设置' }}</div>
+      <div class="text-sm text-gray">经费：{{ ep.budget ? `${fmtMoney(ep.budget)} 元/队` : '未设置' }}</div>
       <div v-if="ep.notes" class="pre mt-1">{{ ep.notes }}</div>
     </div>
 
@@ -141,7 +142,7 @@ const checks = computed(() => {
 
   <Modal v-if="epEditing" title="编辑赛段" small @close="epEditing = false">
     <div class="form-group"><label>名称</label><input v-model="epForm.name" /></div>
-    <div class="form-group"><label>每队经费（元）</label><input v-model.number="epForm.budget" type="number" /></div>
+    <div class="form-group"><label>每队经费（元，最多两位小数）</label><input v-model.number="epForm.budget" type="number" min="0" step="0.01" inputmode="decimal" /></div>
     <div class="form-group"><label>状态</label><select v-model="epForm.status"><option value="pending">未开始</option><option value="running">进行中</option><option value="finished">已结束</option></select></div>
     <div class="form-group"><label>赛段说明（所有幕后可见）</label><textarea v-model="epForm.notes" /></div>
     <div class="modal-actions"><button class="btn btn-secondary" @click="epEditing = false">取消</button><button class="btn" @click="saveEp">保存</button></div>

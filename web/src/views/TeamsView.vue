@@ -7,6 +7,7 @@ import { useUi } from '@/stores/ui';
 import type { Team } from '@/types';
 import Modal from '@/components/Modal.vue';
 import TeamStatus from '@/components/TeamStatus.vue';
+import { fmtMoney } from '@/utils/money';
 
 const auth = useAuth();
 const race = useRace();
@@ -57,7 +58,7 @@ async function resetAll() {
         <TeamStatus :status="t.status" />
       </div>
       <div class="text-sm text-gray">{{ t.code }} · {{ t.members || '成员未填写' }}</div>
-      <div class="currency-box mt-1">{{ t.currency }}</div>
+      <div class="currency-box mt-1">{{ fmtMoney(t.currency) }} <span class="text-sm text-gray">元</span></div>
       <div v-if="auth.isHost" class="flex mt-2" style="gap: 6px">
         <button class="btn btn-outline btn-sm" @click="open(t)">编辑</button>
         <button v-if="t.status !== 'alive'" class="btn btn-success btn-sm" @click="setStatus(t, 'alive')">恢复</button>

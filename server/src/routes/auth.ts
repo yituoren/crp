@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import bcrypt from 'bcryptjs';
-import { all, get, run, now, getSetting } from '../db.js';
+import { all, get, run, now, getSetting, fromCents } from '../db.js';
 import { authRequired, issueToken, clearToken, type Env } from '../auth.js';
 import { audit, body, str } from '../util.js';
 
@@ -57,7 +57,7 @@ authRoutes.get('/me', authRequired, (c) => {
     user: c.get('user'),
     event: {
       name: getSetting('event_name', '城市飞奔'),
-      initialCurrency: Number(getSetting('initial_currency', '1000')),
+      initialCurrency: fromCents(Number(getSetting('initial_currency', '100000'))),
       hosts: hostNames(),
     },
     serverTime: now(),

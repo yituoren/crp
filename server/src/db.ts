@@ -198,3 +198,25 @@ export function getSetting(key: string, fallback = ''): string {
 export function setSetting(key: string, value: string) {
   run('INSERT INTO settings(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', key, value);
 }
+
+// ---------- 金额：数据库以“分”存整数，接口以“元”收发（最多两位小数） ----------
+export function toCents(v: unknown, label = '金额'): number {
+  const n = Number(v);
+  if (!Number.isFinite(n)) throw new Error(`${label}无效`);
+  const cents = Math.round(n * 100);
+  if (Math.abs(n * 100 - cents) > 1e-6) throw new Error(`${label}最多两位小数`);
+  return cents;
+}
+export const fromCents = (c: number | null | undefined) => (c == null ? 0 : c / 100);
+
+// 旧库金额是“元”整数，一次性乘 100 变成“分”
+if (getSetting('currency_unit') !== 'cent') {
+  db.exec('BEGIN');
+  db.exec('UPDATE teams SET currency = currency * 100');
+  db.exec('UPDATE currency_ledger SET delta = delta * 100, balance_after = balance_after * 100');
+  db.exec('UPDATE episodes SET budget = budget * 100');
+  const init = getSetting('initial_currency');
+  if (init) setSetting('initial_currency', String(Math.round(Number(init) * 100)));
+  setSetting('currency_unit', 'cent');
+  db.exec('COMMIT');
+}

@@ -10,6 +10,7 @@ import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
 import RecordTable from '@/components/RecordTable.vue';
 import { singleLabel } from '@/types';
+import { fmtMoney } from '@/utils/money';
 
 const auth = useAuth();
 const race = useRace();
@@ -88,7 +89,7 @@ const levelLabel: Record<string, string> = { info: '通知', warning: '注意', 
     </template>
 
     <template v-else-if="my?.role === 'follow' && myTeam">
-      <p><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.name }}</strong>（{{ myTeam.members || '成员未填写' }}），当前余额 <strong class="text-warning">{{ myTeam.currency }}</strong></p>
+      <p><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.name }}</strong>（{{ myTeam.members || '成员未填写' }}），当前余额 <strong class="text-warning">{{ fmtMoney(myTeam.currency) }} 元</strong></p>
       <div class="scroll-table">
         <table class="table">
           <thead><tr><th>环节</th><th>状态</th><th>到达</th><th>完成 / 打卡</th><th style="min-width: 110px">操作</th></tr></thead>

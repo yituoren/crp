@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 import fs from 'node:fs';
 import path from 'node:path';
-import { all, get, run, tx, now, UPLOAD_DIR } from '../db.js';
+import { all, get, run, tx, now, UPLOAD_DIR, fromCents } from '../db.js';
 import { hostOnly, canUploadToLeg, type Env } from '../auth.js';
-import { audit, body, str, int, intParam, notify, bad, notFound, forbidden } from '../util.js';
+import { audit, body, str, int, intParam, notify, bad, notFound, forbidden, money } from '../util.js';
 
 export const LEG_TYPES = ['SL', 'RI', 'TI', 'DT', 'RB', 'FO', 'Union', 'UT', 'YD', 'SB', 'PK', 'Trap', 'PS'] as const;
 export type RecordMode = 'none' | 'single' | 'full';
@@ -41,7 +41,7 @@ export function loadEpisodes() {
     if (!legsByEp.has(l.episode_id)) legsByEp.set(l.episode_id, []);
     legsByEp.get(l.episode_id)!.push({ ...l, attachments: attByLeg.get(l.id) ?? [] });
   }
-  return episodes.map((e) => ({ ...e, legs: legsByEp.get(e.id) ?? [] }));
+  return episodes.map((e) => ({ ...e, budget: fromCents(e.budget), legs: legsByEp.get(e.id) ?? [] }));
 }
 
 episodeRoutes.get('/episodes', (c) => c.json({ episodes: loadEpisodes() }));
@@ -53,7 +53,7 @@ episodeRoutes.post('/episodes', hostOnly, async (c) => {
   if (get('SELECT 1 FROM episodes WHERE code = ?', code)) throw bad(`赛段编号 ${code} 已存在`);
   const r = run(
     'INSERT INTO episodes(code, name, budget, sort, status, notes) VALUES (?,?,?,?,?,?)',
-    code, str(b.name, 50) || code, int(b.budget), count + 1, 'pending', str(b.notes),
+    code, str(b.name, 50) || code, b.budget === undefined ? 0 : money(b.budget, '经费'), count + 1, 'pending', str(b.notes),
   );
   audit(c.get('user'), 'create', 'episode', Number(r.lastInsertRowid), undefined, { code });
   notify('episodes');
@@ -67,7 +67,7 @@ episodeRoutes.put('/episodes/:id', hostOnly, async (c) => {
   const b = await body(c);
   const next = {
     name: b.name === undefined ? before.name : str(b.name, 50) || before.name,
-    budget: b.budget === undefined ? before.budget : int(b.budget, before.budget),
+    budget: b.budget === undefined ? before.budget : money(b.budget, '经费'),
     status: ['pending', 'running', 'finished'].includes(b.status) ? b.status : before.status,
     notes: b.notes === undefined ? before.notes : str(b.notes),
     sort: b.sort === undefined ? before.sort : int(b.sort, before.sort),

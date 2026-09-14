@@ -55,10 +55,10 @@ export async function importPrototype(data: any, opts: ImportOptions = {}) {
       sort++;
       const existing = get('SELECT id FROM teams WHERE code = ?', code);
       if (existing) {
-        run('UPDATE teams SET name = ?, status = ?, currency = ? WHERE id = ?', t.name ?? code, t.eliminated ? 'eliminated' : 'alive', Number(t.currency ?? 0), existing.id);
+        run('UPDATE teams SET name = ?, status = ?, currency = ? WHERE id = ?', t.name ?? code, t.eliminated ? 'eliminated' : 'alive', Math.round(Number(t.currency ?? 0) * 100), existing.id);
         teamIds.set(code, existing.id);
       } else {
-        const r = run('INSERT INTO teams(code, name, members, status, currency, sort) VALUES (?,?,?,?,?,?)', code, t.name ?? code, '', t.eliminated ? 'eliminated' : 'alive', Number(t.currency ?? 0), sort);
+        const r = run('INSERT INTO teams(code, name, members, status, currency, sort) VALUES (?,?,?,?,?,?)', code, t.name ?? code, '', t.eliminated ? 'eliminated' : 'alive', Math.round(Number(t.currency ?? 0) * 100), sort);
         teamIds.set(code, Number(r.lastInsertRowid));
       }
       report.teams++;
@@ -127,7 +127,7 @@ export async function importPrototype(data: any, opts: ImportOptions = {}) {
         for (const log of logs) {
           run(
             'INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at) VALUES (?,?,?,?,?,?,?,?)',
-            epId, tid, Number(log.amount ?? 0), Number(log.balance ?? 0), log.reason ?? '', userIds.get(log.staffId) ?? null, log.staffId ?? '', log.timestamp ?? now(),
+            epId, tid, Math.round(Number(log.amount ?? 0) * 100), Math.round(Number(log.balance ?? 0) * 100), log.reason ?? '', userIds.get(log.staffId) ?? null, log.staffId ?? '', log.timestamp ?? now(),
           );
           report.ledger++;
         }

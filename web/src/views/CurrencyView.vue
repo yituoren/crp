@@ -4,6 +4,7 @@ import { api } from '@/api';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
+import { fmtMoney, parseMoney } from '@/utils/money';
 import EpSelector from '@/components/EpSelector.vue';
 import type { Team } from '@/types';
 
@@ -16,17 +17,16 @@ const get = (id: number) => (inputs[id] ??= { amount: '', reason: '' });
 
 async function apply(t: Team, sign: 1 | -1) {
   const inp = get(t.id);
-  const raw = Number(inp.amount);
-  if (!Number.isInteger(raw) || raw <= 0) { ui.toast('金额必须是正整数，扣除请用「扣除」按钮', 'error'); return; }
-  const amount = raw;
+  const amount = parseMoney(inp.amount);
+  if (amount === null) { ui.toast('金额必须是正数，最多两位小数；扣除请用「扣除」按钮', 'error'); return; }
   const delta = amount * sign;
   const reason = inp.reason.trim() || (sign > 0 ? '任务奖励' : '手动扣除');
-  if (!(await ui.confirm(sign > 0 ? '增加货币' : '扣除货币', `「${t.name}」${sign > 0 ? '增加' : '扣除'} ${amount}，原因：${reason}\n当前余额 ${t.currency} → ${t.currency + delta}`))) return;
+  if (!(await ui.confirm(sign > 0 ? '增加货币' : '扣除货币', `「${t.name}」${sign > 0 ? '增加' : '扣除'} ${fmtMoney(amount)} 元，原因：${reason}\n当前余额 ${fmtMoney(t.currency)} → ${fmtMoney(t.currency + delta)}`))) return;
   try {
     await api('/ledger', { method: 'POST', body: { episodeId: ep.value?.id, teamId: t.id, delta, reason } });
     inp.amount = ''; inp.reason = '';
     await Promise.all([race.loadTeams(), race.loadLedger()]);
-    ui.toast(`已${sign > 0 ? '增加' : '扣除'} ${amount}`);
+    ui.toast(`已${sign > 0 ? '增加' : '扣除'} ${fmtMoney(amount)} 元`);
   } catch (e) { ui.error(e); }
 }
 const rows = computed(() => (filterTeam.value ? race.ledger.filter((l) => l.team_id === filterTeam.value) : race.ledger));
@@ -41,10 +41,10 @@ const rows = computed(() => (filterTeam.value ? race.ledger.filter((l) => l.team
   <div class="grid grid-4">
     <div v-for="t in race.teams" :key="t.id" class="team-card" :class="'team-' + t.status">
       <div class="flex-between"><strong>{{ t.name }}</strong><span v-if="t.status !== 'alive'" class="status-eliminated">{{ t.status === 'eliminated' ? '已淘汰' : '已退赛' }}</span></div>
-      <div class="currency-box">{{ t.currency }}</div>
+      <div class="currency-box">{{ fmtMoney(t.currency) }}</div>
       <div v-if="race.canAdjustCurrency && t.status === 'alive'" class="mt-1">
         <div class="flex" style="gap: 6px; flex-wrap: nowrap">
-          <input v-model="get(t.id).amount" type="number" inputmode="numeric" min="1" step="1" class="input-sm" placeholder="金额" style="width: 80px" />
+          <input v-model="get(t.id).amount" type="number" inputmode="decimal" min="0.01" step="0.01" class="input-sm" placeholder="金额" style="width: 90px" />
           <input v-model="get(t.id).reason" class="input-sm" placeholder="原因" style="flex: 1; min-width: 60px" />
         </div>
         <div class="flex mt-1" style="gap: 6px">
@@ -63,12 +63,12 @@ const rows = computed(() => (filterTeam.value ? race.ledger.filter((l) => l.team
     <div v-if="!rows.length" class="empty-state">暂无货币变动记录</div>
     <div v-else class="scroll-table">
       <table class="table">
-        <thead><tr><th>时间</th><th>队伍</th><th>变动</th><th>余额</th><th>操作人</th><th>原因</th></tr></thead>
+        <thead><tr><th>时间</th><th>队伍</th><th>变动（元）</th><th>余额（元）</th><th>操作人</th><th>原因</th></tr></thead>
         <tbody>
           <tr v-for="l in rows" :key="l.id">
             <td>{{ fmtDateTime(l.created_at) }}</td><td>{{ l.team_name }}</td>
-            <td :class="l.delta > 0 ? 'log-positive' : 'log-negative'">{{ l.delta > 0 ? '+' : '' }}{{ l.delta }}</td>
-            <td>{{ l.balance_after }}</td><td>{{ l.operator_name }}</td><td class="wrap">{{ l.reason || '-' }}</td>
+            <td :class="l.delta > 0 ? 'log-positive' : 'log-negative'">{{ fmtMoney(l.delta, true) }}</td>
+            <td>{{ fmtMoney(l.balance_after) }}</td><td>{{ l.operator_name }}</td><td class="wrap">{{ l.reason || '-' }}</td>
           </tr>
         </tbody>
       </table>

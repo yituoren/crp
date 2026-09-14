@@ -164,7 +164,7 @@ onMounted(() => { loadAccess(); loadUsers(); loadSettings(); if (auth.isAdmin) l
   <div v-if="tab === 'settings'" class="card" style="max-width: 520px">
     <div class="card-header">赛事设置</div>
     <div class="form-group"><label>赛事名称</label><input v-model="settings.eventName" /></div>
-    <div class="form-group"><label>队伍初始货币（新增/重置队伍时使用）</label><input v-model.number="settings.initialCurrency" type="number" /></div>
+    <div class="form-group"><label>队伍初始货币（元，最多两位小数；新增/重置队伍时使用）</label><input v-model.number="settings.initialCurrency" type="number" min="0" step="0.01" inputmode="decimal" /></div>
     <div class="form-group"><label>主办名单（逗号分隔；名单内的ID注册即为主办，且自动加入准入名单）</label><input v-model="settings.hosts" /></div>
     <button class="btn" @click="saveSettings">保存设置</button>
   </div>
