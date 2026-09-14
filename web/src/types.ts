@@ -11,22 +11,6 @@ export const typeCode = (t: LegType): string => (t === 'SL' ? 'Starting Line' : 
 export const LEG_TYPE_LABEL: Record<LegType, string> = {
   SL: '起跑线', RI: '路线信息', TI: '任务点', DT: '绕道', RB: '路障', FO: '快进/捷径', Union: '联合', Shuffle: '洗牌', UT: '回转点', YD: '让路点', SB: '减速带', PK: '对抗/PK', Trap: '陷阱', PS: '中继站/终点',
 };
-export const LEG_TYPE_HINT: Record<LegType, string> = {
-  SL: '赛段出发点，记录出发时间',
-  RI: '只指路，不设任务；默认不排站点、不记时间',
-  TI: '普通任务，记到达与完成',
-  DT: '二选一任务，记选了哪边',
-  RB: '只能一人完成，记完成人',
-  FO: '全赛程仅一队可用，成功直达终点',
-  Union: '两队合并共同完成',
-  Shuffle: '洗牌：所有队伍在此集合，抹平差距后重新出发；记到达与出发',
-  UT: '回转别队，记打卡与施加对象',
-  YD: '让路别队，记打卡与施加对象',
-  SB: '给上段末位队伍的额外任务',
-  PK: '队伍之间对抗或垫底 PK',
-  Trap: '主办自定义的陷阱环节',
-  PS: '赛段终点，记签到时间并结算名次',
-};
 export const TYPE_DEFAULTS: Record<LegType, { staff: boolean; mode: RecordMode }> = {
   SL: { staff: true, mode: 'single' }, RI: { staff: false, mode: 'none' }, TI: { staff: true, mode: 'full' }, DT: { staff: true, mode: 'full' },
   RB: { staff: true, mode: 'full' }, FO: { staff: true, mode: 'full' }, Union: { staff: true, mode: 'full' }, Shuffle: { staff: true, mode: 'full' }, UT: { staff: true, mode: 'single' },

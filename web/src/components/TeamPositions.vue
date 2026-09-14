@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { api } from '@/api';
 import { useRace } from '@/stores/race';
 import { fmtTime, fmtAgo } from '@/utils/time';
@@ -10,20 +10,26 @@ import TeamStatus from './TeamStatus.vue';
 const race = useRace();
 const data = ref<any>(null);
 let timer: number | undefined;
+/** 大屏只看正在进行的赛段；没有进行中的就看下一个未开始的；都结束了看最后一个 */
+const liveEpisode = computed(() => {
+  const eps = race.episodes;
+  return eps.find((e) => e.status === 'running') ?? eps.find((e) => e.status === 'pending') ?? eps[eps.length - 1] ?? null;
+});
+const statusText = computed(() => (liveEpisode.value?.status === 'running' ? '进行中' : liveEpisode.value?.status === 'pending' ? '即将开始' : '已结束'));
 async function load() {
-  if (!race.currentEpisode) return;
-  try { data.value = await api(`/dashboard/${race.currentEpisode.id}`); } catch { /* keep last */ }
+  if (!liveEpisode.value) return;
+  try { data.value = await api(`/dashboard/${liveEpisode.value.id}`); } catch { /* keep last */ }
 }
 onMounted(() => { load(); timer = window.setInterval(load, 30000); });
 onUnmounted(() => clearInterval(timer));
-watch(() => [race.currentEpisodeId, race.progress, race.teams], load, { deep: true });
+watch(() => [liveEpisode.value?.id, race.progress, race.teams, race.episodes], load, { deep: true });
 </script>
 
 <template>
   <div class="card live-card">
     <div class="live-head">
-      <span class="section-title">{{ race.currentEpisode?.code ?? '-' }} 队伍当前位置</span>
-      <span class="text-xs text-gray">实时更新</span>
+      <span class="section-title">{{ liveEpisode?.code ?? '-' }} 队伍当前位置</span>
+      <span class="text-xs text-gray">{{ statusText }} · 实时更新</span>
     </div>
     <div v-if="!data" class="text-gray text-sm">加载中…</div>
     <div v-else class="live-grid">

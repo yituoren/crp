@@ -31,7 +31,7 @@ function detourOptions(): string[] {
 </script>
 
 <template>
-  <div v-if="isNone" class="alert alert-info">本环节设置为「不记录时间」（例如路线信息），队伍经过后直接前往下一环节。主办可在编辑环节里更改。</div>
+  <div v-if="isNone" class="alert alert-info">本环节不记录时间。</div>
   <div v-else class="scroll-table">
     <table class="table">
       <thead>

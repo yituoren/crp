@@ -31,7 +31,7 @@ p { margin: 0 0 8px; }
 
 /* 卡片、布局 */
 .container { max-width: 1200px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; flex: 1; min-width: 0; width: 100%; }
-.container-fixed { height: 100vh; height: 100dvh; overflow: hidden; }
+.container-fixed { height: 100%; overflow: hidden; }
 .page-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .fill-page { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .fill-card { flex: 1; min-height: 0; display: flex; flex-direction: column; margin-bottom: 0; }
@@ -192,9 +192,10 @@ textarea { min-height: 90px; resize: vertical; }
 @media (max-width: 900px) { .leg-edit .edit-grid { grid-template-columns: 1fr; } }
 
 /* ---------- 左右两屏 / 左栏 ---------- */
-.pager { display: flex; align-items: flex-start; min-height: 100vh; }
-.pane-live { flex: none; width: 600px; position: sticky; top: 0; height: 100vh; height: 100dvh; overflow: auto; padding: 16px 0 16px 16px; display: flex; flex-direction: column; }
-.pane-main { flex: 1; min-width: 0; }
+.pager { display: flex; align-items: stretch; height: 100vh; height: 100dvh; overflow: hidden; }
+.pane-live { flex: none; width: 600px; height: 100%; overflow: auto; padding: 16px 0 16px 16px; display: flex; flex-direction: column; overscroll-behavior: contain; }
+.pane-main { flex: 1; min-width: 0; height: 100%; overflow-y: auto; overscroll-behavior: contain; }
+html, body { overscroll-behavior: none; }
 .pager-dots { display: none; }
 .live-card { flex: 1; display: flex; flex-direction: column; min-height: 0; margin-bottom: 0; padding: 18px 18px 14px; }
 .live-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }

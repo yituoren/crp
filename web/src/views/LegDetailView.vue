@@ -5,7 +5,7 @@ import { api } from '@/api';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
-import { LEG_TYPES, LEG_TYPE_LABEL, LEG_TYPE_HINT, TYPE_DEFAULTS, RECORD_MODE_LABEL, typeCode, type LegType, type RecordMode } from '@/types';
+import { LEG_TYPES, LEG_TYPE_LABEL, TYPE_DEFAULTS, RECORD_MODE_LABEL, typeCode, type LegType, type RecordMode } from '@/types';
 import { reactive } from 'vue';
 import { useAuth } from '@/stores/auth';
 import LegTag from '@/components/LegTag.vue';
@@ -92,7 +92,6 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
               </div>
               <div class="form-group"><label>名称</label><input v-model="form.name" /></div>
             </div>
-            <div class="info-text edit-hint">{{ LEG_TYPE_HINT[form.type] }}</div>
             <div class="field-row">
               <div class="form-group"><label>记录方式</label>
                 <select v-model="form.record_mode"><option v-for="(l, m) in RECORD_MODE_LABEL" :key="m" :value="m">{{ l }}</option></select>
