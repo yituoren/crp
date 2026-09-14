@@ -64,8 +64,9 @@ adminRoutes.put('/admin/users/:id', async (c) => {
   const me = c.get('user');
   const b = await body(c);
   if (before.role === 'admin' && me.role !== 'admin') throw bad('管理员账号只能由管理员修改');
-  const allowedRoles = me.role === 'admin' ? ['admin', 'host', 'crew'] : ['host', 'crew'];
-  const role = allowedRoles.includes(b.role) ? b.role : before.role;
+  // 管理员只能通过服务器命令创建，页面上不允许把任何账号设为管理员，也不允许把管理员改成别的角色
+  if (b.role !== undefined && b.role !== before.role && (b.role === 'admin' || before.role === 'admin')) throw bad('管理员角色只能通过服务器命令设置');
+  const role = ['host', 'crew'].includes(b.role) ? b.role : before.role;
   const disabled = b.disabled === undefined ? before.disabled : b.disabled ? 1 : 0;
   const displayName = b.displayName === undefined ? before.display_name : str(b.displayName, 50) || before.display_name;
   if (id === me.id && (role !== me.role || disabled)) throw bad('不能降级或停用自己');

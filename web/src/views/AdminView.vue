@@ -139,9 +139,9 @@ onMounted(() => { loadAccess(); loadUsers(); loadSettings(); if (auth.isAdmin) l
           <tr v-for="u in users" :key="u.id">
             <td><strong>{{ u.username }}</strong><span v-if="u.id === auth.user?.id" class="text-xs text-gray">（我）</span></td>
             <td>
-              <span v-if="u.role === 'admin' && !auth.isAdmin" class="badge badge-host">管理员</span>
+              <span v-if="u.role === 'admin'" class="badge badge-host">管理员</span>
               <select v-else class="input-sm input-inline" :value="u.role" :disabled="u.id === auth.user?.id" @change="setRole(u, ($event.target as HTMLSelectElement).value)">
-                <option value="crew">幕后</option><option value="host">主办</option><option v-if="auth.isAdmin" value="admin">管理员</option>
+                <option value="crew">幕后</option><option value="host">主办</option>
               </select>
             </td>
             <td><span :class="u.disabled ? 'status-eliminated' : 'status-alive'">{{ u.disabled ? '已停用' : '正常' }}</span></td>
@@ -158,7 +158,7 @@ onMounted(() => { loadAccess(); loadUsers(); loadSettings(); if (auth.isAdmin) l
         </tbody>
       </table>
     </div>
-    <p class="info-text">密码经过加密存储，无法查看；忘记密码只能重置。管理员账号在服务器上用 create-admin 命令创建，操作日志与备份/重置仅管理员可见。</p>
+    <p class="info-text">密码经过加密存储，无法查看；忘记密码只能重置。管理员账号只能在服务器上用 create-admin 命令创建或撤销，页面上不能把账号设为管理员；操作日志与备份/重置仅管理员可见。</p>
   </div>
 
   <div v-if="tab === 'settings'" class="card" style="max-width: 520px">
