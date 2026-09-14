@@ -37,6 +37,24 @@ export const useRace = defineStore('race', () => {
     return (a.role === 'follow' && a.team_id === teamId) || (a.role === 'station' && a.leg_id === legId);
   }
   const canAdjustCurrency = computed(() => auth.isHost || myAssignment.value?.role === 'station');
+
+  /** 与服务端一致的打卡顺序检查：返回不能打卡的原因，null 表示可以 */
+  const MANDATORY_TYPES = new Set(['SL', 'TI', 'DT', 'RB', 'Union', 'Trap', 'PS']);
+  function blockReason(teamId: number, legId: number): string | null {
+    const ep = currentEpisode.value;
+    if (!ep) return null;
+    if (ep.status !== 'running' && !auth.isHost) return ep.status === 'finished' ? '赛段已结束' : '赛段尚未开始';
+    const idx = ep.legs.findIndex((l) => l.id === legId);
+    const missing: string[] = [];
+    for (let i = 0; i < idx; i++) {
+      const l = ep.legs[i]!;
+      const p = progressOf(teamId, l.id);
+      if (l.type === 'FO' && p?.ff_result === 'success') return null;
+      if (l.record_mode === 'none' || !MANDATORY_TYPES.has(l.type)) continue;
+      if (!p?.completed_at) missing.push(l.name);
+    }
+    return missing.length ? `先完成：${missing.join('、')}` : null;
+  }
   function canUploadTo(legId: number) {
     return auth.isHost || (myAssignment.value?.role === 'station' && myAssignment.value.leg_id === legId);
   }
@@ -92,7 +110,7 @@ export const useRace = defineStore('race', () => {
 
   return {
     episodes, teams, users, announcements, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
-    aliveTeams, myAssignment, teamById, legById, progressOf, canRecord, canAdjustCurrency, canUploadTo,
+    aliveTeams, myAssignment, teamById, legById, progressOf, canRecord, canAdjustCurrency, canUploadTo, blockReason,
     loadAll, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
   };
 });

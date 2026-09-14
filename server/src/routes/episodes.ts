@@ -94,6 +94,11 @@ episodeRoutes.post('/episodes/:id/start', hostOnly, (c) => {
   const id = intParam(c, 'id');
   const ep = get('SELECT * FROM episodes WHERE id = ?', id);
   if (!ep) throw notFound('赛段不存在');
+  if (ep.status === 'running') throw bad('该赛段已在进行中');
+  const running = get("SELECT code FROM episodes WHERE status = 'running' AND id != ?", id);
+  if (running) throw bad(`${running.code} 仍在进行中，请先结束它再开始新的赛段`);
+  const unfinished = all("SELECT code FROM episodes WHERE (sort < ? OR (sort = ? AND id < ?)) AND status != 'finished' ORDER BY sort, id", ep.sort, ep.sort, id);
+  if (unfinished.length) throw bad(`前面的赛段还没有结束：${unfinished.map((e) => e.code).join('、')}`);
   const user = c.get('user');
   const t = now();
   const issued: string[] = [];
@@ -121,6 +126,7 @@ episodeRoutes.post('/episodes/:id/finish', hostOnly, (c) => {
   const id = intParam(c, 'id');
   const ep = get('SELECT * FROM episodes WHERE id = ?', id);
   if (!ep) throw notFound('赛段不存在');
+  if (ep.status !== 'running') throw bad('只有进行中的赛段可以结束');
   run("UPDATE episodes SET status = 'finished', finished_at = COALESCE(finished_at, ?) WHERE id = ?", now(), id);
   audit(c.get('user'), 'finish', 'episode', id, { status: ep.status });
   notify('episodes');

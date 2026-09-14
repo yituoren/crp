@@ -5,6 +5,29 @@ import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forb
 
 export const progressRoutes = new Hono<Env>();
 
+/** 只有这些类型的环节是每支队伍都必须经过的；快进/减速带/回转/让路/对抗只有部分队伍会用 */
+const MANDATORY_TYPES = new Set(['SL', 'TI', 'DT', 'RB', 'Union', 'Trap', 'PS']);
+
+/**
+ * 检查队伍在某环节打卡前，前面的必经环节是否都已完成。
+ * 返回未完成的环节名列表（空数组 = 可以打卡）。成功快进后，快进之后的环节不再要求。
+ */
+export function missingPrerequisites(episodeId: number, teamId: number, legId: number): string[] {
+  const legs = all('SELECT id, type, name, sort, record_mode FROM legs WHERE episode_id = ? ORDER BY sort, id', episodeId);
+  const idx = legs.findIndex((l) => l.id === legId);
+  if (idx <= 0) return [];
+  const prog = new Map(all('SELECT leg_id, completed_at, ff_result FROM progress WHERE episode_id = ? AND team_id = ?', episodeId, teamId).map((p) => [p.leg_id, p]));
+  const missing: string[] = [];
+  for (let i = 0; i < idx; i++) {
+    const l = legs[i]!;
+    const p = prog.get(l.id);
+    if (l.type === 'FO' && p?.ff_result === 'success') return []; // 成功快进：直接放行
+    if (l.record_mode === 'none' || !MANDATORY_TYPES.has(l.type)) continue;
+    if (!p?.completed_at) missing.push(l.name);
+  }
+  return missing;
+}
+
 export function listProgress(episodeId: number) {
   return all('SELECT * FROM progress WHERE episode_id = ? ORDER BY id', episodeId);
 }
@@ -34,6 +57,20 @@ progressRoutes.post('/progress', async (c) => {
   if (!leg) throw notFound('环节不存在');
   if (leg.record_mode === 'none' && ['arrive', 'complete', 'single'].includes(action)) throw bad('本环节不记录时间');
   if (leg.record_mode === 'single' && ['arrive', 'complete'].includes(action)) action = 'single';
+  const episode = get('SELECT status, code FROM episodes WHERE id = ?', episodeId)!;
+  if (episode.status !== 'running' && !isHostRole(user.role)) throw bad(`${episode.code} ${episode.status === 'finished' ? '已结束' : '尚未开始'}，不能记录`);
+  if (['arrive', 'complete', 'single'].includes(action)) {
+    const missing = missingPrerequisites(episodeId, teamId, legId);
+    if (missing.length) throw bad(`该队伍还没有完成前面的环节：${missing.join('、')}`);
+  }
+  if (['undo_arrive', 'undo_complete'].includes(action)) {
+    const later = all(
+      `SELECT l.name FROM progress p JOIN legs l ON l.id = p.leg_id
+       WHERE p.episode_id = ? AND p.team_id = ? AND (l.sort > (SELECT sort FROM legs WHERE id = ?)) AND (p.arrived_at IS NOT NULL OR p.completed_at IS NOT NULL)`,
+      episodeId, teamId, legId,
+    );
+    if (later.length) throw bad(`后面的环节已有记录（${later.map((r) => r.name).join('、')}），请先撤销后面的`);
+  }
   const team = get('SELECT * FROM teams WHERE id = ?', teamId);
   if (!team) throw notFound('队伍不存在');
   if (!canRecordProgress(user, episodeId, teamId, legId)) throw forbidden('你没有该队伍/站点的记录权限');
