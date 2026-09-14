@@ -1,4 +1,5 @@
 // 用法：npm run import-prototype --workspace=server -- backup.json [YYYY-MM-DD] [--wipe]
+// 服务器上请用 deploy/import-prototype.sh（它会指定 DATA_DIR=/opt/crp/data）
 import fs from 'node:fs';
 import { importPrototype } from './import-prototype.js';
 import { seed } from './seed.js';

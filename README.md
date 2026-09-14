@@ -59,8 +59,10 @@ docker compose up -d --build   # 同样监听 80 端口，数据在 ./data
 管理员是主办之上的最高权限，只能在服务器上用命令创建（不能通过注册获得）：
 
 ```bash
-cd /opt/crp && npm run create-admin --workspace=server -- 用户名 密码
+bash /opt/crp/deploy/create-admin.sh 用户名 密码
 ```
+
+本地开发时用 `npm run create-admin --workspace=server -- 用户名 密码`（写入 `server/data`）。注意服务器上的正式数据库在 `/opt/crp/data`，直接运行 npm 命令会写到错误的位置，请用上面的脚本。
 
 操作日志、导出备份、覆盖恢复、导入旧版数据、重置数据只有管理员可以操作；管理员账号也只能由管理员修改、重置密码或删除。其余权限与主办相同。
 
@@ -102,7 +104,7 @@ docs/               操作手册、原型
 旧版「导出全部数据备份」得到的 JSON 可在「主办后台 → 备份与重置 → 导入旧版备份」导入；或在服务器上：
 
 ```bash
-npm run import-prototype --workspace=server -- backup.json 2026-10-01
+bash /opt/crp/deploy/import-prototype.sh backup.json 2026-10-01
 ```
 
 旧版的到达/完成时间只有时分秒，第二个参数指定这些记录所属日期。
