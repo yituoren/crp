@@ -69,7 +69,7 @@ async function logout() {
       <router-link to="/episodes" :class="{ 'router-link-active': $route.name === 'leg' }">赛段</router-link>
       <router-link to="/schedule">排班</router-link>
       <router-link to="/teams">队伍</router-link>
-      <router-link to="/currency">货币</router-link>
+      <router-link to="/currency">经费</router-link>
       <router-link to="/progress">进度</router-link>
       <router-link v-if="auth.isHost" to="/admin">后台</router-link>
     </nav>
