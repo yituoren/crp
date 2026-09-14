@@ -44,12 +44,12 @@ const stats = computed(() => ({
         <div class="team-card"><div class="text-gray text-sm">存活队伍</div><div class="stat-num" style="color: var(--success)">{{ stats.alive }}<span class="text-gray text-sm"> / {{ stats.total }}</span></div></div>
         <div class="team-card"><div class="text-gray text-sm">本赛段环节</div><div class="stat-num" style="color: var(--primary)">{{ stats.legs }}</div></div>
         <div class="team-card"><div class="text-gray text-sm">已排班幕后</div><div class="stat-num" style="color: var(--primary)">{{ stats.staffed }}</div></div>
-        <div class="team-card"><div class="text-gray text-sm">已到终点</div><div class="stat-num" style="color: #db2777">{{ stats.finished }}</div></div>
+        <div class="team-card"><div class="text-gray text-sm">已到中继站</div><div class="stat-num" style="color: #db2777">{{ stats.finished }}</div></div>
       </div>
       <div class="flex mt-2">
-        <router-link to="/dashboard" class="btn">打开实时大屏</router-link>
+        <router-link to="/progress" class="btn">查看进度</router-link>
         <router-link to="/schedule" class="btn btn-outline">去排班</router-link>
-        <router-link to="/pitstop" class="btn btn-outline">终点结算</router-link>
+        
       </div>
     </template>
   </div>

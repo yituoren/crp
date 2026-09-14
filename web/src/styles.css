@@ -224,3 +224,17 @@ html, body { overscroll-behavior: none; }
   .pager-dots button { pointer-events: auto; width: 8px; height: 8px; border-radius: 50%; border: none; padding: 0; background: rgba(15,23,42,.25); }
   .pager-dots button.active { background: var(--primary); }
 }
+
+/* 进度页矩阵：队伍列固定在左，其余横向滚动 */
+.matrix-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.mx2 { min-width: max-content; }
+.mx2 th, .mx2 td { text-align: center; }
+.mx2 .mx2-team { position: sticky; left: 0; z-index: 2; background: #fff; text-align: left; min-width: 150px; box-shadow: 2px 0 0 var(--gray-200); }
+.mx2 thead .mx2-team { background: var(--gray-50); z-index: 3; }
+.mx2 .mx2-leg { background: var(--gray-50); border-left: 2px solid var(--gray-200); }
+.mx2 .mx2-sub { background: var(--gray-50); font-weight: 500; color: var(--gray-500); }
+.mx2 .mx2-cell { font-family: ui-monospace, Menlo, monospace; min-width: 64px; }
+.mx2 td.mx2-last, .mx2 th.mx2-last { border-right: 2px solid var(--gray-200); }
+.mx2 thead tr:first-child .mx2-leg:first-of-type, .mx2 tr > .mx2-cell:nth-child(2) { border-left: 2px solid var(--gray-200); }
+.mx2 .mx-done { background: #dcfce7; color: #166534; }
+.mx2 .mx-arrived { background: #fef9c3; color: #854d0e; }

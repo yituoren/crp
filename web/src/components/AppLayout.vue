@@ -6,7 +6,6 @@ import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { connectRealtime, disconnectRealtime } from '@/realtime';
 import { setUnauthorizedHandler } from '@/api';
-import { moneyLabel } from '@/utils/money';
 import TeamPositions from './TeamPositions.vue';
 import { ref, nextTick } from 'vue';
 
@@ -65,15 +64,14 @@ async function logout() {
       </div>
     </div>
     <nav class="nav">
-      <router-link to="/" active-class="" exact-active-class="router-link-active">我的今日</router-link>
+      <router-link to="/" active-class="" exact-active-class="router-link-active">我的</router-link>
       <router-link to="/announcements" class="nav-dot-wrap">公告<span v-if="race.unreadAnnouncements" class="nav-dot" :title="`${race.unreadAnnouncements} 条未读`"></span></router-link>
-      <router-link to="/episodes" :class="{ 'router-link-active': $route.name === 'leg' }">赛段信息</router-link>
+      <router-link to="/episodes" :class="{ 'router-link-active': $route.name === 'leg' }">赛段</router-link>
       <router-link to="/schedule">排班</router-link>
       <router-link to="/teams">队伍</router-link>
-      <router-link to="/currency">{{ moneyLabel() }}与罚时</router-link>
-      <router-link v-if="auth.isHost" to="/dashboard">实时大屏</router-link>
-      <router-link v-if="auth.isHost" to="/pitstop">终点结算</router-link>
-      <router-link v-if="auth.isHost" to="/admin">主办后台</router-link>
+      <router-link to="/currency">货币</router-link>
+      <router-link to="/progress">进度</router-link>
+      <router-link v-if="auth.isHost" to="/admin">后台</router-link>
     </nav>
     <div class="page-body">
       <router-view v-if="race.loaded" />

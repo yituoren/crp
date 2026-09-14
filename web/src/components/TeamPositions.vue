@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { api } from '@/api';
 import { useRace } from '@/stores/race';
-import { fmtTime, fmtAgo } from '@/utils/time';
+import { fmtTime } from '@/utils/time';
 import { fmtMoney, moneyUnit } from '@/utils/money';
 import LegTag from './LegTag.vue';
 import TeamStatus from './TeamStatus.vue';
@@ -43,7 +43,7 @@ watch(() => [liveEpisode.value?.id, race.progress, race.teams, race.episodes], l
           <template v-else-if="t.currentLeg"><LegTag :type="t.currentLeg.type" /> <span class="live-legname">{{ t.currentLeg.name }}</span><span class="text-xs text-gray"> {{ t.currentLeg.completed ? '已完成' : '进行中' }}</span></template>
           <span v-else class="text-gray">未出发</span>
         </div>
-        <div class="live-time"><span class="record-time">{{ fmtTime(t.lastActivity) }}</span><span v-if="t.staleMinutes !== null" class="text-xs text-gray"> · {{ fmtAgo(t.staleMinutes) }}</span></div>
+        <div class="live-time"><span class="record-time">{{ fmtTime(t.lastActivity) }}</span></div>
         <div class="live-right live-money">{{ fmtMoney(t.currency) }}</div>
       </div>
     </div>
