@@ -140,7 +140,9 @@ CREATE TABLE IF NOT EXISTS announcements (
   content TEXT NOT NULL,
   level TEXT NOT NULL DEFAULT 'info',         -- info | warning | urgent
   created_by TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  pinned_at TEXT,                             -- 置顶时间，空为未置顶
+  audience TEXT NOT NULL DEFAULT 'all'        -- 通知对象（预留）
 );
 CREATE TABLE IF NOT EXISTS audit_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -172,6 +174,8 @@ ensureColumn('progress', 'target_team_id', 'INTEGER');
 ensureColumn('episodes', 'started_at', 'TEXT');
 ensureColumn('episodes', 'finished_at', 'TEXT');
 ensureColumn('users', 'ann_read_id', 'INTEGER NOT NULL DEFAULT 0');
+ensureColumn('announcements', 'pinned_at', 'TEXT');
+ensureColumn('announcements', 'audience', "TEXT NOT NULL DEFAULT 'all'");
 
 type Param = string | number | null;
 export type Row = Record<string, any>;

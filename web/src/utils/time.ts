@@ -2,6 +2,7 @@ const TZ = 'Asia/Shanghai';
 
 const timeFmt = new Intl.DateTimeFormat('zh-CN', { timeZone: TZ, hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 const dateTimeFmt = new Intl.DateTimeFormat('zh-CN', { timeZone: TZ, hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const dateMinuteFmt = new Intl.DateTimeFormat('zh-CN', { timeZone: TZ, hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 
 export function fmtTime(iso?: string | null): string {
   if (!iso) return '-';
@@ -14,6 +15,13 @@ export function fmtDateTime(iso?: string | null): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '-';
   return dateTimeFmt.format(d).replace(/\//g, '-');
+}
+/** 精确到分钟：MM-DD HH:mm */
+export function fmtDateMinute(iso?: string | null): string {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '-';
+  return dateMinuteFmt.format(d).replace(/\//g, '-');
 }
 /** ISO → datetime-local 输入框的值（上海时间） */
 export function toLocalInput(iso?: string | null): string {
