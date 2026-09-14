@@ -42,7 +42,7 @@ async function remove(id: number) {
 <template>
   <div class="card">
     <div class="card-header">
-      <span>{{ ep?.code }} 罚时与补时</span>
+      <span>罚时与补时</span>
       <span v-if="!race.canAdjustCurrency" class="text-sm text-gray">只有主办与本赛段站点人员可以操作</span>
     </div>
     <div v-if="race.canAdjustCurrency" class="flex mb-2">
@@ -64,8 +64,8 @@ async function remove(id: number) {
             <td :class="p.minutes > 0 ? 'log-negative' : 'log-positive'">{{ p.minutes > 0 ? '+' : '' }}{{ p.minutes }}</td>
             <td>{{ totals.get(p.team_id) ?? 0 }}</td>
             <td>{{ p.applied_by_name ?? '-' }}</td>
-            <td class="wrap">{{ p.reason || '-' }}</td>
-            <td v-if="auth.isHost"><button class="btn btn-outline btn-sm" @click="remove(p.id)">删</button></td>
+            <td>{{ p.reason || '-' }}</td>
+            <td v-if="auth.isHost"><button class="btn btn-outline btn-sm" @click="remove(p.id)">删除</button></td>
           </tr>
         </tbody>
       </table>

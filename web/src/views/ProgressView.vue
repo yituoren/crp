@@ -83,7 +83,7 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
 
   <!-- 进度矩阵 -->
   <div class="card">
-    <div class="card-header"><span>{{ ep?.code }} 进度矩阵</span><span class="text-xs text-gray">绿 = 已完成，黄 = 进行中；进行中的用时按当前时间计算</span></div>
+    <div class="card-header"><span>进度矩阵</span><span class="text-xs text-gray">绿 = 已完成，黄 = 进行中；进行中的用时按当前时间计算</span></div>
     <div v-if="!legs.length" class="empty-state">本赛段没有需要记录的环节</div>
     <div v-else class="matrix-scroll">
       <table class="table mx2">
@@ -127,7 +127,7 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
   <!-- 排名结算 -->
   <div class="card">
     <div class="card-header">
-      <span>{{ ep?.code }} 排名结算</span>
+      <span>排名结算</span>
       <button v-if="auth.isHost" class="btn" @click="autoRank">按时间自动排名</button>
     </div>
     <div v-if="!hasPsLeg" class="alert alert-warning">本赛段没有中继站环节，只能手工填写签到时间。</div>

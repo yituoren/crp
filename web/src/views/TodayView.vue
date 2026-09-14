@@ -38,7 +38,7 @@ const stats = computed(() => ({
 
   <!-- 主办概览 -->
   <div v-if="auth.isHost" class="card">
-    <div class="card-header">{{ ep?.code }} 概览</div>
+    <div class="card-header">概览</div>
     <template v-if="auth.isHost">
       <div class="grid grid-stat">
         <div class="team-card"><div class="text-gray text-sm">存活队伍</div><div class="stat-num" style="color: var(--success)">{{ stats.alive }}<span class="text-gray text-sm"> / {{ stats.total }}</span></div></div>
@@ -56,7 +56,7 @@ const stats = computed(() => ({
 
   <!-- 我的分工（按排班，主办也可能被排为跟队/站点） -->
   <div class="card">
-    <div class="card-header">我在 {{ ep?.code }} 的分工</div>
+    <div class="card-header">我的分工</div>
     <template v-if="my?.role === 'follow' && myTeam">
       <p><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.label }}</strong>，当前余额 <strong class="text-warning">{{ fmtMoney(myTeam.currency) }} {{ moneyUnit() }}</strong></p>
       <div class="scroll-table">

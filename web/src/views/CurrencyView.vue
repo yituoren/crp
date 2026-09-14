@@ -35,7 +35,7 @@ const rows = computed(() => (filterTeam.value ? race.ledger.filter((l) => l.team
 <template>
   <EpSelector />
   <div class="flex-between mb-2">
-    <div class="section-title">{{ ep?.code }} {{ moneyLabel() }}操作</div>
+    <div class="section-title">{{ moneyLabel() }}操作</div>
     <span v-if="!race.canAdjustCurrency && race.myAssignment?.role !== 'follow'" class="text-sm text-gray">主办与本赛段站点可操作所有队伍，跟队只能操作所跟队伍</span>
   </div>
   <div class="grid grid-4">
@@ -57,7 +57,7 @@ const rows = computed(() => (filterTeam.value ? race.ledger.filter((l) => l.team
 
   <div class="card mt-3">
     <div class="card-header">
-      <span>{{ moneyLabel() }}变动日志（{{ ep?.code }}）</span>
+      <span>{{ moneyLabel() }}变动日志</span>
       <select v-model="filterTeam" class="input-sm input-inline" style="width: 140px"><option value="">全部队伍</option><option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.label }}</option></select>
     </div>
     <div v-if="!rows.length" class="empty-state">暂无货币变动记录</div>
