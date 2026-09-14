@@ -27,7 +27,7 @@ assignmentRoutes.get('/episodes/:id/assignments', (c) => {
   return c.json({ assignments: listAssignments(episodeId) });
 });
 
-/** 整体替换某赛段的排班。items: [{ userId, role: 'follow'|'station'|'crew', teamId?, legId? }] */
+/** 整体替换某赛段的排班。items: [{ userId, role: 'follow'|'station'|'live'|'crew', teamId?, legId? }] */
 assignmentRoutes.put('/episodes/:id/assignments', hostOnly, async (c) => {
   const episodeId = intParam(c, 'id');
   if (!get('SELECT 1 FROM episodes WHERE id = ?', episodeId)) throw notFound('赛段不存在');
@@ -54,6 +54,13 @@ assignmentRoutes.put('/episodes/:id/assignments', hostOnly, async (c) => {
            ON CONFLICT(episode_id, user_id) DO UPDATE SET role = excluded.role, team_id = NULL, leg_id = excluded.leg_id`,
           episodeId, userId, 'station', legId,
         );
+      } else if (it.role === 'live') {
+        // 直播员：整个赛段跟进所有数据，只读，不绑定队伍或环节
+        run(
+          `INSERT INTO assignments(episode_id, user_id, role, team_id, leg_id) VALUES (?,?,?,NULL,NULL)
+           ON CONFLICT(episode_id, user_id) DO UPDATE SET role = excluded.role, team_id = NULL, leg_id = NULL`,
+          episodeId, userId, 'live',
+        );
       } else {
         run('DELETE FROM assignments WHERE episode_id = ? AND user_id = ?', episodeId, userId);
       }
@@ -72,8 +79,9 @@ assignmentRoutes.post('/episodes/:id/assignments/copy-from/:from', hostOnly, (c)
   tx(() => {
     run('DELETE FROM assignments WHERE episode_id = ?', to);
     for (const r of rows) {
-      // 站点绑定的环节属于原赛段，复制时只保留跟队；站点降级为普通幕后
+      // 站点绑定的环节属于原赛段，复制时保留跟队与直播员；站点降级为普通幕后
       if (r.role === 'follow') run('INSERT INTO assignments(episode_id, user_id, role, team_id, leg_id) VALUES (?,?,?,?,NULL)', to, r.user_id, 'follow', r.team_id);
+      if (r.role === 'live') run('INSERT INTO assignments(episode_id, user_id, role, team_id, leg_id) VALUES (?,?,?,NULL,NULL)', to, r.user_id, 'live');
     }
   });
   audit(c.get('user'), 'copy', 'assignments', to, undefined, { from });

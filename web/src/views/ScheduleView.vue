@@ -11,7 +11,7 @@ const race = useRace();
 const ui = useUi();
 const ep = computed(() => race.currentEpisode);
 
-interface RowForm { userId: number; role: 'crew' | 'follow' | 'station'; teamId: number | ''; legId: number | '' }
+interface RowForm { userId: number; role: 'crew' | 'follow' | 'station' | 'live'; teamId: number | ''; legId: number | '' }
 const form = reactive<{ rows: RowForm[] }>({ rows: [] });
 
 function rebuild() {
@@ -23,7 +23,7 @@ function rebuild() {
 watch(() => [race.assignments, race.users, ep.value?.id], rebuild, { immediate: true, deep: true });
 
 const userById = computed(() => new Map(race.users.map((u) => [u.id, u])));
-const roleLabel: Record<string, [string, string]> = { admin: ['管理员', 'badge-host'], host: ['主办', 'badge-host'], follow: ['跟队', 'badge-follow'], station: ['站点', 'badge-station'], crew: ['机动', 'badge-crew'] };
+const roleLabel: Record<string, [string, string]> = { admin: ['管理员', 'badge-host'], host: ['主办', 'badge-host'], follow: ['跟队', 'badge-follow'], station: ['站点', 'badge-station'], live: ['直播员', 'badge-live'], crew: ['机动', 'badge-crew'] };
 function displayRole(userId: number) {
   const a = race.assignments.find((x) => x.user_id === userId);
   if (a) return roleLabel[a.role]!;
@@ -34,6 +34,7 @@ function assignText(userId: number) {
   const a = race.assignments.find((x) => x.user_id === userId);
   if (!a) return '-';
   if (a.role === 'follow') return `跟队 → ${a.team_name ?? '?'}`;
+  if (a.role === 'live') return '直播员 → 全赛段（只读）';
   return `站点 → ${a.leg_name ?? '?'}`;
 }
 const conflicts = computed(() => {
@@ -88,7 +89,7 @@ async function copyPrev() {
             <td v-if="auth.isHost">
               <div class="flex" style="gap: 6px; flex-wrap: nowrap">
                 <select v-model="r.role" class="input-sm input-inline" style="width: 90px; flex: none">
-                  <option value="crew">机动</option><option value="follow">跟队</option><option value="station">站点</option>
+                  <option value="crew">机动</option><option value="follow">跟队</option><option value="station">站点</option><option value="live">直播员</option>
                 </select>
                 <select v-if="r.role === 'follow'" v-model="r.teamId" class="input-sm input-inline" style="width: 180px; flex: none">
                   <option value="">选择队伍</option>
@@ -98,7 +99,7 @@ async function copyPrev() {
                   <option value="">选择环节</option>
                   <option v-for="l in (ep?.legs ?? []).filter((x) => x.needs_staff)" :key="l.id" :value="l.id">{{ l.type }} · {{ l.name }}</option>
                 </select>
-                <span v-else class="text-xs text-gray" style="width: 180px; flex: none">无需分配</span>
+                <span v-else class="text-xs text-gray" style="width: 180px; flex: none">{{ r.role === 'live' ? '全赛段只读' : '无需分配' }}</span>
               </div>
             </td>
           </tr>

@@ -96,6 +96,15 @@ const stats = computed(() => ({
       <RecordTable :leg="myLeg" />
     </template>
 
+    <template v-else-if="my?.role === 'live'">
+      <p><span class="badge badge-live">直播员</span> 你本赛段负责直播跟进，可以查看所有队伍、环节、经费与罚时数据，但不做记录。</p>
+      <div class="flex">
+        <router-link to="/progress" class="btn">查看进度</router-link>
+        <router-link to="/episodes" class="btn btn-outline">赛段与环节</router-link>
+        <router-link to="/announcements" class="btn btn-outline">公告</router-link>
+      </div>
+    </template>
+
     <div v-else class="empty-state">
       <template v-if="auth.isHost">本赛段没有给你排跟队或站点任务。</template>
       <template v-else>本赛段你没有跟队或站点任务（机动幕后）。<br /><span class="text-sm">可以在「赛段信息」查看环节安排，排班有变动会实时更新。</span></template>

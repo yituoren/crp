@@ -67,7 +67,7 @@ export const adminOnly: MiddlewareHandler<Env> = async (c, next) => {
 
 /** 当前用户在某赛段的排班 */
 export function getAssignment(episodeId: number, userId: number) {
-  return get<{ role: 'follow' | 'station'; team_id: number | null; leg_id: number | null }>(
+  return get<{ role: 'follow' | 'station' | 'live'; team_id: number | null; leg_id: number | null }>(
     'SELECT role, team_id, leg_id FROM assignments WHERE episode_id = ? AND user_id = ?',
     episodeId,
     userId,
