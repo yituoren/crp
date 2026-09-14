@@ -39,7 +39,7 @@ async function save() {
 </script>
 
 <template>
-  <Modal :title="`修改记录 · ${team.name} · ${leg.name}`" small @close="emit('close')">
+  <Modal :title="`修改记录 · ${team.label} · ${leg.name}`" small @close="emit('close')">
     <template v-if="isSingle">
       <div class="form-group"><label>{{ label }}时间（留空 = 未{{ label }}）</label><input v-model="form.completedAt" type="datetime-local" step="1" /></div>
     </template>
@@ -48,7 +48,7 @@ async function save() {
       <div class="form-group"><label>完成时间（留空 = 未完成）</label><input v-model="form.completedAt" type="datetime-local" step="1" /></div>
     </template>
     <div v-if="leg.type === 'UT' || leg.type === 'YD'" class="form-group"><label>施加对象</label>
-      <select v-model="form.targetTeamId"><option value="">未使用</option><option v-for="t in teams.filter((x) => x.id !== team.id)" :key="t.id" :value="t.id">{{ t.name }}</option></select>
+      <select v-model="form.targetTeamId"><option value="">未使用</option><option v-for="t in teams.filter((x) => x.id !== team.id)" :key="t.id" :value="t.id">{{ t.label }}</option></select>
     </div>
     <div v-if="leg.type === 'DT'" class="form-group"><label>绕道选择</label><input v-model="form.detourChoice" /></div>
     <div v-if="leg.type === 'RB'" class="form-group"><label>路障完成人</label><input v-model="form.roadblockBy" /></div>

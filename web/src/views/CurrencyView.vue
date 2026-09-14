@@ -22,7 +22,7 @@ async function apply(t: Team, sign: 1 | -1) {
   if (amount === null) { ui.toast('金额必须是正数，最多两位小数；扣除请用「扣除」按钮', 'error'); return; }
   const delta = amount * sign;
   const reason = inp.reason.trim() || (sign > 0 ? '任务奖励' : '手动扣除');
-  if (!(await ui.confirm(sign > 0 ? '增加货币' : '扣除货币', `「${t.name}」${sign > 0 ? '增加' : '扣除'} ${fmtMoney(amount)} 元，原因：${reason}\n当前余额 ${fmtMoney(t.currency)} → ${fmtMoney(t.currency + delta)}`))) return;
+  if (!(await ui.confirm(sign > 0 ? '增加货币' : '扣除货币', `「${t.label}」${sign > 0 ? '增加' : '扣除'} ${fmtMoney(amount)} 元，原因：${reason}\n当前余额 ${fmtMoney(t.currency)} → ${fmtMoney(t.currency + delta)}`))) return;
   try {
     await api('/ledger', { method: 'POST', body: { episodeId: ep.value?.id, teamId: t.id, delta, reason } });
     inp.amount = ''; inp.reason = '';
@@ -41,7 +41,7 @@ const rows = computed(() => (filterTeam.value ? race.ledger.filter((l) => l.team
   </div>
   <div class="grid grid-4">
     <div v-for="t in race.teams" :key="t.id" class="team-card" :class="'team-' + t.status">
-      <div class="flex-between"><strong>{{ t.name }}</strong><span v-if="t.status !== 'alive'" class="status-eliminated">{{ t.status === 'eliminated' ? '已淘汰' : '已退赛' }}</span></div>
+      <div class="flex-between"><strong>{{ t.label }}</strong><span v-if="t.status !== 'alive'" class="status-eliminated">{{ t.status === 'eliminated' ? '已淘汰' : '已退赛' }}</span></div>
       <div class="currency-box">{{ fmtMoney(t.currency) }}</div>
       <div v-if="race.canAdjustCurrencyFor(t.id) && t.status === 'alive'" class="mt-1">
         <div class="flex" style="gap: 6px; flex-wrap: nowrap">
@@ -59,7 +59,7 @@ const rows = computed(() => (filterTeam.value ? race.ledger.filter((l) => l.team
   <div class="card mt-3">
     <div class="card-header">
       <span>货币变动日志（{{ ep?.code }}）</span>
-      <select v-model="filterTeam" class="input-sm input-inline" style="width: 140px"><option value="">全部队伍</option><option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.name }}</option></select>
+      <select v-model="filterTeam" class="input-sm input-inline" style="width: 140px"><option value="">全部队伍</option><option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.label }}</option></select>
     </div>
     <div v-if="!rows.length" class="empty-state">暂无货币变动记录</div>
     <div v-else class="scroll-table">

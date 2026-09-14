@@ -51,7 +51,7 @@ const legCompletion = (legId: number) => {
             <thead><tr><th>队伍</th><th>状态</th><th>当前环节</th><th>最近记录</th><th>余额（元）</th></tr></thead>
             <tbody>
               <tr v-for="t in data.teams" :key="t.id">
-                <td><strong>{{ t.name }}</strong></td>
+                <td><strong>{{ t.label }}</strong></td>
                 <td><TeamStatus :status="t.status" /></td>
                 <td>
                   <template v-if="t.finished">已到终点</template>
@@ -95,7 +95,7 @@ const legCompletion = (legId: number) => {
           </thead>
           <tbody>
             <tr v-for="t in data.teams" :key="t.id" :style="t.status !== 'alive' ? 'opacity:.5' : ''">
-              <td><strong>{{ t.name }}</strong></td>
+              <td><strong>{{ t.label }}</strong></td>
               <td v-for="l in matrixLegs" :key="l.id" class="cell" :class="cell(t.id, l.id)?.completed_at ? 'cell-done' : cell(t.id, l.id)?.arrived_at ? 'cell-arrived' : 'cell-empty'" :title="cell(t.id, l.id) ? `到达 ${fmtDateTime(cell(t.id, l.id).arrived_at)} / 完成 ${fmtDateTime(cell(t.id, l.id).completed_at)}` : ''">
                 <template v-if="cell(t.id, l.id)?.completed_at">{{ fmtTime(cell(t.id, l.id).completed_at) }}</template>
                 <template v-else-if="cell(t.id, l.id)?.arrived_at">{{ fmtTime(cell(t.id, l.id).arrived_at) }}</template>

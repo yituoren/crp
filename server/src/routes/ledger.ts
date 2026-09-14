@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { all, get, run, tx, now, fromCents } from '../db.js';
 import { canAdjustCurrency, type Env } from '../auth.js';
 import { audit, body, str, int, notify, bad, forbidden, notFound, money } from '../util.js';
+import { teamLabelMap } from './teams.js';
 
 export const ledgerRoutes = new Hono<Env>();
 
@@ -21,7 +22,8 @@ ledgerRoutes.get('/ledger', (c) => {
      ${where} ORDER BY l.id DESC LIMIT 500`,
     ...params,
   );
-  return c.json({ ledger: rows.map((r) => ({ ...r, delta: fromCents(r.delta), balance_after: fromCents(r.balance_after) })) });
+  const labels = teamLabelMap();
+  return c.json({ ledger: rows.map((r) => ({ ...r, team_name: labels.get(r.team_id) ?? r.team_name, delta: fromCents(r.delta), balance_after: fromCents(r.balance_after) })) });
 });
 
 ledgerRoutes.post('/ledger', async (c) => {

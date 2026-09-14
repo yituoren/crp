@@ -4,6 +4,7 @@ import path from 'node:path';
 import { all, get, run, tx, now, UPLOAD_DIR, fromCents } from '../db.js';
 import { hostOnly, canUploadToLeg, type Env } from '../auth.js';
 import { audit, body, str, int, intParam, notify, bad, notFound, forbidden, money } from '../util.js';
+import { teamLabelMap } from './teams.js';
 
 export const LEG_TYPES = ['SL', 'RI', 'TI', 'DT', 'RB', 'FO', 'Union', 'Shuffle', 'UT', 'YD', 'SB', 'PK', 'Trap', 'PS'] as const;
 export type RecordMode = 'none' | 'single' | 'full';
@@ -111,6 +112,7 @@ episodeRoutes.post('/episodes/:id/start', hostOnly, (c) => {
   const user = c.get('user');
   const t = now();
   const issued: string[] = [];
+  const labels = teamLabelMap();
   tx(() => {
     run("UPDATE episodes SET status = 'running', started_at = COALESCE(started_at, ?) WHERE id = ?", t, id);
     if (!ep.started_at && ep.budget > 0) {
@@ -121,7 +123,7 @@ episodeRoutes.post('/episodes/:id/start', hostOnly, (c) => {
           'INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at) VALUES (?,?,?,?,?,?,?,?)',
           id, team.id, ep.budget, balance, `${ep.code} 补充经费`, user.id, user.displayName, t,
         );
-        issued.push(team.name);
+        issued.push(labels.get(team.id) ?? team.name);
       }
     }
   });

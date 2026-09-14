@@ -58,7 +58,7 @@ const stats = computed(() => ({
   <div class="card">
     <div class="card-header">我在 {{ ep?.code }} 的分工</div>
     <template v-if="my?.role === 'follow' && myTeam">
-      <p><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.name }}</strong>（{{ myTeam.members || '成员未填写' }}），当前余额 <strong class="text-warning">{{ fmtMoney(myTeam.currency) }} 元</strong></p>
+      <p><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.label }}</strong>，当前余额 <strong class="text-warning">{{ fmtMoney(myTeam.currency) }} 元</strong></p>
       <div class="scroll-table">
         <table class="table">
           <thead><tr><th>环节</th><th>状态</th><th>到达</th><th>完成 / 打卡</th><th style="min-width: 110px">操作</th></tr></thead>

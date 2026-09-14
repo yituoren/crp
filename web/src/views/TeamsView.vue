@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
@@ -13,11 +13,14 @@ const auth = useAuth();
 const race = useRace();
 const ui = useUi();
 const editing = ref<Team | 'new' | null>(null);
-const form = reactive({ name: '', members: '' });
+const form = reactive({ name: '', members: [] as string[] });
+const size = computed(() => Math.max(1, auth.event.teamSize || 1));
 
 function open(t: Team | 'new') {
   editing.value = t;
-  Object.assign(form, t === 'new' ? { name: '', members: '' } : { name: t.name, members: t.members });
+  const members = t === 'new' ? [] : [...t.members];
+  while (members.length < size.value) members.push('');
+  Object.assign(form, { name: t === 'new' ? String(race.teams.length + 1).padStart(2, '0') : t.name, members });
 }
 async function save() {
   try {
@@ -30,11 +33,11 @@ async function save() {
 }
 async function setStatus(t: Team, status: Team['status']) {
   const label = { alive: '恢复', eliminated: '淘汰', withdrawn: '退赛' }[status];
-  if (!(await ui.confirm(`${label}队伍`, `确定将「${t.name}」标记为${label}？`, { danger: status !== 'alive' }))) return;
+  if (!(await ui.confirm(`${label}队伍`, `确定将「${t.label}」标记为${label}？`, { danger: status !== 'alive' }))) return;
   try { await api(`/teams/${t.id}`, { method: 'PUT', body: { status } }); await race.loadTeams(); ui.toast(`已${label}`); } catch (e) { ui.error(e); }
 }
 async function remove(t: Team) {
-  if (!(await ui.confirm('删除队伍', `删除「${t.name}」？其所有记录和货币日志也会被删除。`, { danger: true, okText: '删除' }))) return;
+  if (!(await ui.confirm('删除队伍', `删除「${t.label}」？其所有记录和货币日志也会被删除。`, { danger: true, okText: '删除' }))) return;
   try { await api(`/teams/${t.id}`, { method: 'DELETE' }); await race.loadTeams(); ui.toast('已删除'); } catch (e) { ui.error(e); }
 }
 async function resetAll() {
@@ -54,10 +57,9 @@ async function resetAll() {
   <div class="grid grid-4">
     <div v-for="t in race.teams" :key="t.id" class="team-card" :class="'team-' + t.status">
       <div class="flex-between" style="margin-bottom: 4px">
-        <span style="font-weight: 700; font-size: 16px">{{ t.name }}</span>
+        <span style="font-weight: 700; font-size: 16px">{{ t.label }}</span>
         <TeamStatus :status="t.status" />
       </div>
-      <div class="text-sm text-gray">{{ t.code }} · {{ t.members || '成员未填写' }}</div>
       <div class="currency-box mt-1">{{ fmtMoney(t.currency) }} <span class="text-sm text-gray">元</span></div>
       <div v-if="auth.isHost" class="flex mt-2" style="gap: 6px">
         <button class="btn btn-outline btn-sm" @click="open(t)">编辑</button>
@@ -72,8 +74,9 @@ async function resetAll() {
   </div>
 
   <Modal v-if="editing" :title="editing === 'new' ? '新增队伍' : '编辑队伍'" small @close="editing = null">
-    <div class="form-group"><label>队名</label><input v-model="form.name" /></div>
-    <div class="form-group"><label>成员（如：张三 / 李四）</label><input v-model="form.members" /></div>
+    <div class="form-group"><label>队名（编号）</label><input v-model="form.name" placeholder="如 01" /></div>
+    <div v-for="i in form.members.length" :key="i" class="form-group"><label>成员 {{ i }}</label><input v-model="form.members[i - 1]" :placeholder="`成员 ${i} 姓名`" /></div>
+    <div class="info-text">填了成员后，各处显示为「成员1&成员2」；每队人数在「主办后台 → 赛事设置」里改。</div>
     <div class="modal-actions"><button class="btn btn-secondary" @click="editing = null">取消</button><button class="btn" @click="save">保存</button></div>
   </Modal>
 </template>

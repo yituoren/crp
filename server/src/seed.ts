@@ -5,6 +5,7 @@ const DEFAULT_HOSTS = (process.env.HOST_USERNAMES ?? '阳秋,云缨,云影').spl
 export function seed() {
   if (!getSetting('event_name')) setSetting('event_name', process.env.EVENT_NAME ?? 'BJ20 全明星赛');
   if (!getSetting('hosts')) setSetting('hosts', DEFAULT_HOSTS.join(','));
+  if (!getSetting('team_size')) setSetting('team_size', '2');
 
   const hosts = getSetting('hosts').split(',').map((s) => s.trim()).filter(Boolean);
   for (const h of hosts) {
@@ -29,7 +30,7 @@ export function seed() {
 
   if (!get('SELECT 1 FROM teams LIMIT 1')) {
     tx(() => {
-      for (let i = 1; i <= 12; i++) run('INSERT INTO teams(code, name, members, status, currency, sort) VALUES (?,?,?,?,?,?)', `T${i}`, `队伍${i}`, '', 'alive', 0, i);
+      for (let i = 1; i <= 12; i++) run('INSERT INTO teams(code, name, members, status, currency, sort) VALUES (?,?,?,?,?,?)', `T${i}`, String(i).padStart(2, '0'), '[]', 'alive', 0, i);
     });
   }
   // 一次性规范旧数据：每个赛段末尾必须有中继站；只有第一个赛段保留 Starting Line

@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { all, get, run, tx, now } from '../db.js';
 import { hostOnly, canRecordProgress, canAdjustCurrency, isHostRole, type Env } from '../auth.js';
 import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forbidden } from '../util.js';
+import { teamLabelMap } from './teams.js';
 
 export const progressRoutes = new Hono<Env>();
 
@@ -32,10 +33,11 @@ export function listProgress(episodeId: number) {
   return all('SELECT * FROM progress WHERE episode_id = ? ORDER BY id', episodeId);
 }
 export function listPenalties(episodeId: number) {
+  const labels = teamLabelMap();
   return all(
     `SELECT p.*, t.name AS team_name, u.display_name AS applied_by_name FROM penalties p JOIN teams t ON t.id = p.team_id LEFT JOIN users u ON u.id = p.applied_by WHERE p.episode_id = ? ORDER BY p.id DESC`,
     episodeId,
-  );
+  ).map((r) => ({ ...r, team_name: labels.get(r.team_id) ?? r.team_name }));
 }
 
 progressRoutes.get('/episodes/:id/progress', (c) => {
@@ -210,7 +212,8 @@ progressRoutes.delete('/penalties/:id', hostOnly, (c) => {
 // ---------- 终点结算 ----------
 export function pitstopRows(episodeId: number) {
   const psLeg = get('SELECT id FROM legs WHERE episode_id = ? AND type = ? ORDER BY sort DESC LIMIT 1', episodeId, 'PS');
-  const teams = all('SELECT id, code, name, status FROM teams ORDER BY sort, id');
+  const labels = teamLabelMap();
+  const teams = all<any>('SELECT id, code, name, status FROM teams ORDER BY sort, id').map((t): any => ({ ...t, name: labels.get(t.id) ?? t.name }));
   const results = new Map(all('SELECT * FROM pitstop_results WHERE episode_id = ?', episodeId).map((r) => [r.team_id, r]));
   const penalties = new Map<number, number>();
   for (const p of all('SELECT team_id, SUM(minutes) AS m FROM penalties WHERE episode_id = ? GROUP BY team_id', episodeId)) penalties.set(p.team_id, p.m);

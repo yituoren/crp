@@ -40,9 +40,9 @@ const conflicts = computed(() => {
   const seen = new Map<number, number>();
   const dup: number[] = [];
   for (const r of form.rows) if (r.role === 'follow' && r.teamId) { const n = (seen.get(Number(r.teamId)) ?? 0) + 1; seen.set(Number(r.teamId), n); if (n > 1) dup.push(Number(r.teamId)); }
-  return [...new Set(dup)].map((id) => race.teamById.get(id)?.name ?? id);
+  return [...new Set(dup)].map((id) => race.teamById.get(id)?.label ?? id);
 });
-const unassignedTeams = computed(() => race.aliveTeams.filter((t) => !form.rows.some((r) => r.role === 'follow' && Number(r.teamId) === t.id)).map((t) => t.name));
+const unassignedTeams = computed(() => race.aliveTeams.filter((t) => !form.rows.some((r) => r.role === 'follow' && Number(r.teamId) === t.id)).map((t) => t.label));
 
 async function save() {
   if (!ep.value) return;
@@ -92,7 +92,7 @@ async function copyPrev() {
                 </select>
                 <select v-if="r.role === 'follow'" v-model="r.teamId" class="input-sm input-inline" style="width: 180px; flex: none">
                   <option value="">选择队伍</option>
-                  <option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.name }}{{ t.status !== 'alive' ? '（已淘汰）' : '' }}</option>
+                  <option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.label }}{{ t.status !== 'alive' ? '（已淘汰）' : '' }}</option>
                 </select>
                 <select v-else-if="r.role === 'station'" v-model="r.legId" class="input-sm input-inline" style="width: 180px; flex: none">
                   <option value="">选择环节</option>

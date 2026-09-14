@@ -48,7 +48,7 @@ function detourOptions(): string[] {
       </thead>
       <tbody>
         <tr v-for="{ team, p, can, block } in rows" :key="team.id" :style="team.status !== 'alive' ? 'opacity:.55' : ''">
-          <td><strong>{{ team.name }}</strong> <TeamStatus v-if="team.status !== 'alive'" :status="team.status" /></td>
+          <td><strong>{{ team.label }}</strong> <TeamStatus v-if="team.status !== 'alive'" :status="team.status" /></td>
           <td>{{ stateOf(p) }}</td>
           <template v-if="isSingle"><td><span class="record-time">{{ fmtTime(p?.completed_at) }}</span></td></template>
           <template v-else>
@@ -58,9 +58,9 @@ function detourOptions(): string[] {
           <td v-if="showTarget">
             <select v-if="can" class="input-sm input-inline" style="width: 120px" :value="p?.target_team_id ?? ''" @change="rec.setValue('target', team.id, leg.id, ($event.target as HTMLSelectElement).value)">
               <option value="">未使用</option>
-              <option v-for="t in race.teams.filter((x) => x.id !== team.id)" :key="t.id" :value="t.id">{{ t.name }}</option>
+              <option v-for="t in race.teams.filter((x) => x.id !== team.id)" :key="t.id" :value="t.id">{{ t.label }}</option>
             </select>
-            <span v-else>{{ p?.target_team_id ? race.teamById.get(p.target_team_id)?.name : '-' }}</span>
+            <span v-else>{{ p?.target_team_id ? race.teamById.get(p.target_team_id)?.label : '-' }}</span>
           </td>
           <td v-if="leg.type === 'DT'">
             <select v-if="can" class="input-sm input-inline" :value="p?.detour_choice ?? ''" @change="rec.setValue('detour', team.id, leg.id, ($event.target as HTMLSelectElement).value)">

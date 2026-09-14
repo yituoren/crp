@@ -2,10 +2,12 @@ import { Hono } from 'hono';
 import { all, get, run, tx } from '../db.js';
 import { hostOnly, type Env } from '../auth.js';
 import { audit, body, int, intParam, notify, bad, notFound } from '../util.js';
+import { teamLabelMap } from './teams.js';
 
 export const assignmentRoutes = new Hono<Env>();
 
 export function listAssignments(episodeId: number) {
+  const labels = teamLabelMap();
   return all(
     `SELECT a.id, a.episode_id, a.user_id, a.role, a.team_id, a.leg_id,
             u.username, u.display_name AS display_name,
@@ -17,7 +19,7 @@ export function listAssignments(episodeId: number) {
      WHERE a.episode_id = ?
      ORDER BY a.role, u.username`,
     episodeId,
-  );
+  ).map((r) => ({ ...r, team_name: r.team_id ? (labels.get(r.team_id) ?? r.team_name) : r.team_name }));
 }
 
 assignmentRoutes.get('/episodes/:id/assignments', (c) => {

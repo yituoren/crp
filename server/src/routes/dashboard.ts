@@ -3,6 +3,7 @@ import { all, get, fromCents } from '../db.js';
 import type { Env } from '../auth.js';
 import { intParam } from '../util.js';
 import { pitstopRows } from './progress.js';
+import { teamLabelMap } from './teams.js';
 
 export const dashboardRoutes = new Hono<Env>();
 
@@ -12,7 +13,8 @@ dashboardRoutes.get('/dashboard/:episodeId', (c) => {
   const episodeId = intParam(c, 'episodeId');
   const episode = get('SELECT * FROM episodes WHERE id = ?', episodeId);
   const legs = all('SELECT id, sort, type, name, record_mode, needs_staff FROM legs WHERE episode_id = ? ORDER BY sort, id', episodeId);
-  const teams = all('SELECT id, code, name, status, currency FROM teams ORDER BY sort, id');
+  const labels = teamLabelMap();
+  const teams = all<any>('SELECT id, code, name, status, currency FROM teams ORDER BY sort, id').map((t): any => ({ ...t, name: labels.get(t.id) ?? t.name }));
   const progress = all('SELECT * FROM progress WHERE episode_id = ?', episodeId);
   const legIndex = new Map(legs.map((l, i) => [l.id, i]));
   const nowMs = Date.now();

@@ -58,6 +58,7 @@ authRoutes.get('/me', authRequired, (c) => {
     event: {
       name: getSetting('event_name', '城市飞奔'),
       hosts: hostNames(),
+      teamSize: Math.max(1, Number(getSetting('team_size', '2')) || 2),
     },
     serverTime: now(),
   });

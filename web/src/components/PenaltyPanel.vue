@@ -46,7 +46,7 @@ async function remove(id: number) {
       <span v-if="!race.canAdjustCurrency" class="text-sm text-gray">只有主办与本赛段站点人员可以操作</span>
     </div>
     <div v-if="race.canAdjustCurrency" class="flex mb-2">
-      <select v-model="form.teamId" class="input-inline" style="width: 140px"><option value="">选择队伍</option><option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.name }}</option></select>
+      <select v-model="form.teamId" class="input-inline" style="width: 140px"><option value="">选择队伍</option><option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.label }}</option></select>
       <input v-model="form.minutes" type="number" inputmode="numeric" min="1" step="1" class="input-inline" placeholder="分钟" style="width: 90px" />
       <input v-model="form.reason" class="input-inline" placeholder="原因（如：打车超预算 / 站点失误耽误）" style="flex: 1; min-width: 160px" />
       <button class="btn btn-danger" @click="apply(1)">增加罚时</button>

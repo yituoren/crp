@@ -1,7 +1,7 @@
 export type Role = 'admin' | 'host' | 'crew';
 export const ROLE_LABEL: Record<Role, string> = { admin: '管理员', host: '主办', crew: '幕后' };
 export interface User { id: number; username: string; displayName: string; role: Role; disabled?: number }
-export interface EventInfo { name: string; hosts: string[] }
+export interface EventInfo { name: string; hosts: string[]; teamSize: number }
 
 export const LEG_TYPES = ['SL', 'RI', 'TI', 'DT', 'RB', 'FO', 'Union', 'Shuffle', 'UT', 'YD', 'SB', 'PK', 'Trap', 'PS'] as const;
 export type LegType = (typeof LEG_TYPES)[number];
@@ -41,7 +41,7 @@ export interface Leg {
   clue_text: string; judge_criteria: string; open_time: string; close_time: string; detour_a: string; detour_b: string; needs_staff: number; record_mode: RecordMode; attachments: Attachment[];
 }
 export interface Episode { id: number; code: string; name: string; budget: number; sort: number; status: 'pending' | 'running' | 'finished'; notes: string; started_at: string | null; finished_at: string | null; legs: Leg[] }
-export interface Team { id: number; code: string; name: string; members: string; status: 'alive' | 'eliminated' | 'withdrawn'; currency: number; sort: number }
+export interface Team { id: number; code: string; name: string; members: string[]; label: string; status: 'alive' | 'eliminated' | 'withdrawn'; currency: number; sort: number }
 export interface Assignment { id: number; episode_id: number; user_id: number; role: 'follow' | 'station'; team_id: number | null; leg_id: number | null; username: string; display_name: string; team_name: string | null; leg_name: string | null }
 export interface Progress {
   id: number; episode_id: number; team_id: number; leg_id: number; arrived_at: string | null; completed_at: string | null;

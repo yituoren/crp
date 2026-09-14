@@ -11,11 +11,12 @@ adminRoutes.use('/admin/*', hostOnly);
 
 // ---------- 设置 ----------
 adminRoutes.get('/admin/settings', (c) =>
-  c.json({ eventName: getSetting('event_name'), hosts: getSetting('hosts') }),
+  c.json({ eventName: getSetting('event_name'), hosts: getSetting('hosts'), teamSize: Math.max(1, Number(getSetting('team_size', '2')) || 2) }),
 );
 adminRoutes.put('/admin/settings', async (c) => {
   const b = await body(c);
   if (b.eventName !== undefined) setSetting('event_name', str(b.eventName, 50) || '城市飞奔');
+  if (b.teamSize !== undefined) { const n = int(b.teamSize, 0); if (n < 1 || n > 20) throw bad('每队人数必须是 1 到 20 的整数'); setSetting('team_size', String(n)); }
   if (b.hosts !== undefined) {
     const hosts = String(b.hosts).split(/[,，]/).map((s) => s.trim()).filter(Boolean);
     setSetting('hosts', hosts.join(','));

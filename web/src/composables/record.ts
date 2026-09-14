@@ -28,7 +28,7 @@ export function useRecord() {
   }
 
   async function arrive(teamId: number, legId: number) {
-    const team = race.teamById.get(teamId)?.name ?? '';
+    const team = race.teamById.get(teamId)?.label ?? '';
     const leg = race.legById.get(legId)?.name ?? '';
     const at = await pickTime('记录到达', `「${team}」到达「${leg}」。此操作会实时同步给所有幕后。`);
     if (!at) return;
@@ -38,7 +38,7 @@ export function useRecord() {
     } catch (e) { ui.error(e); }
   }
   async function complete(teamId: number, legId: number) {
-    const team = race.teamById.get(teamId)?.name ?? '';
+    const team = race.teamById.get(teamId)?.label ?? '';
     const leg = race.legById.get(legId)?.name ?? '';
     const at = await pickTime('记录完成', `「${team}」完成「${leg}」。`);
     if (!at) return;
@@ -48,7 +48,7 @@ export function useRecord() {
     } catch (e) { ui.error(e); }
   }
   async function single(teamId: number, legId: number, label: string) {
-    const team = race.teamById.get(teamId)?.name ?? '';
+    const team = race.teamById.get(teamId)?.label ?? '';
     const leg = race.legById.get(legId)?.name ?? '';
     const at = await pickTime(`记录${label}`, `「${team}」在「${leg}」${label}。`);
     if (!at) return;
