@@ -38,6 +38,24 @@ function cell(teamId: number, legId: number, single: boolean, isPs = false) {
   if (p.completed_at) return { start: fmtTime(p.arrived_at), end: fmtTime(p.completed_at), dur: fmtDur(new Date(p.completed_at).getTime() - startMs), cls: 'mx-done' };
   return { start: fmtTime(p.arrived_at), end: '进行中', dur: fmtDur(now.value - startMs), cls: 'mx-arrived' };
 }
+/** 需要附加信息的环节在组末尾多一列 */
+function extraCol(l: { type: string }): string | null {
+  if (l.type === 'DT') return '绕道选择';
+  if (l.type === 'RB') return '完成人';
+  if (l.type === 'FF') return '快进结果';
+  if (l.type === 'UT' || l.type === 'YD') return '施加对象';
+  return null;
+}
+function extraVal(teamId: number, l: { id: number; type: string }): string {
+  const p = race.progressOf(teamId, l.id);
+  if (!p) return '-';
+  if (l.type === 'DT') return p.detour_choice || '-';
+  if (l.type === 'RB') return p.roadblock_by || '-';
+  if (l.type === 'FF') return p.ff_result === 'success' ? '成功' : p.ff_result === 'fail' ? '失败' : '-';
+  if (l.type === 'UT' || l.type === 'YD') return p.target_team_id ? race.teamById.get(p.target_team_id)?.label ?? '-' : '-';
+  return '-';
+}
+const colspanOf = (l: { type: string; record_mode: string }) => (l.record_mode === 'single' ? 1 : 3) + (extraCol(l) ? 1 : 0);
 function lastAgo(teamId: number): string {
   let last = 0;
   for (const l of legs.value) {
@@ -95,12 +113,13 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
         <thead>
           <tr>
             <th class="mx2-team" rowspan="2">队伍</th>
-            <th v-for="l in legs" :key="l.id" :colspan="l.record_mode === 'single' ? 1 : 3" class="mx2-leg mx2-first mx2-last"><LegTag :type="l.type" /> {{ l.name }}</th>
+            <th v-for="l in legs" :key="l.id" :colspan="colspanOf(l)" class="mx2-leg mx2-first mx2-last"><LegTag :type="l.type" /> {{ l.name }}</th>
           </tr>
           <tr>
             <template v-for="l in legs" :key="l.id">
-              <th v-if="l.record_mode === 'single'" class="mx2-sub mx2-first mx2-last">{{ typeCode(l.type) === 'Starting Line' ? '出发' : l.type === 'PS' ? '签到' : '打卡' }}</th>
-              <template v-else><th class="mx2-sub mx2-first">开始</th><th class="mx2-sub">结束</th><th class="mx2-sub mx2-last">用时</th></template>
+              <th v-if="l.record_mode === 'single'" class="mx2-sub mx2-first" :class="{ 'mx2-last': !extraCol(l) }">{{ typeCode(l.type) === 'Starting Line' ? '出发' : l.type === 'PS' ? '签到' : '打卡' }}</th>
+              <template v-else><th class="mx2-sub mx2-first">开始</th><th class="mx2-sub">结束</th><th class="mx2-sub" :class="{ 'mx2-last': !extraCol(l) }">用时</th></template>
+              <th v-if="extraCol(l)" class="mx2-sub mx2-last">{{ extraCol(l) }}</th>
             </template>
           </tr>
         </thead>
@@ -112,13 +131,14 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
             </td>
             <template v-for="l in legs" :key="l.id">
               <template v-if="l.record_mode === 'single'">
-                <td class="mx2-cell mx2-first mx2-last" :class="cell(t.id, l.id, true, l.type === 'PS').cls">{{ cell(t.id, l.id, true, l.type === 'PS').start }}</td>
+                <td class="mx2-cell mx2-first" :class="[cell(t.id, l.id, true, l.type === 'PS').cls, { 'mx2-last': !extraCol(l) }]">{{ cell(t.id, l.id, true, l.type === 'PS').start }}</td>
               </template>
               <template v-else>
                 <td class="mx2-cell mx2-first" :class="cell(t.id, l.id, false).cls">{{ cell(t.id, l.id, false).start }}</td>
                 <td class="mx2-cell" :class="cell(t.id, l.id, false).cls">{{ cell(t.id, l.id, false).end }}</td>
-                <td class="mx2-cell mx2-last" :class="cell(t.id, l.id, false).cls">{{ cell(t.id, l.id, false).dur }}</td>
+                <td class="mx2-cell" :class="[cell(t.id, l.id, false).cls, { 'mx2-last': !extraCol(l) }]">{{ cell(t.id, l.id, false).dur }}</td>
               </template>
+              <td v-if="extraCol(l)" class="mx2-cell mx2-extra mx2-last">{{ extraVal(t.id, l) }}</td>
             </template>
           </tr>
         </tbody>
