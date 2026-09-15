@@ -52,9 +52,9 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
   <div class="card">
     <div class="card-header">
       <span>{{ props.legId ? '本站点罚时与补时' : '罚时与补时' }}</span>
-      <span v-if="!race.canAdjustCurrency" class="text-sm text-gray">只有主办与本赛段站点人员可以操作</span>
+      <span v-if="!race.canManagePenalty" class="text-sm text-gray">只有主办与本赛段站点人员可以操作</span>
     </div>
-    <div v-if="race.canAdjustCurrency" class="flex mb-2">
+    <div v-if="race.canManagePenalty" class="flex mb-2">
       <select v-model="form.teamId" class="input-inline" style="width: 140px"><option value="">选择队伍</option><option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.label }}</option></select>
       <select v-if="!props.legId" v-model="form.legId" class="input-inline" style="width: 150px">
         <option value="" disabled>选择环节</option>
@@ -69,7 +69,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
     <div v-if="!visible.length" class="text-gray text-sm">本赛段暂无罚时或补时记录</div>
     <div v-else class="scroll-table">
       <table class="table">
-        <thead><tr><th>时间</th><th>队伍</th><th v-if="!props.legId">环节</th><th>类型</th><th>分钟</th><th>净罚时</th><th>操作人</th><th>原因</th><th v-if="race.canAdjustCurrency"></th></tr></thead>
+        <thead><tr><th>时间</th><th>队伍</th><th v-if="!props.legId">环节</th><th>类型</th><th>分钟</th><th>净罚时</th><th>操作人</th><th>原因</th><th v-if="race.canManagePenalty"></th></tr></thead>
         <tbody>
           <tr v-for="p in visible" :key="p.id" :style="p.reverted ? 'opacity:.5;text-decoration:line-through' : ''">
             <td>{{ fmtDateTime(p.applied_at) }}</td>
@@ -80,7 +80,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
             <td>{{ totals.get(p.team_id) ?? 0 }}</td>
             <td>{{ p.applied_by_name ?? '-' }}</td>
             <td>{{ p.reason || '-' }}</td>
-            <td v-if="race.canAdjustCurrency"><button v-if="!p.reverted && (auth.isHost || p.leg_id)" class="btn btn-outline btn-sm" @click="revert(p)">撤销</button></td>
+            <td v-if="race.canManagePenalty"><button v-if="!p.reverted && (auth.isHost || p.leg_id)" class="btn btn-outline btn-sm" @click="revert(p)">撤销</button></td>
           </tr>
         </tbody>
       </table>

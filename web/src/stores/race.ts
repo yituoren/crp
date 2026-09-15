@@ -36,7 +36,10 @@ export const useRace = defineStore('race', () => {
     const a = myAssignment.value;
     return !!a && a.role === 'follow' && a.team_id === teamId;
   }
-  const canAdjustCurrency = computed(() => auth.isHost || myAssignment.value?.role === 'station');
+  /** 罚时/补时：主办、本赛段站点 */
+  const canManagePenalty = computed(() => auth.isHost || myAssignment.value?.role === 'station');
+  /** 经费：主办任意；跟队仅所跟队伍；站点无 */
+  const canAdjustCurrency = computed(() => auth.isHost || myAssignment.value?.role === 'follow');
   /** 淘汰权限：主办，或本赛段站在中继站的站点人员 */
   const canEliminate = computed(() => {
     if (auth.isHost) return true;
@@ -44,9 +47,8 @@ export const useRace = defineStore('race', () => {
     if (!a || a.role !== 'station' || !a.leg_id) return false;
     return currentEpisode.value?.legs.some((l) => l.id === a.leg_id && l.type === 'PS') ?? false;
   });
-  /** 货币：主办、站点任意队伍；跟队仅所跟队伍 */
   function canAdjustCurrencyFor(teamId: number) {
-    if (canAdjustCurrency.value) return true;
+    if (auth.isHost) return true;
     const a = myAssignment.value;
     return a?.role === 'follow' && a.team_id === teamId;
   }
@@ -151,7 +153,7 @@ export const useRace = defineStore('race', () => {
 
   return {
     episodes, teams, users, announcements, unreadAnnouncements, markAnnouncementsRead, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
-    aliveTeams, myAssignment, teamById, legById, progressOf, canRecord, canAdjustCurrency, canAdjustCurrencyFor, canEliminate, canUploadTo, blockReason, extraMissing,
+    aliveTeams, myAssignment, teamById, legById, progressOf, canRecord, canAdjustCurrency, canAdjustCurrencyFor, canManagePenalty, canEliminate, canUploadTo, blockReason, extraMissing,
     loadAll, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
   };
 });

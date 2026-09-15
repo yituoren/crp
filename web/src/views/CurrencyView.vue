@@ -34,7 +34,7 @@ async function apply(t: Team, sign: 1 | -1) {
 }
 // 页面上只显示原始流水（被撤销的划线标出）；反向的撤销记录保留在数据库和操作日志里，不在列表中重复出现
 const rows = computed(() => race.ledger.filter((l) => !l.reverts_id && (!filterTeam.value || l.team_id === filterTeam.value)));
-const canRevertAny = computed(() => race.canAdjustCurrency || race.myAssignment?.role === 'follow');
+const canRevertAny = computed(() => race.canAdjustCurrency);
 async function revert(l: LedgerEntry) {
   if (!(await ui.confirm('撤销经费变动', `撤销「${l.team_name}」的这笔 ${fmtMoney(l.delta, true)} ${moneyUnit()}（${l.reason || '手动调整'}）？会写入一条反向流水，余额相应恢复。`, { danger: true, okText: '撤销' }))) return;
   try { await api(`/ledger/${l.id}/revert`, { method: 'POST' }); await Promise.all([race.loadTeams(), race.loadLedger()]); ui.toast('已撤销'); } catch (e) { ui.error(e); }
@@ -46,12 +46,12 @@ async function revert(l: LedgerEntry) {
   <div class="flex-between mb-2">
     <div class="flex">
       <div class="section-title">{{ moneyLabel() }}操作</div>
-      <select v-if="race.canAdjustCurrency || race.myAssignment?.role === 'follow'" v-model="legSel" class="input-sm input-inline" style="width: 150px" title="本次变动发生的环节">
+      <select v-if="race.canAdjustCurrency" v-model="legSel" class="input-sm input-inline" style="width: 150px" title="本次变动发生的环节">
         <option value="">环节：其他</option>
         <option v-for="l in ep?.legs ?? []" :key="l.id" :value="l.id">环节：{{ l.name }}</option>
       </select>
     </div>
-    <span v-if="!race.canAdjustCurrency && race.myAssignment?.role !== 'follow'" class="text-sm text-gray">主办与本赛段站点可操作所有队伍，跟队只能操作所跟队伍</span>
+    <span v-if="!race.canAdjustCurrency" class="text-sm text-gray">主办可操作所有队伍，跟队只能操作所跟队伍</span>
   </div>
   <div class="grid grid-4">
     <div v-for="t in race.teams" :key="t.id" class="team-card" :class="'team-' + t.status">
