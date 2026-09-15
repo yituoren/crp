@@ -209,6 +209,7 @@ progressRoutes.post('/episodes/:id/penalties', async (c) => {
   if (!get('SELECT 1 FROM teams WHERE id = ?', teamId)) throw notFound('队伍不存在');
   const legId = int(b.legId, 0) || null;
   if (legId && !get('SELECT 1 FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId)) throw notFound('环节不存在');
+  if (!legId && !isHostRole(user.role)) throw forbidden('“其他”环节的罚时/补时只能由主办操作，请选择具体环节');
   const r = run(
     'INSERT INTO penalties(episode_id, team_id, minutes, reason, applied_by, applied_at, leg_id) VALUES (?,?,?,?,?,?,?)',
     episodeId, teamId, minutes, str(b.reason, 200), user.id, now(), legId,

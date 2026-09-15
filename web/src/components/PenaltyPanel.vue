@@ -11,7 +11,9 @@ const auth = useAuth();
 const race = useRace();
 const ui = useUi();
 const ep = computed(() => race.currentEpisode);
-const form = reactive({ teamId: '' as number | '', minutes: '', reason: '' });
+const form = reactive({ teamId: '' as number | '', minutes: '', reason: '', legId: '' as number | '' });
+// 环节选项：本赛段所有环节；“其他”只有主办能选
+const legOptions = computed(() => (ep.value?.legs ?? []));
 const totals = computed(() => {
   const m = new Map<number, number>();
   for (const p of race.penalties) m.set(p.team_id, (m.get(p.team_id) ?? 0) + p.minutes);
@@ -22,13 +24,16 @@ async function apply(sign: 1 | -1) {
   if (!ep.value) return;
   const minutes = Number(form.minutes);
   if (!form.teamId) { ui.toast('请选择队伍', 'error'); return; }
+  const legId = props.legId ?? (form.legId === '' || Number(form.legId) === 0 ? null : Number(form.legId));
+  if (!props.legId && form.legId === '') { ui.toast('请选择环节', 'error'); return; }
+  if (!props.legId && !legId && !auth.isHost) { ui.toast('“其他”只能由主办操作', 'error'); return; }
   if (!Number.isInteger(minutes) || minutes <= 0) { ui.toast('分钟数必须是正整数，补时请用「补充时间」按钮', 'error'); return; }
   const team = race.teamById.get(Number(form.teamId))?.name ?? '';
   const reason = form.reason.trim() || (sign > 0 ? '罚时' : '补充时间');
   const cur = totals.value.get(Number(form.teamId)) ?? 0;
   if (!(await ui.confirm(sign > 0 ? '增加罚时' : '补充时间', `「${team}」${sign > 0 ? `增加 ${minutes} 分钟罚时` : `补充 ${minutes} 分钟时间（从最终用时中扣除）`}，原因：${reason}\n本赛段净罚时 ${cur} → ${cur + minutes * sign} 分钟`))) return;
   try {
-    await api(`/episodes/${ep.value.id}/penalties`, { method: 'POST', body: { teamId: form.teamId, minutes: minutes * sign, reason, legId: props.legId } });
+    await api(`/episodes/${ep.value.id}/penalties`, { method: 'POST', body: { teamId: form.teamId, minutes: minutes * sign, reason, legId } });
     form.minutes = ''; form.reason = '';
     await race.loadProgress();
     ui.toast(sign > 0 ? `已增加 ${minutes} 分钟罚时` : `已补充 ${minutes} 分钟时间`);
@@ -51,6 +56,11 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
     </div>
     <div v-if="race.canAdjustCurrency" class="flex mb-2">
       <select v-model="form.teamId" class="input-inline" style="width: 140px"><option value="">选择队伍</option><option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.label }}</option></select>
+      <select v-if="!props.legId" v-model="form.legId" class="input-inline" style="width: 150px">
+        <option value="" disabled>选择环节</option>
+        <option v-for="l in legOptions" :key="l.id" :value="l.id">{{ l.name }}</option>
+        <option v-if="auth.isHost" :value="0">其他</option>
+      </select>
       <input v-model="form.minutes" type="number" inputmode="numeric" min="1" step="1" class="input-inline" placeholder="分钟" style="width: 90px" />
       <input v-model="form.reason" class="input-inline" placeholder="原因（如：打车超预算 / 站点失误耽误）" style="flex: 1; min-width: 160px" />
       <button class="btn btn-danger" @click="apply(1)">增加罚时</button>
@@ -64,7 +74,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
           <tr v-for="p in visible" :key="p.id" :style="p.reverted ? 'opacity:.5;text-decoration:line-through' : ''">
             <td>{{ fmtDateTime(p.applied_at) }}</td>
             <td>{{ p.team_name }}</td>
-            <td v-if="!props.legId">{{ p.leg_name || '-' }}</td>
+            <td v-if="!props.legId">{{ p.leg_name || '其他' }}</td>
             <td :class="p.minutes > 0 ? 'log-negative' : 'log-positive'">{{ p.minutes > 0 ? '罚时' : '补时' }}</td>
             <td :class="p.minutes > 0 ? 'log-negative' : 'log-positive'">{{ p.minutes > 0 ? '+' : '' }}{{ p.minutes }}</td>
             <td>{{ totals.get(p.team_id) ?? 0 }}</td>

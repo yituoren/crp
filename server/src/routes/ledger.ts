@@ -15,10 +15,11 @@ ledgerRoutes.get('/ledger', (c) => {
   if (teamId) { conds.push('l.team_id = ?'); params.push(Number(teamId)); }
   const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
   const rows = all(
-    `SELECT l.*, t.name AS team_name, t.code AS team_code, e.code AS episode_code
+    `SELECT l.*, t.name AS team_name, t.code AS team_code, e.code AS episode_code, g.name AS leg_name
      FROM currency_ledger l
      JOIN teams t ON t.id = l.team_id
      LEFT JOIN episodes e ON e.id = l.episode_id
+     LEFT JOIN legs g ON g.id = l.leg_id
      ${where} ORDER BY l.id DESC LIMIT 500`,
     ...params,
   );
@@ -38,12 +39,14 @@ ledgerRoutes.post('/ledger', async (c) => {
   if (!canAdjustCurrency(user, episodeId ?? 0, teamId)) throw forbidden('只有主办、本赛段站点人员，或该队伍的跟队可以操作货币');
   const team = get('SELECT * FROM teams WHERE id = ?', teamId);
   if (!team) throw notFound('队伍不存在');
+  const legId = int(b.legId, 0) || null; // 环节可空 = 其他，不做权限校验
+  if (legId && !get('SELECT 1 FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId ?? 0)) throw notFound('环节不存在');
   const balance = team.currency + delta;
   const id = tx(() => {
     run('UPDATE teams SET currency = ? WHERE id = ?', balance, teamId);
     const r = run(
-      'INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at) VALUES (?,?,?,?,?,?,?,?)',
-      episodeId, teamId, delta, balance, reason, user.id, user.displayName, now(),
+      'INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at, leg_id) VALUES (?,?,?,?,?,?,?,?,?)',
+      episodeId, teamId, delta, balance, reason, user.id, user.displayName, now(), legId,
     );
     return Number(r.lastInsertRowid);
   });
@@ -68,8 +71,8 @@ ledgerRoutes.post('/ledger/:id/revert', hostOnly, (c) => {
     run('UPDATE teams SET currency = ? WHERE id = ?', balance, orig.team_id);
     run('UPDATE currency_ledger SET reverted = 1 WHERE id = ?', id);
     const r = run(
-      'INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at, reverts_id) VALUES (?,?,?,?,?,?,?,?,?)',
-      orig.episode_id, orig.team_id, -orig.delta, balance, `撤销：${orig.reason || '手动调整'}`, user.id, user.displayName, now(), id,
+      'INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at, reverts_id, leg_id) VALUES (?,?,?,?,?,?,?,?,?,?)',
+      orig.episode_id, orig.team_id, -orig.delta, balance, `撤销：${orig.reason || '手动调整'}`, user.id, user.displayName, now(), id, orig.leg_id ?? null,
     );
     return Number(r.lastInsertRowid);
   });

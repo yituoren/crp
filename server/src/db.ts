@@ -137,7 +137,8 @@ CREATE TABLE IF NOT EXISTS currency_ledger (
   operator_name TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL,
   reverted INTEGER NOT NULL DEFAULT 0,        -- 已被撤销
-  reverts_id INTEGER                          -- 本条是对哪条的撤销
+  reverts_id INTEGER,                         -- 本条是对哪条的撤销
+  leg_id INTEGER                              -- 在哪个环节发生，可空（其他）
 );
 CREATE INDEX IF NOT EXISTS idx_ledger_ep ON currency_ledger(episode_id, created_at);
 CREATE TABLE IF NOT EXISTS announcements (
@@ -186,6 +187,7 @@ ensureColumn('currency_ledger', 'reverts_id', 'INTEGER');
 ensureColumn('penalties', 'reverted', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('penalties', 'reverts_id', 'INTEGER');
 ensureColumn('penalties', 'leg_id', 'INTEGER');
+ensureColumn('currency_ledger', 'leg_id', 'INTEGER');
 
 type Param = string | number | null;
 export type Row = Record<string, any>;

@@ -14,6 +14,7 @@ const race = useRace();
 const ui = useUi();
 const ep = computed(() => race.currentEpisode);
 const inputs = reactive<Record<number, { amount: string; reason: string }>>({});
+const legSel = ref<number | ''>(''); // 本次变动发生的环节；空 = 其他，不做校验
 const filterTeam = ref<number | ''>('');
 const get = (id: number) => (inputs[id] ??= { amount: '', reason: '' });
 
@@ -25,7 +26,7 @@ async function apply(t: Team, sign: 1 | -1) {
   const reason = inp.reason.trim() || (sign > 0 ? '任务奖励' : '手动扣除');
   if (!(await ui.confirm(sign > 0 ? '增加货币' : '扣除货币', `「${t.label}」${sign > 0 ? '增加' : '扣除'} ${fmtMoney(amount)} ${moneyUnit()}，原因：${reason}\n当前余额 ${fmtMoney(t.currency)} → ${fmtMoney(t.currency + delta)}`))) return;
   try {
-    await api('/ledger', { method: 'POST', body: { episodeId: ep.value?.id, teamId: t.id, delta, reason } });
+    await api('/ledger', { method: 'POST', body: { episodeId: ep.value?.id, teamId: t.id, delta, reason, legId: legSel.value === '' ? null : legSel.value } });
     inp.amount = ''; inp.reason = '';
     await Promise.all([race.loadTeams(), race.loadLedger()]);
     ui.toast(`已${sign > 0 ? '增加' : '扣除'} ${fmtMoney(amount)} ${moneyUnit()}`);
@@ -42,7 +43,13 @@ async function revert(l: LedgerEntry) {
 <template>
   <EpSelector />
   <div class="flex-between mb-2">
-    <div class="section-title">{{ moneyLabel() }}操作</div>
+    <div class="flex">
+      <div class="section-title">{{ moneyLabel() }}操作</div>
+      <select v-if="race.canAdjustCurrency || race.myAssignment?.role === 'follow'" v-model="legSel" class="input-sm input-inline" style="width: 150px" title="本次变动发生的环节">
+        <option value="">环节：其他</option>
+        <option v-for="l in ep?.legs ?? []" :key="l.id" :value="l.id">环节：{{ l.name }}</option>
+      </select>
+    </div>
     <span v-if="!race.canAdjustCurrency && race.myAssignment?.role !== 'follow'" class="text-sm text-gray">主办与本赛段站点可操作所有队伍，跟队只能操作所跟队伍</span>
   </div>
   <div class="grid grid-4">
@@ -70,10 +77,10 @@ async function revert(l: LedgerEntry) {
     <div v-if="!rows.length" class="empty-state">暂无货币变动记录</div>
     <div v-else class="scroll-table">
       <table class="table">
-        <thead><tr><th>时间</th><th>队伍</th><th>变动（{{ moneyUnit() }}）</th><th>余额（{{ moneyUnit() }}）</th><th>操作人</th><th>原因</th><th v-if="auth.isHost"></th></tr></thead>
+        <thead><tr><th>时间</th><th>队伍</th><th>环节</th><th>变动（{{ moneyUnit() }}）</th><th>余额（{{ moneyUnit() }}）</th><th>操作人</th><th>原因</th><th v-if="auth.isHost"></th></tr></thead>
         <tbody>
           <tr v-for="l in rows" :key="l.id" :style="l.reverted ? 'opacity:.5;text-decoration:line-through' : ''">
-            <td>{{ fmtDateTime(l.created_at) }}</td><td>{{ l.team_name }}</td>
+            <td>{{ fmtDateTime(l.created_at) }}</td><td>{{ l.team_name }}</td><td>{{ l.leg_name || '其他' }}</td>
             <td :class="l.delta > 0 ? 'log-positive' : 'log-negative'">{{ fmtMoney(l.delta, true) }}</td>
             <td>{{ fmtMoney(l.balance_after) }}</td><td>{{ l.operator_name }}</td><td>{{ l.reason || '-' }}</td>
             <td v-if="auth.isHost"><button v-if="!l.reverted && !l.reverts_id" class="btn btn-outline btn-sm" @click="revert(l)">撤销</button></td>
