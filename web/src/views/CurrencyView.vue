@@ -48,7 +48,7 @@ async function revert(l: LedgerEntry) {
   <div class="grid grid-4">
     <div v-for="t in race.teams" :key="t.id" class="team-card" :class="'team-' + t.status">
       <div class="flex-between"><strong>{{ t.label }}</strong><span v-if="t.status !== 'alive'" class="status-eliminated">{{ t.status === 'eliminated' ? '已淘汰' : '已退赛' }}</span></div>
-      <div class="currency-box">{{ fmtMoney(t.currency) }}</div>
+      <div class="currency-box">{{ fmtMoney(t.currency) }} <span class="text-sm text-gray">{{ moneyUnit() }}</span></div>
       <div v-if="race.canAdjustCurrencyFor(t.id) && t.status === 'alive'" class="mt-1">
         <div class="flex" style="gap: 6px; flex-wrap: nowrap">
           <input v-model="get(t.id).amount" type="number" :inputmode="moneyMode() === 'coin' ? 'numeric' : 'decimal'" min="0" step="1" class="input-sm" :placeholder="moneyUnit() === '币' ? '数量' : '金额'" style="width: 90px" />
