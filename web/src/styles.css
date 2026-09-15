@@ -267,12 +267,13 @@ html, body { overscroll-behavior: none; }
 /* 卡片内嵌套的面板（站点分工下的罚时）：去掉阴影与外边距，靠边框区分 */
 .card .card { box-shadow: none; margin-bottom: 0; }
 
-/* 记录表：固定表格布局 + 固定列宽，单元格内容变化（时间出现、提示消失）不改变列宽 */
+/* 记录表：固定表格布局，各列按比例分配（内容变化不改变列宽），列数不同也均匀铺满 */
 .record-table { table-layout: fixed; width: 100%; min-width: 640px; }
 .record-table th, .record-table td { overflow: hidden; text-overflow: ellipsis; }
-.record-table .col-status { width: 76px; }
-.record-table .col-time { width: 84px; }
-.record-table .col-extra { width: 150px; }
-.record-table .col-action { width: 190px; }
+.record-table .col-first { width: 24%; }
+.record-table .col-status { width: 12%; }
+.record-table .col-time { width: 14%; }
+.record-table .col-extra { width: 18%; }
+.record-table .col-action { width: 22%; min-width: 200px; }
 .record-table .extra-ctl { width: 100%; max-width: 140px; }
 .block-hint { display: block; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--gray-400); }

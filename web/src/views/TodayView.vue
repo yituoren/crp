@@ -9,6 +9,7 @@ import LegTag from '@/components/LegTag.vue';
 import RecordTable from '@/components/RecordTable.vue';
 import PenaltyPanel from '@/components/PenaltyPanel.vue';
 import LegExtraField from '@/components/LegExtraField.vue';
+import TeamCurrencyPanel from '@/components/TeamCurrencyPanel.vue';
 import ProgressEditModal from '@/components/ProgressEditModal.vue';
 import type { Leg, Progress } from '@/types';
 import { singleLabel } from '@/types';
@@ -66,7 +67,7 @@ const stats = computed(() => ({
       <p><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.label }}</strong>，当前余额 <strong class="text-warning">{{ fmtMoney(myTeam.currency) }} {{ moneyUnit() }}</strong></p>
       <div class="scroll-table">
         <table class="table record-table">
-          <thead><tr><th>环节</th><th class="col-status">状态</th><th class="col-time">开始</th><th class="col-time">完成 / 打卡</th><th class="col-extra">记录信息</th><th class="col-action">操作</th></tr></thead>
+          <thead><tr><th class="col-first">环节</th><th class="col-status">状态</th><th class="col-time">开始</th><th class="col-time">完成 / 打卡</th><th class="col-extra">记录信息</th><th class="col-action">操作</th></tr></thead>
           <tbody>
             <tr v-for="{ leg, p, single, label, block } in legRows" :key="leg.id">
               <td><LegTag :type="leg.type" /> <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: leg.id } }">{{ leg.name }}</router-link></td>
@@ -91,6 +92,7 @@ const stats = computed(() => ({
           </tbody>
         </table>
       </div>
+      <div class="mt-3"><TeamCurrencyPanel :team-id="myTeam.id" /></div>
     </template>
 
     <template v-else-if="my?.role === 'station' && myLeg">

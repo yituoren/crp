@@ -36,13 +36,13 @@ function detourOptions(): string[] {
     <table class="table record-table">
       <thead>
         <tr>
-          <th>队伍</th><th class="col-status">状态</th>
+          <th class="col-first">队伍</th><th class="col-status">状态</th>
           <template v-if="isSingle"><th class="col-time">{{ label }}时间</th></template>
           <template v-else><th class="col-time">开始</th><th class="col-time">{{ leg.type === 'Shuffle' ? '出发' : '完成' }}</th></template>
-          <th v-if="showTarget">施加对象</th>
-          <th v-if="leg.type === 'DT'">绕道选择</th>
-          <th v-if="leg.type === 'RB'">路障完成人</th>
-          <th v-if="leg.type === 'FF'">快进结果</th>
+          <th v-if="showTarget" class="col-extra">施加对象</th>
+          <th v-if="leg.type === 'DT'" class="col-extra">绕道选择</th>
+          <th v-if="leg.type === 'RB'" class="col-extra">路障完成人</th>
+          <th v-if="leg.type === 'FF'" class="col-extra">快进结果</th>
           <th class="col-action">操作</th>
         </tr>
       </thead>
