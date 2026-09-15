@@ -100,7 +100,7 @@ progressRoutes.post('/progress', async (c) => {
     case 'complete':
       if (cur.completed_at) already = true;
       else {
-        if (cur.arrived_at && t < cur.arrived_at) throw bad(`完成时间不能早于到达时间（${cur.arrived_at}）`);
+        if (cur.arrived_at && t < cur.arrived_at) throw bad(`完成时间不能早于开始时间（${cur.arrived_at}）`);
         next.completed_at = t;
         if (!next.arrived_at) next.arrived_at = t;
       }
@@ -184,7 +184,7 @@ progressRoutes.put('/progress/:episodeId/:teamId/:legId', async (c) => {
     const limit = Date.now() + 2 * 60 * 1000;
     for (const t of [next.arrived_at, next.completed_at]) if (t && new Date(t).getTime() > limit) throw bad('记录时间不能晚于当前时间');
   }
-  if (next.arrived_at && next.completed_at && next.completed_at < next.arrived_at) throw bad('完成时间不能早于到达时间');
+  if (next.arrived_at && next.completed_at && next.completed_at < next.arrived_at) throw bad('完成时间不能早于开始时间');
   upsertProgress(episodeId, teamId, legId, next, user.id);
   audit(user, 'progress:edit', 'progress', `${episodeId}/${teamId}/${legId}`, before, next);
   notify('progress', episodeId);

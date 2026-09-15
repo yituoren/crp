@@ -44,7 +44,7 @@ async function save() {
       <div class="form-group"><label>{{ label }}时间（留空 = 未{{ label }}）</label><input v-model="form.completedAt" type="datetime-local" step="1" /></div>
     </template>
     <template v-else>
-      <div class="form-group"><label>到达时间（留空 = 未到达）</label><input v-model="form.arrivedAt" type="datetime-local" step="1" /></div>
+      <div class="form-group"><label>开始时间（留空 = 未开始）</label><input v-model="form.arrivedAt" type="datetime-local" step="1" /></div>
       <div class="form-group"><label>完成时间（留空 = 未完成）</label><input v-model="form.completedAt" type="datetime-local" step="1" /></div>
     </template>
     <div v-if="leg.type === 'UT' || leg.type === 'YD'" class="form-group"><label>施加对象</label>

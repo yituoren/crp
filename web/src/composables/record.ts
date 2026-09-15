@@ -30,11 +30,11 @@ export function useRecord() {
   async function arrive(teamId: number, legId: number) {
     const team = race.teamById.get(teamId)?.label ?? '';
     const leg = race.legById.get(legId)?.name ?? '';
-    const at = await pickTime('记录到达', `「${team}」到达「${leg}」。此操作会实时同步给所有幕后。`);
+    const at = await pickTime('记录开始', `「${team}」开始「${leg}」。此操作会实时同步给所有幕后。`);
     if (!at) return;
     try {
       const d = await post('arrive', teamId, legId, undefined, at);
-      ui.toast(d.already ? `已有到达记录：${fmtTime(d.progress.arrived_at)}` : `到达时间已记录：${fmtTime(d.progress.arrived_at)}`);
+      ui.toast(d.already ? `已有开始记录：${fmtTime(d.progress.arrived_at)}` : `开始时间已记录：${fmtTime(d.progress.arrived_at)}`);
     } catch (e) { ui.error(e); }
   }
   async function complete(teamId: number, legId: number) {
@@ -59,7 +59,7 @@ export function useRecord() {
     } catch (e) { ui.error(e); }
   }
   async function undo(kind: 'undo_arrive' | 'undo_complete', teamId: number, legId: number) {
-    if (!(await ui.confirm('撤销记录', kind === 'undo_arrive' ? '撤销到达记录（完成记录也会一并清除）？' : '撤销完成记录？', { danger: true }))) return;
+    if (!(await ui.confirm('撤销记录', kind === 'undo_arrive' ? '撤销开始记录（完成记录也会一并清除）？' : '撤销完成记录？', { danger: true }))) return;
     try { await post(kind, teamId, legId); ui.toast('已撤销'); } catch (e) { ui.error(e); }
   }
   async function setValue(action: 'detour' | 'roadblock' | 'ff' | 'note' | 'target', teamId: number, legId: number, value: string) {

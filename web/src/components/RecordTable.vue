@@ -22,7 +22,7 @@ const isSingle = computed(() => props.leg.record_mode === 'single');
 const isNone = computed(() => props.leg.record_mode === 'none');
 const showTarget = computed(() => props.leg.type === 'UT' || props.leg.type === 'YD');
 const label = computed(() => singleLabel(props.leg.type));
-const stateOf = (p: Progress | null) => (isSingle.value ? (p?.completed_at ? `已${label.value}` : `未${label.value}`) : p?.completed_at ? '已完成' : p?.arrived_at ? '已到达' : '未到达');
+const stateOf = (p: Progress | null) => (isSingle.value ? (p?.completed_at ? `已${label.value}` : `未${label.value}`) : p?.completed_at ? '已完成' : p?.arrived_at ? '进行中' : '未开始');
 
 function detourOptions(): string[] {
   const l = props.leg;
@@ -38,7 +38,7 @@ function detourOptions(): string[] {
         <tr>
           <th>队伍</th><th>状态</th>
           <template v-if="isSingle"><th>{{ label }}时间</th></template>
-          <template v-else><th>到达</th><th>{{ leg.type === 'Shuffle' ? '出发' : '完成' }}</th></template>
+          <template v-else><th>开始</th><th>{{ leg.type === 'Shuffle' ? '出发' : '完成' }}</th></template>
           <th v-if="showTarget">施加对象</th>
           <th v-if="leg.type === 'DT'">绕道选择</th>
           <th v-if="leg.type === 'RB'">路障完成人</th>
@@ -87,7 +87,7 @@ function detourOptions(): string[] {
                 <span v-else class="text-success text-sm">✔</span>
               </template>
               <template v-else-if="can">
-                <button v-if="!p?.arrived_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.arrive(team.id, leg.id)">记录到达</button>
+                <button v-if="!p?.arrived_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.arrive(team.id, leg.id)">记录开始</button>
                 <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm btn-slot" @click="rec.complete(team.id, leg.id)">{{ leg.type === 'Shuffle' ? '记录出发' : '记录完成' }}</button>
                 <button v-else-if="auth.isHost" class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改时间</button>
                 <span v-else class="text-success text-sm">✔</span>

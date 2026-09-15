@@ -64,11 +64,11 @@ const stats = computed(() => ({
       <p><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.label }}</strong>，当前余额 <strong class="text-warning">{{ fmtMoney(myTeam.currency) }} {{ moneyUnit() }}</strong></p>
       <div class="scroll-table">
         <table class="table">
-          <thead><tr><th>环节</th><th>状态</th><th>到达</th><th>完成 / 打卡</th><th style="min-width: 110px">操作</th></tr></thead>
+          <thead><tr><th>环节</th><th>状态</th><th>开始</th><th>完成 / 打卡</th><th style="min-width: 110px">操作</th></tr></thead>
           <tbody>
             <tr v-for="{ leg, p, single, label, block } in legRows" :key="leg.id">
               <td><LegTag :type="leg.type" /> <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: leg.id } }">{{ leg.name }}</router-link></td>
-              <td>{{ single ? (p?.completed_at ? `已${label}` : `未${label}`) : p?.completed_at ? '已完成' : p?.arrived_at ? '已到达' : '未到达' }}</td>
+              <td>{{ single ? (p?.completed_at ? `已${label}` : `未${label}`) : p?.completed_at ? '已完成' : p?.arrived_at ? '进行中' : '未开始' }}</td>
               <td><span class="record-time">{{ single ? '-' : fmtTime(p?.arrived_at) }}</span></td>
               <td><span class="record-time">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td>
               <td>
@@ -77,7 +77,7 @@ const stats = computed(() => ({
                   <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { leg, progress: p }">修改时间</button>
                 </template>
                 <template v-else>
-                  <button v-if="!p?.arrived_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.arrive(myTeam!.id, leg.id)">记录到达</button>
+                  <button v-if="!p?.arrived_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.arrive(myTeam!.id, leg.id)">记录开始</button>
                   <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm btn-slot" @click="rec.complete(myTeam!.id, leg.id)">记录完成</button>
                   <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { leg, progress: p }">修改时间</button>
                 </template>
@@ -96,7 +96,7 @@ const stats = computed(() => ({
       <p v-if="myLeg.address" class="text-sm text-gray">地址：{{ myLeg.address }} <a v-if="myLeg.map_url" :href="myLeg.map_url" target="_blank">地图</a></p>
       <p v-if="myLeg.open_time || myLeg.close_time" class="text-sm text-gray">开放时间：{{ myLeg.open_time || '-' }} ~ {{ myLeg.close_time || '-' }}</p>
       <div v-if="myLeg.judge_criteria" class="alert alert-info pre">判定标准：{{ myLeg.judge_criteria }}</div>
-      <p class="text-sm text-gray">到达和完成时间由各队跟队记录，站点这里只看；罚时、补时和经费在「进度」「经费」页操作。</p>
+      <p class="text-sm text-gray">开始和完成时间由各队跟队记录，站点这里只看；罚时、补时和经费在「进度」「经费」页操作。</p>
       <RecordTable :leg="myLeg" />
     </template>
 

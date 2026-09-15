@@ -88,7 +88,7 @@ async function importData() {
 async function importProto() {
   const data = await readJson(protoFile.value);
   if (!data) return;
-  if (!(await ui.confirm('导入原型数据', `导入旧版单页系统的备份。到达/完成时间按 ${protoDate.value} 这一天解释。${protoWipe.value ? '\n会先清空当前比赛数据。' : ''}`, { danger: protoWipe.value }))) return;
+  if (!(await ui.confirm('导入原型数据', `导入旧版单页系统的备份。开始/完成时间按 ${protoDate.value} 这一天解释。${protoWipe.value ? '\n会先清空当前比赛数据。' : ''}`, { danger: protoWipe.value }))) return;
   try {
     const d = await api('/admin/import-prototype', { method: 'POST', body: { data, baseDate: protoDate.value, wipe: protoWipe.value }, retries: 0 });
     const r = d.report;
@@ -203,7 +203,7 @@ onMounted(() => { loadAccess(); loadUsers(); loadSettings(); if (auth.isAdmin) l
         <label class="text-sm"><input v-model="protoWipe" type="checkbox" />先清空当前比赛数据</label>
         <button class="btn" @click="importProto">导入</button>
       </div>
-      <p class="info-text">旧版的到达/完成时间只有时分秒，需要指定这些记录属于哪一天。账号的旧密码会被加密后沿用。</p>
+      <p class="info-text">旧版的开始/完成时间只有时分秒，需要指定这些记录属于哪一天。账号的旧密码会被加密后沿用。</p>
     </div>
     <div class="card" style="border-color: #fecaca">
       <div class="card-header text-danger">危险操作区</div>
