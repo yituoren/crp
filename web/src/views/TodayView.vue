@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useRecord } from '@/composables/record';
@@ -7,12 +7,15 @@ import { fmtTime, fmtTimeSec } from '@/utils/time';
 import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
 import RecordTable from '@/components/RecordTable.vue';
+import ProgressEditModal from '@/components/ProgressEditModal.vue';
+import type { Leg, Progress } from '@/types';
 import { singleLabel } from '@/types';
 import { fmtMoney, moneyUnit } from '@/utils/money';
 
 const auth = useAuth();
 const race = useRace();
 const rec = useRecord();
+const editing = ref<{ leg: Leg; progress: Progress | null } | null>(null);
 
 const ep = computed(() => race.currentEpisode);
 const my = computed(() => race.myAssignment);
@@ -71,12 +74,12 @@ const stats = computed(() => ({
               <td>
                 <template v-if="single">
                   <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.single(myTeam!.id, leg.id, label)">记录{{ label }}</button>
-                  <span v-else class="text-success">✔</span>
+                  <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { leg, progress: p }">修改时间</button>
                 </template>
                 <template v-else>
                   <button v-if="!p?.arrived_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.arrive(myTeam!.id, leg.id)">记录到达</button>
                   <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm btn-slot" @click="rec.complete(myTeam!.id, leg.id)">记录完成</button>
-                  <span v-else class="text-success">✔</span>
+                  <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { leg, progress: p }">修改时间</button>
                 </template>
                 <div v-if="block && !p?.arrived_at" class="text-xs text-gray">{{ block }}</div>
               </td>
@@ -111,4 +114,6 @@ const stats = computed(() => ({
       <template v-else>本赛段你没有跟队或站点任务（机动幕后）。<br /><span class="text-sm">可以在「赛段信息」查看环节安排，排班有变动会实时更新。</span></template>
     </div>
   </div>
+
+  <ProgressEditModal v-if="editing && myTeam" :leg="editing.leg" :team="myTeam" :progress="editing.progress" @close="editing = null" />
 </template>

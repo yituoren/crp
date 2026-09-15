@@ -158,9 +158,10 @@ function upsertProgress(episodeId: number, teamId: number, legId: number, p: any
   );
 }
 
-/** 主办手工修正 */
-progressRoutes.put('/progress/:episodeId/:teamId/:legId', hostOnly, async (c) => {
+/** 修改记录：主办任意；跟队可改所跟队伍在进行中赛段的已有记录（不能清空时间、不能填未来） */
+progressRoutes.put('/progress/:episodeId/:teamId/:legId', async (c) => {
   const episodeId = intParam(c, 'episodeId'), teamId = intParam(c, 'teamId'), legId = intParam(c, 'legId');
+  const user = c.get('user');
   if (!get('SELECT 1 FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId)) throw notFound('环节不存在');
   const b = await body(c);
   const before = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, legId);
@@ -174,8 +175,18 @@ progressRoutes.put('/progress/:episodeId/:teamId/:legId', hostOnly, async (c) =>
     note: str(b.note, 1000),
   };
   if (next.completed_at && !next.arrived_at) next.arrived_at = next.completed_at;
-  upsertProgress(episodeId, teamId, legId, next, c.get('user').id);
-  audit(c.get('user'), 'progress:edit', 'progress', `${episodeId}/${teamId}/${legId}`, before, next);
+  if (!isHostRole(user.role)) {
+    if (!canRecordProgress(user, episodeId, teamId, legId)) throw forbidden('只能修改所跟队伍的记录');
+    const episode = get('SELECT status, code FROM episodes WHERE id = ?', episodeId)!;
+    if (episode.status !== 'running') throw bad(`${episode.code} 不在进行中，不能修改记录`);
+    if (!before) throw bad('还没有记录，请先记录');
+    if ((before.arrived_at && !next.arrived_at) || (before.completed_at && !next.completed_at)) throw bad('跟队不能清空已有时间，如需撤销请联系主办');
+    const limit = Date.now() + 2 * 60 * 1000;
+    for (const t of [next.arrived_at, next.completed_at]) if (t && new Date(t).getTime() > limit) throw bad('记录时间不能晚于当前时间');
+  }
+  if (next.arrived_at && next.completed_at && next.completed_at < next.arrived_at) throw bad('完成时间不能早于到达时间');
+  upsertProgress(episodeId, teamId, legId, next, user.id);
+  audit(user, 'progress:edit', 'progress', `${episodeId}/${teamId}/${legId}`, before, next);
   notify('progress', episodeId);
   return c.json({ ok: true });
 });
