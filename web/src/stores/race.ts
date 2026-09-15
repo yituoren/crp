@@ -30,11 +30,11 @@ export const useRace = defineStore('race', () => {
     return progress.value.find((p) => p.team_id === teamId && p.leg_id === legId) ?? null;
   }
 
-  function canRecord(teamId: number, legId: number) {
+  /** 时间记录：主办任意；跟队仅所跟队伍；站点不记时间 */
+  function canRecord(teamId: number, _legId: number) {
     if (auth.isHost) return true;
     const a = myAssignment.value;
-    if (!a) return false;
-    return (a.role === 'follow' && a.team_id === teamId) || (a.role === 'station' && a.leg_id === legId);
+    return !!a && a.role === 'follow' && a.team_id === teamId;
   }
   const canAdjustCurrency = computed(() => auth.isHost || myAssignment.value?.role === 'station');
   /** 淘汰权限：主办，或本赛段站在中继站的站点人员 */

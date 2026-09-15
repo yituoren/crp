@@ -93,6 +93,7 @@ const stats = computed(() => ({
       <p v-if="myLeg.address" class="text-sm text-gray">地址：{{ myLeg.address }} <a v-if="myLeg.map_url" :href="myLeg.map_url" target="_blank">地图</a></p>
       <p v-if="myLeg.open_time || myLeg.close_time" class="text-sm text-gray">开放时间：{{ myLeg.open_time || '-' }} ~ {{ myLeg.close_time || '-' }}</p>
       <div v-if="myLeg.judge_criteria" class="alert alert-info pre">判定标准：{{ myLeg.judge_criteria }}</div>
+      <p class="text-sm text-gray">到达和完成时间由各队跟队记录，站点这里只看；罚时、补时和经费在「进度」「经费」页操作。</p>
       <RecordTable :leg="myLeg" />
     </template>
 

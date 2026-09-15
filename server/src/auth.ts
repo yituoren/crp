@@ -74,13 +74,12 @@ export function getAssignment(episodeId: number, userId: number) {
   );
 }
 
-export function canRecordProgress(user: AuthUser, episodeId: number, teamId: number, legId: number) {
+/** 时间记录只由跟队（所跟队伍）和主办操作；站点不记时间，只管罚时、经费、附件 */
+export function canRecordProgress(user: AuthUser, episodeId: number, teamId: number, _legId: number) {
   if (isHostRole(user.role)) return true;
   const a = getAssignment(episodeId, user.id);
   if (!a) return false;
-  if (a.role === 'follow') return a.team_id === teamId;
-  if (a.role === 'station') return a.leg_id === legId;
-  return false;
+  return a.role === 'follow' && a.team_id === teamId;
 }
 
 /** 货币：主办任意；站点本赛段任意队伍；跟队仅本赛段所跟的队伍（排班按赛段生效，换队伍自动跟着变） */
