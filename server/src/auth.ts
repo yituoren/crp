@@ -12,6 +12,8 @@ export interface AuthUser {
   role: 'admin' | 'host' | 'crew';
 }
 export const isHostRole = (r: string) => r === 'host' || r === 'admin';
+/** 管理员：任何赛段状态下都可以修改数据 */
+export const isAdminRole = (r: string) => r === 'admin';
 
 export type Env = { Variables: { user: AuthUser } };
 

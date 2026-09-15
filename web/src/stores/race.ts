@@ -30,19 +30,22 @@ export const useRace = defineStore('race', () => {
     return progress.value.find((p) => p.team_id === teamId && p.leg_id === legId) ?? null;
   }
 
-  /** 当前赛段尚未开始：环节记录、经费、罚时都不能操作 */
-  const episodePending = computed(() => currentEpisode.value?.status === 'pending');
-  /** 当前赛段已结束：记录锁定，常规记录按钮全部收起；只有主办能通过“修改时间”修正，普通幕后只读 */
-  const episodeFinished = computed(() => currentEpisode.value?.status === 'finished');
-  /** 时间记录（常规按钮）：主办任意；跟队仅所跟队伍；站点不记时间；赛段结束后所有人都不能 */
+  // 赛段状态锁：管理员不受任何状态限制，所以这两个锁对管理员恒为 false
+  /** 当前赛段尚未开始（且非管理员）：环节记录、经费、罚时都不能操作 */
+  const episodePending = computed(() => !auth.isAdmin && currentEpisode.value?.status === 'pending');
+  /** 当前赛段已结束（且非管理员）：记录锁定，常规记录按钮全部收起；只有主办能通过“修改记录”修正，普通幕后只读 */
+  const episodeFinished = computed(() => !auth.isAdmin && currentEpisode.value?.status === 'finished');
+  /** 时间记录（常规按钮）：管理员任意；主办任意；跟队仅所跟队伍；站点不记时间；赛段结束后所有人都不能 */
   function canRecord(teamId: number, _legId: number) {
+    if (auth.isAdmin) return true;
     if (episodeFinished.value) return false;
     if (auth.isHost) return true;
     const a = myAssignment.value;
     return !!a && a.role === 'follow' && a.team_id === teamId;
   }
-  /** 修改时间（弹窗修正）：主办随时可用（未开始除外）；跟队仅在进行中对所跟队伍可用 */
+  /** 修改记录（弹窗修正）：管理员任意；主办随时可用（未开始除外）；跟队仅在进行中对所跟队伍可用 */
   function canEdit(teamId: number) {
+    if (auth.isAdmin) return true;
     if (episodePending.value) return false;
     if (auth.isHost) return true;
     if (episodeFinished.value) return false;
@@ -53,10 +56,9 @@ export const useRace = defineStore('race', () => {
   const canManagePenalty = computed(() => auth.isHost || (!episodeFinished.value && myAssignment.value?.role === 'station'));
   /** 经费：主办任意；跟队仅所跟队伍（赛段结束后仅主办）；站点无 */
   const canAdjustCurrency = computed(() => auth.isHost || (!episodeFinished.value && myAssignment.value?.role === 'follow'));
-  /** 淘汰权限：主办，或本赛段站在中继站的站点人员（赛段结束后仅主办） */
+  /** 淘汰权限：主办，或本赛段站在中继站的站点人员；不受赛段开始/结束限制 */
   const canEliminate = computed(() => {
     if (auth.isHost) return true;
-    if (episodeFinished.value) return false;
     const a = myAssignment.value;
     if (!a || a.role !== 'station' || !a.leg_ids?.length) return false;
     return currentEpisode.value?.legs.some((l) => a.leg_ids.includes(l.id) && l.type === 'PS') ?? false;
@@ -80,8 +82,10 @@ export const useRace = defineStore('race', () => {
   function blockReason(teamId: number, legId: number): string | null {
     const ep = currentEpisode.value;
     if (!ep) return null;
-    if (ep.status === 'pending') return '赛段尚未开始';
-    if (ep.status !== 'running' && !auth.isHost) return '赛段已结束';
+    if (!auth.isAdmin) {
+      if (ep.status === 'pending') return '赛段尚未开始';
+      if (ep.status !== 'running' && !auth.isHost) return '赛段已结束';
+    }
     const idx = ep.legs.findIndex((l) => l.id === legId);
     const missing: string[] = [];
     for (let i = 0; i < idx; i++) {

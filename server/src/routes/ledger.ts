@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { all, get, run, tx, now, fromCents } from '../db.js';
-import { canAdjustCurrency, type Env, isHostRole } from '../auth.js';
+import { canAdjustCurrency, type Env, isAdminRole, isHostRole } from '../auth.js';
 import { audit, body, str, int, notify, bad, forbidden, notFound, money } from '../util.js';
 import { teamLabelMap } from './teams.js';
 
@@ -41,7 +41,7 @@ ledgerRoutes.post('/ledger', async (c) => {
   if (!team) throw notFound('队伍不存在');
   if (episodeId) {
     const epRow = get('SELECT status, code FROM episodes WHERE id = ?', episodeId);
-    if (epRow?.status === 'pending') throw bad(`${epRow.code} 尚未开始，开始赛段后才能操作经费`);
+    if (epRow?.status === 'pending' && !isAdminRole(user.role)) throw bad(`${epRow.code} 尚未开始，开始赛段后才能操作经费`);
     if (epRow?.status === 'finished' && !isHostRole(user.role)) throw forbidden(`${epRow.code} 已结束，只有主办可以操作经费`);
   }
   const legId = int(b.legId, 0) || null; // 环节可空 = 其他，不做权限校验

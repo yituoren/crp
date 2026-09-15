@@ -19,6 +19,8 @@ const rows = computed(() => {
   return list.map((team) => ({ team, p: race.progressOf(team.id, props.leg.id), can: race.canRecord(team.id, props.leg.id) && (team.status === 'alive' || auth.isHost), edit: race.canEdit(team.id), block: race.blockReason(team.id, props.leg.id) }));
 });
 const isSingle = computed(() => props.leg.record_mode === 'single');
+/** 附加信息原地编辑：只在记录完成前允许；完成后只能通过“修改记录”弹窗改 */
+const inline = (can: boolean, p: Progress | null) => can && !p?.completed_at;
 const isNone = computed(() => props.leg.record_mode === 'none');
 const showTarget = computed(() => props.leg.type === 'UT' || props.leg.type === 'YD');
 const label = computed(() => singleLabel(props.leg.type));
@@ -56,25 +58,25 @@ function detourOptions(): string[] {
             <td><span class="record-time">{{ fmtTime(p?.completed_at) }}</span></td>
           </template>
           <td v-if="showTarget">
-            <select v-if="can" class="input-sm input-inline" style="width: 120px" :value="p?.target_team_id ?? ''" @change="rec.setValue('target', team.id, leg.id, ($event.target as HTMLSelectElement).value)">
+            <select v-if="inline(can, p)" class="input-sm input-inline" style="width: 120px" :value="p?.target_team_id ?? ''" @change="rec.setValue('target', team.id, leg.id, ($event.target as HTMLSelectElement).value)">
               <option value="">未使用</option>
               <option v-for="t in race.teams.filter((x) => x.id !== team.id)" :key="t.id" :value="t.id">{{ t.label }}</option>
             </select>
             <span v-else>{{ p?.target_team_id ? race.teamById.get(p.target_team_id)?.label : '-' }}</span>
           </td>
           <td v-if="leg.type === 'DT'">
-            <select v-if="can" class="input-sm input-inline" :value="p?.detour_choice ?? ''" @change="rec.setValue('detour', team.id, leg.id, ($event.target as HTMLSelectElement).value)">
+            <select v-if="inline(can, p)" class="input-sm input-inline" :value="p?.detour_choice ?? ''" @change="rec.setValue('detour', team.id, leg.id, ($event.target as HTMLSelectElement).value)">
               <option value="">未选</option>
               <option v-for="o in detourOptions()" :key="o" :value="o">{{ o }}</option>
             </select>
             <span v-else>{{ p?.detour_choice || '-' }}</span>
           </td>
           <td v-if="leg.type === 'RB'">
-            <input v-if="can" class="input-sm input-inline" style="width: 110px" :value="p?.roadblock_by ?? ''" placeholder="姓名" @change="rec.setValue('roadblock', team.id, leg.id, ($event.target as HTMLInputElement).value)" />
+            <input v-if="inline(can, p)" class="input-sm input-inline" style="width: 110px" :value="p?.roadblock_by ?? ''" placeholder="姓名" @change="rec.setValue('roadblock', team.id, leg.id, ($event.target as HTMLInputElement).value)" />
             <span v-else>{{ p?.roadblock_by || '-' }}</span>
           </td>
           <td v-if="leg.type === 'FF'">
-            <select v-if="can" class="input-sm input-inline" :value="p?.ff_result ?? ''" @change="rec.setValue('ff', team.id, leg.id, ($event.target as HTMLSelectElement).value)">
+            <select v-if="inline(can, p)" class="input-sm input-inline" :value="p?.ff_result ?? ''" @change="rec.setValue('ff', team.id, leg.id, ($event.target as HTMLSelectElement).value)">
               <option value="">未尝试</option><option value="success">成功</option><option value="fail">失败</option>
             </select>
             <span v-else>{{ p?.ff_result === 'success' ? '成功' : p?.ff_result === 'fail' ? '失败' : '-' }}</span>
@@ -82,20 +84,20 @@ function detourOptions(): string[] {
           <td>
             <div class="flex" style="gap: 6px; flex-wrap: nowrap">
               <template v-if="race.episodeFinished">
-                <button v-if="edit" class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改时间</button>
+                <button v-if="edit" class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
                 <span v-else class="text-gray text-sm">已锁定</span>
               </template>
               <template v-else-if="can && isSingle">
                 <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.single(team.id, leg.id, label)">记录{{ label }}</button>
-                <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改时间</button>
+                <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
               </template>
               <template v-else-if="can">
                 <button v-if="!p?.arrived_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.arrive(team.id, leg.id)">记录开始</button>
                 <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm btn-slot" :disabled="!!race.extraMissing(leg, p)" :title="race.extraMissing(leg, p) ?? ''" @click="rec.complete(team.id, leg.id)">{{ leg.type === 'Shuffle' ? '记录出发' : '记录完成' }}</button>
-                <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改时间</button>
+                <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
               </template>
               <template v-else-if="edit && p?.completed_at">
-                <button class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改时间</button>
+                <button class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
               </template>
               <span v-if="can && block && !p?.arrived_at" class="block-hint" :title="block">{{ block }}</span>
               <span v-else-if="can && p?.arrived_at && !p?.completed_at && race.extraMissing(leg, p)" class="block-hint">{{ race.extraMissing(leg, p) }}</span>

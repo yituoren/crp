@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { all, get, run, tx, now } from '../db.js';
-import { hostOnly, canRecordProgress, canManagePenalty, isHostRole, isPitstopStation, type Env } from '../auth.js';
+import { hostOnly, canRecordProgress, canManagePenalty, isHostRole, isPitstopStation, type Env, isAdminRole } from '../auth.js';
 import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forbidden } from '../util.js';
 import { teamLabelMap } from './teams.js';
 
@@ -62,8 +62,10 @@ progressRoutes.post('/progress', async (c) => {
   if (leg.record_mode === 'none' && ['arrive', 'complete', 'single'].includes(action)) throw bad('本环节不记录时间');
   if (leg.record_mode === 'single' && ['arrive', 'complete'].includes(action)) action = 'single';
   const episode = get('SELECT status, code FROM episodes WHERE id = ?', episodeId)!;
-  if (episode.status === 'pending') throw bad(`${episode.code} 尚未开始，开始赛段后才能记录`);
-  if (episode.status === 'finished') throw bad(`${episode.code} 已结束，记录已锁定${isHostRole(user.role) ? '，如需修正请使用“修改时间”' : ''}`);
+  if (!isAdminRole(user.role)) {
+    if (episode.status === 'pending') throw bad(`${episode.code} 尚未开始，开始赛段后才能记录`);
+    if (episode.status === 'finished') throw bad(`${episode.code} 已结束，记录已锁定${isHostRole(user.role) ? '，如需修正请使用“修改记录”' : ''}`);
+  }
   if (['arrive', 'complete', 'single'].includes(action)) {
     const missing = missingPrerequisites(episodeId, teamId, legId);
     if (missing.length) throw bad(`该队伍还没有完成前面的环节：${missing.join('、')}`);
@@ -183,7 +185,7 @@ progressRoutes.put('/progress/:episodeId/:teamId/:legId', async (c) => {
   };
   if (next.completed_at && !next.arrived_at) next.arrived_at = next.completed_at;
   const episodeRow = get('SELECT status, code FROM episodes WHERE id = ?', episodeId)!;
-  if (episodeRow.status === 'pending') throw bad(`${episodeRow.code} 尚未开始，开始赛段后才能操作`);
+  if (episodeRow.status === 'pending' && !isAdminRole(user.role)) throw bad(`${episodeRow.code} 尚未开始，开始赛段后才能操作`);
   if (!isHostRole(user.role)) {
     if (episodeRow.status === 'finished') throw forbidden(`${episodeRow.code} 已结束，只有主办可以修改记录`);
     if (!canRecordProgress(user, episodeId, teamId, legId)) throw forbidden('只能修改所跟队伍的记录');
@@ -211,7 +213,7 @@ progressRoutes.post('/episodes/:id/penalties', async (c) => {
   if (!get('SELECT 1 FROM teams WHERE id = ?', teamId)) throw notFound('队伍不存在');
   const epRow = get('SELECT status, code FROM episodes WHERE id = ?', episodeId);
   if (!epRow) throw notFound('赛段不存在');
-  if (epRow.status === 'pending') throw bad(`${epRow.code} 尚未开始，开始赛段后才能操作罚时`);
+  if (epRow.status === 'pending' && !isAdminRole(user.role)) throw bad(`${epRow.code} 尚未开始，开始赛段后才能操作罚时`);
   if (epRow.status === 'finished' && !isHostRole(user.role)) throw forbidden(`${epRow.code} 已结束，只有主办可以操作罚时`);
   const legId = int(b.legId, 0) || null;
   if (legId && !get('SELECT 1 FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId)) throw notFound('环节不存在');
@@ -288,7 +290,6 @@ progressRoutes.put('/episodes/:id/pitstop/:teamId', async (c) => {
   if (!isHostRole(user.role)) {
     // 中继站的站点人员只能操作“本段淘汰”，其他字段忽略
     if (!isPitstopStation(user, episodeId)) throw forbidden('只有主办或本赛段中继站的站点人员可以标记淘汰');
-    if (get('SELECT status FROM episodes WHERE id = ?', episodeId)?.status === 'finished') throw forbidden('赛段已结束，只有主办可以修改淘汰状态');
     if (b.eliminated === undefined) throw bad('中继站站点只能修改淘汰状态');
     b = { eliminated: !!b.eliminated };
   }
