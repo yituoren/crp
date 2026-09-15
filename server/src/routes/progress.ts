@@ -210,14 +210,25 @@ progressRoutes.post('/episodes/:id/penalties', async (c) => {
   return c.json({ id: Number(r.lastInsertRowid) });
 });
 
-progressRoutes.delete('/penalties/:id', hostOnly, (c) => {
+/** 撤销一条罚时/补时（主办）：写一条反向记录，原记录标记为已撤销；净罚时与名次随之恢复 */
+progressRoutes.post('/penalties/:id/revert', hostOnly, (c) => {
   const id = intParam(c, 'id');
-  const before = get('SELECT * FROM penalties WHERE id = ?', id);
-  if (!before) throw notFound('罚时记录不存在');
-  run('DELETE FROM penalties WHERE id = ?', id);
-  audit(c.get('user'), 'delete', 'penalty', id, before);
-  notify('progress', before.episode_id);
-  return c.json({ ok: true });
+  const user = c.get('user');
+  const orig = get('SELECT * FROM penalties WHERE id = ?', id);
+  if (!orig) throw notFound('罚时记录不存在');
+  if (orig.reverted) throw bad('这条记录已经撤销过了');
+  if (orig.reverts_id) throw bad('撤销记录本身不能再撤销');
+  const newId = tx(() => {
+    run('UPDATE penalties SET reverted = 1 WHERE id = ?', id);
+    const r = run(
+      'INSERT INTO penalties(episode_id, team_id, minutes, reason, applied_by, applied_at, reverts_id) VALUES (?,?,?,?,?,?,?)',
+      orig.episode_id, orig.team_id, -orig.minutes, `撤销：${orig.reason || (orig.minutes > 0 ? '罚时' : '补充时间')}`, user.id, now(), id,
+    );
+    return Number(r.lastInsertRowid);
+  });
+  audit(user, 'penalty_revert', 'penalty', id, { minutes: orig.minutes }, { revertId: newId });
+  notify('progress', orig.episode_id);
+  return c.json({ id: newId });
 });
 
 // ---------- 终点结算 ----------

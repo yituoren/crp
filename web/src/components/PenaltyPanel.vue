@@ -33,10 +33,13 @@ async function apply(sign: 1 | -1) {
     ui.toast(sign > 0 ? `已增加 ${minutes} 分钟罚时` : `已补充 ${minutes} 分钟时间`);
   } catch (e) { ui.error(e); }
 }
-async function remove(id: number) {
-  if (!(await ui.confirm('删除罚时记录', '确定删除这条罚时记录？', { danger: true }))) return;
-  try { await api(`/penalties/${id}`, { method: 'DELETE' }); await race.loadProgress(); } catch (e) { ui.error(e); }
+async function revert(p: { id: number; team_name: string; minutes: number; reason: string }) {
+  const what = p.minutes > 0 ? `${p.minutes} 分钟罚时` : `${-p.minutes} 分钟补时`;
+  if (!(await ui.confirm('撤销记录', `撤销「${p.team_name}」的这条 ${what}（${p.reason || '-'}）？会写入一条反向记录，净罚时和名次相应恢复。`, { danger: true, okText: '撤销' }))) return;
+  try { await api(`/penalties/${p.id}/revert`, { method: 'POST' }); await race.loadProgress(); ui.toast('已撤销'); } catch (e) { ui.error(e); }
 }
+// 页面只显示原始记录（被撤销的划线）；反向记录留在数据库与操作日志里
+const visible = computed(() => race.penalties.filter((p) => !p.reverts_id));
 </script>
 
 <template>
@@ -52,12 +55,12 @@ async function remove(id: number) {
       <button class="btn btn-danger" @click="apply(1)">增加罚时</button>
       <button class="btn btn-success" @click="apply(-1)">补充时间</button>
     </div>
-    <div v-if="!race.penalties.length" class="text-gray text-sm">本赛段暂无罚时或补时记录</div>
+    <div v-if="!visible.length" class="text-gray text-sm">本赛段暂无罚时或补时记录</div>
     <div v-else class="scroll-table">
       <table class="table">
         <thead><tr><th>时间</th><th>队伍</th><th>类型</th><th>分钟</th><th>净罚时</th><th>操作人</th><th>原因</th><th v-if="auth.isHost"></th></tr></thead>
         <tbody>
-          <tr v-for="p in race.penalties" :key="p.id">
+          <tr v-for="p in visible" :key="p.id" :style="p.reverted ? 'opacity:.5;text-decoration:line-through' : ''">
             <td>{{ fmtDateTime(p.applied_at) }}</td>
             <td>{{ p.team_name }}</td>
             <td :class="p.minutes > 0 ? 'log-negative' : 'log-positive'">{{ p.minutes > 0 ? '罚时' : '补时' }}</td>
@@ -65,7 +68,7 @@ async function remove(id: number) {
             <td>{{ totals.get(p.team_id) ?? 0 }}</td>
             <td>{{ p.applied_by_name ?? '-' }}</td>
             <td>{{ p.reason || '-' }}</td>
-            <td v-if="auth.isHost"><button class="btn btn-outline btn-sm" @click="remove(p.id)">删除</button></td>
+            <td v-if="auth.isHost"><button v-if="!p.reverted" class="btn btn-outline btn-sm" @click="revert(p)">撤销</button><span v-else class="text-xs text-gray">已撤销</span></td>
           </tr>
         </tbody>
       </table>

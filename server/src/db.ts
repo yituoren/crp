@@ -111,7 +111,9 @@ CREATE TABLE IF NOT EXISTS penalties (
   minutes INTEGER NOT NULL,
   reason TEXT NOT NULL DEFAULT '',
   applied_by INTEGER,
-  applied_at TEXT NOT NULL
+  applied_at TEXT NOT NULL,
+  reverted INTEGER NOT NULL DEFAULT 0,        -- 已被撤销
+  reverts_id INTEGER                          -- 本条是对哪条的撤销
 );
 CREATE TABLE IF NOT EXISTS pitstop_results (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -180,6 +182,8 @@ ensureColumn('announcements', 'pinned_at', 'TEXT');
 ensureColumn('announcements', 'audience', "TEXT NOT NULL DEFAULT 'all'");
 ensureColumn('currency_ledger', 'reverted', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('currency_ledger', 'reverts_id', 'INTEGER');
+ensureColumn('penalties', 'reverted', 'INTEGER NOT NULL DEFAULT 0');
+ensureColumn('penalties', 'reverts_id', 'INTEGER');
 
 type Param = string | number | null;
 export type Row = Record<string, any>;
