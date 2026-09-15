@@ -68,7 +68,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id));
             <td>{{ totals.get(p.team_id) ?? 0 }}</td>
             <td>{{ p.applied_by_name ?? '-' }}</td>
             <td>{{ p.reason || '-' }}</td>
-            <td v-if="auth.isHost"><button v-if="!p.reverted" class="btn btn-outline btn-sm" @click="revert(p)">撤销</button><span v-else class="text-xs text-gray">已撤销</span></td>
+            <td v-if="auth.isHost"><button v-if="!p.reverted" class="btn btn-outline btn-sm" @click="revert(p)">撤销</button></td>
           </tr>
         </tbody>
       </table>

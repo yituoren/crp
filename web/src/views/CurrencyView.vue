@@ -76,7 +76,7 @@ async function revert(l: LedgerEntry) {
             <td>{{ fmtDateTime(l.created_at) }}</td><td>{{ l.team_name }}</td>
             <td :class="l.delta > 0 ? 'log-positive' : 'log-negative'">{{ fmtMoney(l.delta, true) }}</td>
             <td>{{ fmtMoney(l.balance_after) }}</td><td>{{ l.operator_name }}</td><td>{{ l.reason || '-' }}</td>
-            <td v-if="auth.isHost"><button v-if="!l.reverted && !l.reverts_id" class="btn btn-outline btn-sm" @click="revert(l)">撤销</button><span v-else-if="l.reverted" class="text-xs text-gray">已撤销</span></td>
+            <td v-if="auth.isHost"><button v-if="!l.reverted && !l.reverts_id" class="btn btn-outline btn-sm" @click="revert(l)">撤销</button></td>
           </tr>
         </tbody>
       </table>
