@@ -5,6 +5,7 @@ import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import EpSelector from '@/components/EpSelector.vue';
+import MultiSelect from '@/components/MultiSelect.vue';
 
 const auth = useAuth();
 const race = useRace();
@@ -45,10 +46,7 @@ const conflicts = computed(() => {
 });
 const unassignedTeams = computed(() => race.aliveTeams.filter((t) => !form.rows.some((r) => r.role === 'follow' && Number(r.teamId) === t.id)).map((t) => t.label));
 
-function toggleLeg(r: RowForm, legId: number) {
-  const i = r.legIds.indexOf(legId);
-  if (i >= 0) r.legIds.splice(i, 1); else r.legIds.push(legId);
-}
+const legOptions = computed(() => (ep.value?.legs ?? []).filter((x) => x.needs_staff).map((l) => ({ value: l.id, label: l.name })));
 async function save() {
   if (!ep.value) return;
   for (const r of form.rows) {
@@ -84,7 +82,7 @@ async function copyPrev() {
     <div v-if="!race.users.length" class="empty-state">暂无注册幕后</div>
     <div v-else class="scroll-table">
       <table class="table">
-        <thead><tr><th style="width: 22%">幕后</th><th style="width: 12%">角色</th><th style="width: 26%">分配详情</th><th v-if="auth.isHost" style="min-width: 320px">编辑</th></tr></thead>
+        <thead><tr><th style="width: 22%">幕后</th><th style="width: 12%">角色</th><th style="width: 26%">分配详情</th><th v-if="auth.isHost" style="min-width: 290px">编辑</th></tr></thead>
         <tbody>
           <tr v-for="r in form.rows" :key="r.userId">
             <td><strong>{{ userById.get(r.userId)?.displayName }}</strong> <span v-if="userById.get(r.userId)?.role === 'admin'" class="badge badge-host">管理员</span><span v-else-if="userById.get(r.userId)?.role === 'host'" class="badge badge-host">主办</span></td>
@@ -99,9 +97,7 @@ async function copyPrev() {
                   <option value="">选择队伍</option>
                   <option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.label }}{{ t.status !== 'alive' ? '（已淘汰）' : '' }}</option>
                 </select>
-                <div v-else-if="r.role === 'station'" class="chips" style="flex: 1; min-width: 180px">
-                  <button v-for="l in (ep?.legs ?? []).filter((x) => x.needs_staff)" :key="l.id" type="button" class="chip" :class="{ active: r.legIds.includes(l.id) }" @click="toggleLeg(r, l.id)">{{ l.name }}</button>
-                </div>
+                <MultiSelect v-else-if="r.role === 'station'" v-model="r.legIds" :options="legOptions" placeholder="选择环节（可多选）" style="width: 180px; flex: none" />
                 <span v-else class="text-xs text-gray" style="width: 180px; flex: none">{{ r.role === 'live' ? '全赛段只读' : '无需分配' }}</span>
               </div>
             </td>
