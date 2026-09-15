@@ -266,3 +266,8 @@ html, body { overscroll-behavior: none; }
 
 /* 卡片内嵌套的面板（站点分工下的罚时）：去掉阴影与外边距，靠边框区分 */
 .card .card { box-shadow: none; margin-bottom: 0; }
+
+/* 记录表：状态/时间/操作列固定宽度，记录前后列宽不变，表格不会跳动 */
+.table .col-status { width: 80px; }
+.table .col-time { width: 84px; }
+.table .col-action { width: 200px; min-width: 200px; }

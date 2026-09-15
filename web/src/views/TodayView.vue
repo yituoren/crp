@@ -65,7 +65,7 @@ const stats = computed(() => ({
       <p><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.label }}</strong>，当前余额 <strong class="text-warning">{{ fmtMoney(myTeam.currency) }} {{ moneyUnit() }}</strong></p>
       <div class="scroll-table">
         <table class="table">
-          <thead><tr><th>环节</th><th>状态</th><th>开始</th><th>完成 / 打卡</th><th style="min-width: 110px">操作</th></tr></thead>
+          <thead><tr><th>环节</th><th class="col-status">状态</th><th class="col-time">开始</th><th class="col-time">完成 / 打卡</th><th class="col-action">操作</th></tr></thead>
           <tbody>
             <tr v-for="{ leg, p, single, label, block } in legRows" :key="leg.id">
               <td><LegTag :type="leg.type" /> <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: leg.id } }">{{ leg.name }}</router-link></td>
