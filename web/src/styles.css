@@ -285,7 +285,7 @@ html, body { overscroll-behavior: none; }
 .ms-btn.ms-empty { color: var(--gray-400); }
 .ms-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ms-caret { color: var(--gray-400); font-size: 11px; }
-.ms-menu { position: absolute; top: calc(100% + 4px); left: 0; z-index: 60; min-width: 100%; max-height: 240px; overflow-y: auto; background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: 0 6px 20px rgba(15,23,42,.12); padding: 4px 0; }
+.ms-menu { z-index: 400; max-height: 240px; overflow-y: auto; background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: 0 6px 20px rgba(15,23,42,.12); padding: 4px 0; }
 .ms-item { display: flex; align-items: center; gap: 6px; padding: 6px 10px; font-size: 13px; cursor: pointer; white-space: nowrap; }
 .ms-item:hover { background: var(--gray-50); }
 .ms-item input { margin: 0; }
