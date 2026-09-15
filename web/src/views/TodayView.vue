@@ -7,6 +7,7 @@ import { fmtTime, fmtTimeSec } from '@/utils/time';
 import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
 import RecordTable from '@/components/RecordTable.vue';
+import PenaltyPanel from '@/components/PenaltyPanel.vue';
 import ProgressEditModal from '@/components/ProgressEditModal.vue';
 import type { Leg, Progress } from '@/types';
 import { singleLabel } from '@/types';
@@ -96,8 +97,9 @@ const stats = computed(() => ({
       <p v-if="myLeg.address" class="text-sm text-gray">地址：{{ myLeg.address }} <a v-if="myLeg.map_url" :href="myLeg.map_url" target="_blank">地图</a></p>
       <p v-if="myLeg.open_time || myLeg.close_time" class="text-sm text-gray">开放时间：{{ myLeg.open_time || '-' }} ~ {{ myLeg.close_time || '-' }}</p>
       <div v-if="myLeg.judge_criteria" class="alert alert-info pre">判定标准：{{ myLeg.judge_criteria }}</div>
-      <p class="text-sm text-gray">开始和完成时间由各队跟队记录，站点这里只看；罚时、补时和经费在「进度」「经费」页操作。</p>
+      <p class="text-sm text-gray">开始和完成时间由各队跟队记录，站点这里只看；本站点的罚时、补时在下方操作，经费在「经费」页操作。</p>
       <RecordTable :leg="myLeg" />
+      <div class="mt-3"><PenaltyPanel :leg-id="myLeg.id" /></div>
     </template>
 
     <template v-else-if="my?.role === 'live'">

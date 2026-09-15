@@ -6,6 +6,7 @@ import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
 
+const props = defineProps<{ legId?: number }>(); // 传入环节时：只显示该环节（站点）的记录，新增也记在该环节上
 const auth = useAuth();
 const race = useRace();
 const ui = useUi();
@@ -27,7 +28,7 @@ async function apply(sign: 1 | -1) {
   const cur = totals.value.get(Number(form.teamId)) ?? 0;
   if (!(await ui.confirm(sign > 0 ? '增加罚时' : '补充时间', `「${team}」${sign > 0 ? `增加 ${minutes} 分钟罚时` : `补充 ${minutes} 分钟时间（从最终用时中扣除）`}，原因：${reason}\n本赛段净罚时 ${cur} → ${cur + minutes * sign} 分钟`))) return;
   try {
-    await api(`/episodes/${ep.value.id}/penalties`, { method: 'POST', body: { teamId: form.teamId, minutes: minutes * sign, reason } });
+    await api(`/episodes/${ep.value.id}/penalties`, { method: 'POST', body: { teamId: form.teamId, minutes: minutes * sign, reason, legId: props.legId } });
     form.minutes = ''; form.reason = '';
     await race.loadProgress();
     ui.toast(sign > 0 ? `已增加 ${minutes} 分钟罚时` : `已补充 ${minutes} 分钟时间`);
@@ -39,13 +40,13 @@ async function revert(p: { id: number; team_name: string; minutes: number; reaso
   try { await api(`/penalties/${p.id}/revert`, { method: 'POST' }); await race.loadProgress(); ui.toast('已撤销'); } catch (e) { ui.error(e); }
 }
 // 页面只显示原始记录（被撤销的划线）；反向记录留在数据库与操作日志里
-const visible = computed(() => race.penalties.filter((p) => !p.reverts_id));
+const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!props.legId || p.leg_id === props.legId)));
 </script>
 
 <template>
   <div class="card">
     <div class="card-header">
-      <span>罚时与补时</span>
+      <span>{{ props.legId ? '本站点罚时与补时' : '罚时与补时' }}</span>
       <span v-if="!race.canAdjustCurrency" class="text-sm text-gray">只有主办与本赛段站点人员可以操作</span>
     </div>
     <div v-if="race.canAdjustCurrency" class="flex mb-2">
@@ -58,11 +59,12 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id));
     <div v-if="!visible.length" class="text-gray text-sm">本赛段暂无罚时或补时记录</div>
     <div v-else class="scroll-table">
       <table class="table">
-        <thead><tr><th>时间</th><th>队伍</th><th>类型</th><th>分钟</th><th>净罚时</th><th>操作人</th><th>原因</th><th v-if="auth.isHost"></th></tr></thead>
+        <thead><tr><th>时间</th><th>队伍</th><th v-if="!props.legId">环节</th><th>类型</th><th>分钟</th><th>净罚时</th><th>操作人</th><th>原因</th><th v-if="auth.isHost"></th></tr></thead>
         <tbody>
           <tr v-for="p in visible" :key="p.id" :style="p.reverted ? 'opacity:.5;text-decoration:line-through' : ''">
             <td>{{ fmtDateTime(p.applied_at) }}</td>
             <td>{{ p.team_name }}</td>
+            <td v-if="!props.legId">{{ p.leg_name || '-' }}</td>
             <td :class="p.minutes > 0 ? 'log-negative' : 'log-positive'">{{ p.minutes > 0 ? '罚时' : '补时' }}</td>
             <td :class="p.minutes > 0 ? 'log-negative' : 'log-positive'">{{ p.minutes > 0 ? '+' : '' }}{{ p.minutes }}</td>
             <td>{{ totals.get(p.team_id) ?? 0 }}</td>

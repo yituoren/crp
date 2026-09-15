@@ -35,7 +35,9 @@ export function listProgress(episodeId: number) {
 export function listPenalties(episodeId: number) {
   const labels = teamLabelMap();
   return all(
-    `SELECT p.*, t.name AS team_name, u.display_name AS applied_by_name FROM penalties p JOIN teams t ON t.id = p.team_id LEFT JOIN users u ON u.id = p.applied_by WHERE p.episode_id = ? ORDER BY p.id DESC`,
+    `SELECT p.*, t.name AS team_name, u.display_name AS applied_by_name, l.name AS leg_name
+     FROM penalties p JOIN teams t ON t.id = p.team_id LEFT JOIN users u ON u.id = p.applied_by LEFT JOIN legs l ON l.id = p.leg_id
+     WHERE p.episode_id = ? ORDER BY p.id DESC`,
     episodeId,
   ).map((r) => ({ ...r, team_name: labels.get(r.team_id) ?? r.team_name }));
 }
@@ -201,9 +203,11 @@ progressRoutes.post('/episodes/:id/penalties', async (c) => {
   const teamId = int(b.teamId), minutes = int(b.minutes);
   if (!teamId || !minutes) throw bad('缺少队伍或罚时分钟数');
   if (!get('SELECT 1 FROM teams WHERE id = ?', teamId)) throw notFound('队伍不存在');
+  const legId = int(b.legId, 0) || null;
+  if (legId && !get('SELECT 1 FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId)) throw notFound('环节不存在');
   const r = run(
-    'INSERT INTO penalties(episode_id, team_id, minutes, reason, applied_by, applied_at) VALUES (?,?,?,?,?,?)',
-    episodeId, teamId, minutes, str(b.reason, 200), user.id, now(),
+    'INSERT INTO penalties(episode_id, team_id, minutes, reason, applied_by, applied_at, leg_id) VALUES (?,?,?,?,?,?,?)',
+    episodeId, teamId, minutes, str(b.reason, 200), user.id, now(), legId,
   );
   audit(user, 'create', 'penalty', Number(r.lastInsertRowid), undefined, { episodeId, teamId, minutes, reason: b.reason });
   notify('progress', episodeId);
@@ -221,8 +225,8 @@ progressRoutes.post('/penalties/:id/revert', hostOnly, (c) => {
   const newId = tx(() => {
     run('UPDATE penalties SET reverted = 1 WHERE id = ?', id);
     const r = run(
-      'INSERT INTO penalties(episode_id, team_id, minutes, reason, applied_by, applied_at, reverts_id) VALUES (?,?,?,?,?,?,?)',
-      orig.episode_id, orig.team_id, -orig.minutes, `撤销：${orig.reason || (orig.minutes > 0 ? '罚时' : '补充时间')}`, user.id, now(), id,
+      'INSERT INTO penalties(episode_id, team_id, minutes, reason, applied_by, applied_at, reverts_id, leg_id) VALUES (?,?,?,?,?,?,?,?)',
+      orig.episode_id, orig.team_id, -orig.minutes, `撤销：${orig.reason || (orig.minutes > 0 ? '罚时' : '补充时间')}`, user.id, now(), id, orig.leg_id ?? null,
     );
     return Number(r.lastInsertRowid);
   });
