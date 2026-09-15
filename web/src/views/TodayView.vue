@@ -23,7 +23,8 @@ const editing = ref<{ leg: Leg; progress: Progress | null } | null>(null);
 const ep = computed(() => race.currentEpisode);
 const my = computed(() => race.myAssignment);
 const myTeam = computed(() => (my.value?.team_id ? race.teamById.get(my.value.team_id) ?? null : null));
-const myLeg = computed(() => (my.value?.leg_id ? ep.value?.legs.find((l) => l.id === my.value!.leg_id) ?? null : null));
+// 站点可能驻守多个环节：按环节顺序从早到晚
+const myLegs = computed(() => (ep.value?.legs ?? []).filter((l) => (my.value?.leg_ids ?? []).includes(l.id)));
 
 const legRows = computed(() => {
   if (!ep.value || !myTeam.value) return [];
@@ -95,16 +96,19 @@ const stats = computed(() => ({
       <div class="mt-3"><TeamCurrencyPanel :team-id="myTeam.id" /></div>
     </template>
 
-    <template v-else-if="my?.role === 'station' && myLeg">
-      <p><span class="badge badge-station">站点</span> 你本赛段驻守 <LegTag :type="myLeg.type" full /> <strong>{{ myLeg.name }}</strong>
-        <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: myLeg.id } }" class="btn btn-outline btn-sm" style="margin-left: 8px">查看环节详情 / 附件</router-link>
-      </p>
-      <p v-if="myLeg.address" class="text-sm text-gray">地址：{{ myLeg.address }} <a v-if="myLeg.map_url" :href="myLeg.map_url" target="_blank">地图</a></p>
-      <p v-if="myLeg.open_time || myLeg.close_time" class="text-sm text-gray">开放时间：{{ myLeg.open_time || '-' }} ~ {{ myLeg.close_time || '-' }}</p>
-      <div v-if="myLeg.judge_criteria" class="alert alert-info pre">判定标准：{{ myLeg.judge_criteria }}</div>
-      <p class="text-sm text-gray">开始和完成时间由各队跟队记录，站点这里只看；本站点的罚时、补时在下方操作，经费在「经费」页操作。</p>
-      <RecordTable :leg="myLeg" />
-      <div class="mt-3"><PenaltyPanel :leg-id="myLeg.id" /></div>
+    <template v-else-if="my?.role === 'station' && myLegs.length">
+      <p><span class="badge badge-station">站点</span> 你本赛段驻守 {{ myLegs.length }} 个环节：{{ myLegs.map((l) => l.name).join('、') }}。开始和完成时间由各队跟队记录，站点这里只看；本站点的罚时、补时在各环节下方操作。</p>
+      <div v-for="(l, i) in myLegs" :key="l.id" class="station-leg" :class="{ 'mt-3': i > 0 }">
+        <div class="flex-between mb-1">
+          <span class="section-title"><LegTag :type="l.type" full /> {{ l.name }}</span>
+          <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: l.id } }" class="btn btn-outline btn-sm">环节详情 / 附件</router-link>
+        </div>
+        <p v-if="l.address" class="text-sm text-gray">地址：{{ l.address }} <a v-if="l.map_url" :href="l.map_url" target="_blank">地图</a></p>
+        <p v-if="l.open_time || l.close_time" class="text-sm text-gray">开放时间：{{ l.open_time || '-' }} ~ {{ l.close_time || '-' }}</p>
+        <div v-if="l.judge_criteria" class="alert alert-info pre">判定标准：{{ l.judge_criteria }}</div>
+        <RecordTable :leg="l" />
+        <div class="mt-2"><PenaltyPanel :leg-id="l.id" /></div>
+      </div>
     </template>
 
     <template v-else-if="my?.role === 'live'">

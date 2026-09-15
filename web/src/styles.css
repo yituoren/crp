@@ -277,3 +277,9 @@ html, body { overscroll-behavior: none; }
 .record-table .col-action { width: 22%; min-width: 200px; }
 .record-table .extra-ctl { width: 100%; max-width: 140px; }
 .block-hint { display: block; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--gray-400); }
+
+/* 排班：站点多选环节的标签按钮 */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--gray-300); background: #fff; color: var(--gray-700); font-size: 12px; cursor: pointer; line-height: 1.4; }
+.chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.station-leg + .station-leg { border-top: 1px solid var(--gray-200); padding-top: 14px; }

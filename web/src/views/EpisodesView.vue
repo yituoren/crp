@@ -16,7 +16,7 @@ const race = useRace();
 const ui = useUi();
 const ep = computed(() => race.currentEpisode);
 
-const staffOf = (legId: number) => race.assignments.filter((a) => a.role === 'station' && a.leg_id === legId).map((a) => a.display_name);
+const staffOf = (legId: number) => race.assignments.filter((a) => a.role === 'station' && (a.leg_ids ?? []).includes(legId)).map((a) => a.display_name);
 const doneCount = (legId: number) => race.aliveTeams.filter((t) => race.progressOf(t.id, legId)?.completed_at).length;
 const arrivedCount = (legId: number) => race.aliveTeams.filter((t) => { const p = race.progressOf(t.id, legId); return p?.arrived_at && !p.completed_at; }).length;
 

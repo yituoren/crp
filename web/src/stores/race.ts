@@ -44,8 +44,8 @@ export const useRace = defineStore('race', () => {
   const canEliminate = computed(() => {
     if (auth.isHost) return true;
     const a = myAssignment.value;
-    if (!a || a.role !== 'station' || !a.leg_id) return false;
-    return currentEpisode.value?.legs.some((l) => l.id === a.leg_id && l.type === 'PS') ?? false;
+    if (!a || a.role !== 'station' || !a.leg_ids?.length) return false;
+    return currentEpisode.value?.legs.some((l) => a.leg_ids.includes(l.id) && l.type === 'PS') ?? false;
   });
   function canAdjustCurrencyFor(teamId: number) {
     if (auth.isHost) return true;
@@ -78,7 +78,7 @@ export const useRace = defineStore('race', () => {
     return missing.length ? `先完成：${missing.join('、')}` : null;
   }
   function canUploadTo(legId: number) {
-    return auth.isHost || (myAssignment.value?.role === 'station' && myAssignment.value.leg_id === legId);
+    return auth.isHost || (myAssignment.value?.role === 'station' && (myAssignment.value.leg_ids ?? []).includes(legId));
   }
 
   async function loadEpisodes() {

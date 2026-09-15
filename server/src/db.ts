@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS assignments (
   role TEXT NOT NULL,                         -- follow | station
   team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL,
   leg_id INTEGER REFERENCES legs(id) ON DELETE SET NULL,
+  leg_ids TEXT,                               -- 站点驻守的环节 id 列表（JSON），可多个
   UNIQUE(episode_id, user_id)
 );
 CREATE TABLE IF NOT EXISTS progress (
@@ -188,6 +189,7 @@ ensureColumn('penalties', 'reverted', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('penalties', 'reverts_id', 'INTEGER');
 ensureColumn('penalties', 'leg_id', 'INTEGER');
 ensureColumn('currency_ledger', 'leg_id', 'INTEGER');
+ensureColumn('assignments', 'leg_ids', 'TEXT'); // 站点可驻守多个环节：JSON 数组，leg_id 保留为第一个
 
 type Param = string | number | null;
 export type Row = Record<string, any>;

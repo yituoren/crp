@@ -19,7 +19,7 @@ const legId = computed(() => Number(route.params.legId));
 const ep = computed(() => race.episodes.find((e) => e.id === episodeId.value) ?? null);
 const leg = computed(() => ep.value?.legs.find((l) => l.id === legId.value) ?? null);
 const canUpload = computed(() => race.canUploadTo(legId.value));
-const staff = computed(() => race.assignments.filter((a) => a.role === 'station' && a.leg_id === legId.value).map((a) => a.display_name));
+const staff = computed(() => race.assignments.filter((a) => a.role === 'station' && (a.leg_ids ?? []).includes(legId.value)).map((a) => a.display_name));
 const auth = useAuth();
 // ---- 主办/管理员：页内编辑 ----
 const isFixed = computed(() => leg.value?.type === 'SL' || leg.value?.type === 'PS');

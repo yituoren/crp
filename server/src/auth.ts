@@ -65,13 +65,19 @@ export const adminOnly: MiddlewareHandler<Env> = async (c, next) => {
   await next();
 };
 
+/** 解析站点驻守的环节列表（兼容只有 leg_id 的旧数据） */
+export function parseLegIds(row: { leg_id: number | null; leg_ids?: string | null }): number[] {
+  if (row.leg_ids) { try { const arr = JSON.parse(row.leg_ids); if (Array.isArray(arr)) return arr.map(Number).filter(Boolean); } catch { /* ignore */ } }
+  return row.leg_id ? [row.leg_id] : [];
+}
 /** 当前用户在某赛段的排班 */
 export function getAssignment(episodeId: number, userId: number) {
-  return get<{ role: 'follow' | 'station' | 'live'; team_id: number | null; leg_id: number | null }>(
-    'SELECT role, team_id, leg_id FROM assignments WHERE episode_id = ? AND user_id = ?',
+  const row = get<{ role: 'follow' | 'station' | 'live'; team_id: number | null; leg_id: number | null; leg_ids: string | null }>(
+    'SELECT role, team_id, leg_id, leg_ids FROM assignments WHERE episode_id = ? AND user_id = ?',
     episodeId,
     userId,
   );
+  return row ? { ...row, legIds: parseLegIds(row) } : undefined;
 }
 
 /** 时间记录只由跟队（所跟队伍）和主办操作；站点不记时间，只管罚时、经费、附件 */
@@ -98,13 +104,13 @@ export function canManagePenalty(user: AuthUser, episodeId: number) {
 export function canUploadToLeg(user: AuthUser, episodeId: number, legId: number) {
   if (isHostRole(user.role)) return true;
   const a = getAssignment(episodeId, user.id);
-  return a?.role === 'station' && a.leg_id === legId;
+  return a?.role === 'station' && a.legIds.includes(legId);
 }
 
 /** 站在中继站的站点人员：当赛段拥有淘汰权限 */
 export function isPitstopStation(user: AuthUser, episodeId: number) {
   if (isHostRole(user.role)) return true;
   const a = getAssignment(episodeId, user.id);
-  if (!a || a.role !== 'station' || !a.leg_id) return false;
-  return !!get("SELECT 1 FROM legs WHERE id = ? AND episode_id = ? AND type = 'PS'", a.leg_id, episodeId);
+  if (!a || a.role !== 'station' || !a.legIds.length) return false;
+  return a.legIds.some((id) => !!get("SELECT 1 FROM legs WHERE id = ? AND episode_id = ? AND type = 'PS'", id, episodeId));
 }
