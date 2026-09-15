@@ -129,7 +129,7 @@ web/src
   stores/           auth（登录态）、race（比赛数据）、ui（提示与确认）
   realtime.ts       Socket.IO 失效通知 → 自动刷新
 deploy/             install.sh / update.sh / backup.sh / crp.service
-docs/               操作手册、原型
+docs/               操作手册（crew-handbook.md）、原型
 ```
 
 ## 从旧版单页系统迁移数据
