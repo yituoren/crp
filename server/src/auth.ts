@@ -98,3 +98,11 @@ export function canUploadToLeg(user: AuthUser, episodeId: number, legId: number)
   const a = getAssignment(episodeId, user.id);
   return a?.role === 'station' && a.leg_id === legId;
 }
+
+/** 站在中继站的站点人员：当赛段拥有淘汰权限 */
+export function isPitstopStation(user: AuthUser, episodeId: number) {
+  if (isHostRole(user.role)) return true;
+  const a = getAssignment(episodeId, user.id);
+  if (!a || a.role !== 'station' || !a.leg_id) return false;
+  return !!get("SELECT 1 FROM legs WHERE id = ? AND episode_id = ? AND type = 'PS'", a.leg_id, episodeId);
+}

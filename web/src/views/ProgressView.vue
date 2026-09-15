@@ -69,6 +69,16 @@ async function save() {
     ui.toast('已保存');
   } catch (e) { ui.error(e); }
 }
+async function toggleEliminate(r: PitstopRow) {
+  if (!ep.value) return;
+  const next = !r.eliminated;
+  if (!(await ui.confirm(next ? '标记淘汰' : '取消淘汰', next ? `将「${r.team_name}」标记为本赛段淘汰？队伍状态会同步改为已淘汰。` : `取消「${r.team_name}」的淘汰标记，恢复为存活？`, { danger: next }))) return;
+  try {
+    await api(`/episodes/${ep.value.id}/pitstop/${r.team_id}`, { method: 'PUT', body: { eliminated: next } });
+    await Promise.all([race.loadProgress(), race.loadTeams()]);
+    ui.toast(next ? '已标记淘汰' : '已恢复');
+  } catch (e) { ui.error(e); }
+}
 async function autoRank() {
   if (!ep.value) return;
   if (!(await ui.confirm('自动排名', '按「签到时间 + 净罚时」对已签到队伍重新排名（会覆盖手工排名）。确定？'))) return;
@@ -133,7 +143,7 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
     <div v-if="!hasPsLeg" class="alert alert-warning">本赛段没有中继站环节，只能手工填写签到时间。</div>
     <div class="scroll-table">
       <table class="table">
-        <thead><tr><th>名次</th><th>队伍</th><th>状态</th><th>签到时间</th><th>净罚时</th><th>最终成绩</th><th>本段淘汰</th><th>备注</th><th v-if="auth.isHost"></th></tr></thead>
+        <thead><tr><th>名次</th><th>队伍</th><th>状态</th><th>签到时间</th><th>净罚时</th><th>最终成绩</th><th>本段淘汰</th><th>备注</th><th v-if="race.canEliminate"></th></tr></thead>
         <tbody>
           <tr v-for="r in sorted" :key="r.team_id">
             <td :class="r.rank ? 'rank-' + r.rank : ''">{{ r.rank ? '#' + r.rank : '-' }}</td>
@@ -144,7 +154,12 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
             <td><span class="record-time">{{ fmtTimeSec(r.final_time) }}</span></td>
             <td>{{ r.eliminated ? '淘汰' : '' }}</td>
             <td class="wrap">{{ r.note }}</td>
-            <td v-if="auth.isHost"><button class="btn btn-outline btn-sm" @click="open(r)">编辑</button></td>
+            <td v-if="race.canEliminate">
+              <div class="flex" style="gap: 6px; flex-wrap: nowrap">
+                <button class="btn btn-sm btn-slot" :class="r.eliminated ? 'btn-success' : 'btn-danger'" @click="toggleEliminate(r)">{{ r.eliminated ? '取消淘汰' : '淘汰' }}</button>
+                <button v-if="auth.isHost" class="btn btn-outline btn-sm" @click="open(r)">编辑</button>
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>

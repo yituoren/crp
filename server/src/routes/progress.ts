@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { all, get, run, tx, now } from '../db.js';
-import { hostOnly, canRecordProgress, canAdjustCurrency, isHostRole, type Env } from '../auth.js';
+import { hostOnly, canRecordProgress, canAdjustCurrency, isHostRole, isPitstopStation, type Env } from '../auth.js';
 import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forbidden } from '../util.js';
 import { teamLabelMap } from './teams.js';
 
@@ -254,9 +254,16 @@ progressRoutes.post('/episodes/:id/pitstop/auto', hostOnly, (c) => {
   return c.json({ pitstop: pitstopRows(episodeId) });
 });
 
-progressRoutes.put('/episodes/:id/pitstop/:teamId', hostOnly, async (c) => {
+progressRoutes.put('/episodes/:id/pitstop/:teamId', async (c) => {
   const episodeId = intParam(c, 'id'), teamId = intParam(c, 'teamId');
-  const b = await body(c);
+  const user = c.get('user');
+  let b = await body(c);
+  if (!isHostRole(user.role)) {
+    // 中继站的站点人员只能操作“本段淘汰”，其他字段忽略
+    if (!isPitstopStation(user, episodeId)) throw forbidden('只有主办或本赛段中继站的站点人员可以标记淘汰');
+    if (b.eliminated === undefined) throw bad('中继站站点只能修改淘汰状态');
+    b = { eliminated: !!b.eliminated };
+  }
   const before = get('SELECT * FROM pitstop_results WHERE episode_id = ? AND team_id = ?', episodeId, teamId);
   const checkin = b.checkinAt === undefined ? (before?.checkin_at ?? null) : isoOrNull(b.checkinAt);
   const rank = b.rank === undefined ? (before?.rank ?? null) : (b.rank === null || b.rank === '' ? null : int(b.rank));
@@ -270,7 +277,7 @@ progressRoutes.put('/episodes/:id/pitstop/:teamId', hostOnly, async (c) => {
     );
     if (b.eliminated !== undefined) run('UPDATE teams SET status = ? WHERE id = ?', eliminated ? 'eliminated' : 'alive', teamId);
   });
-  audit(c.get('user'), 'update', 'pitstop', `${episodeId}/${teamId}`, before, { checkin, rank, eliminated, note });
+  audit(user, 'update', 'pitstop', `${episodeId}/${teamId}`, before, { checkin, rank, eliminated, note });
   notify('pitstop', episodeId);
   notify('progress', episodeId);
   if (b.eliminated !== undefined) notify('teams');
