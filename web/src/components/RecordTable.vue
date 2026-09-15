@@ -83,19 +83,18 @@ function detourOptions(): string[] {
             <div class="flex" style="gap: 6px; flex-wrap: nowrap">
               <template v-if="can && isSingle">
                 <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.single(team.id, leg.id, label)">记录{{ label }}</button>
-                <button v-else-if="auth.isHost" class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改时间</button>
-                <span v-else class="text-success text-sm">✔</span>
+                <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改时间</button>
               </template>
               <template v-else-if="can">
                 <button v-if="!p?.arrived_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.arrive(team.id, leg.id)">记录开始</button>
-                <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm btn-slot" @click="rec.complete(team.id, leg.id)">{{ leg.type === 'Shuffle' ? '记录出发' : '记录完成' }}</button>
-                <button v-else-if="auth.isHost" class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改时间</button>
-                <span v-else class="text-success text-sm">✔</span>
+                <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm btn-slot" :disabled="!!race.extraMissing(leg, p)" :title="race.extraMissing(leg, p) ?? ''" @click="rec.complete(team.id, leg.id)">{{ leg.type === 'Shuffle' ? '记录出发' : '记录完成' }}</button>
+                <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改时间</button>
               </template>
               <template v-else-if="auth.isHost && p?.completed_at">
                 <button class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改时间</button>
               </template>
               <span v-if="can && block && !p?.arrived_at" class="block-hint" :title="block">{{ block }}</span>
+              <span v-else-if="can && p?.arrived_at && !p?.completed_at && race.extraMissing(leg, p)" class="block-hint">{{ race.extraMissing(leg, p) }}</span>
             </div>
           </td>
         </tr>
