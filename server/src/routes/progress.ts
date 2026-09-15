@@ -70,6 +70,11 @@ progressRoutes.post('/progress', async (c) => {
     const missing = missingPrerequisites(episodeId, teamId, legId);
     if (missing.length) throw bad(`该队伍还没有完成前面的环节：${missing.join('、')}`);
   }
+  if (['target', 'detour', 'roadblock', 'ff'].includes(action)) {
+    const cur = get('SELECT arrived_at, completed_at FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, legId);
+    if (!cur?.arrived_at) throw bad('请先记录开始，再填写环节信息');
+    if (cur.completed_at) throw bad('已记录完成，环节信息请通过“修改记录”修改');
+  }
   if (['undo_arrive', 'undo_complete'].includes(action)) {
     const later = all(
       `SELECT l.name FROM progress p JOIN legs l ON l.id = p.leg_id

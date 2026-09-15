@@ -19,8 +19,8 @@ const rows = computed(() => {
   return list.map((team) => ({ team, p: race.progressOf(team.id, props.leg.id), can: race.canRecord(team.id, props.leg.id) && (team.status === 'alive' || auth.isHost), edit: race.canEdit(team.id), block: race.blockReason(team.id, props.leg.id) }));
 });
 const isSingle = computed(() => props.leg.record_mode === 'single');
-/** 附加信息原地编辑：只在记录完成前允许；完成后只能通过“修改记录”弹窗改 */
-const inline = (can: boolean, p: Progress | null) => can && !p?.completed_at;
+/** 附加信息原地编辑：记录开始后、记录完成前允许；完成后只能通过“修改记录”弹窗改 */
+const inline = (can: boolean, p: Progress | null) => can && !!p?.arrived_at && !p?.completed_at;
 const isNone = computed(() => props.leg.record_mode === 'none');
 const showTarget = computed(() => props.leg.type === 'UT' || props.leg.type === 'YD');
 const label = computed(() => singleLabel(props.leg.type));
