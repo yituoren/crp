@@ -230,7 +230,7 @@ export function pitstopRows(episodeId: number) {
   for (const p of all('SELECT team_id, SUM(minutes) AS m FROM penalties WHERE episode_id = ? GROUP BY team_id', episodeId)) penalties.set(p.team_id, p.m);
   const psProgress = new Map<number, string | null>();
   if (psLeg) for (const p of all('SELECT team_id, completed_at FROM progress WHERE episode_id = ? AND leg_id = ?', episodeId, psLeg.id)) psProgress.set(p.team_id, p.completed_at);
-  return teams.map((t) => {
+  const rows = teams.map((t) => {
     const r = results.get(t.id);
     const checkin = r?.checkin_at ?? psProgress.get(t.id) ?? null;
     const pen = penalties.get(t.id) ?? 0;
@@ -239,31 +239,18 @@ export function pitstopRows(episodeId: number) {
       team_id: t.id, team_code: t.code, team_name: t.name, team_status: t.status,
       checkin_at: checkin, checkin_source: r?.checkin_at ? 'manual' : psProgress.get(t.id) ? 'progress' : null,
       penalty_minutes: pen, final_time: finalMs ? new Date(finalMs).toISOString() : null,
-      rank: r?.rank ?? null, eliminated: !!r?.eliminated, note: r?.note ?? '',
+      rank: null as number | null, eliminated: !!r?.eliminated, note: r?.note ?? '',
     };
   });
+  // 名次实时计算：有最终成绩且未退赛的队伍按最终成绩排序；签到、罚时、补时一变名次就变
+  rows
+    .filter((r) => r.final_time && r.team_status !== 'withdrawn')
+    .sort((a, b) => a.final_time!.localeCompare(b.final_time!))
+    .forEach((r, i) => { r.rank = i + 1; });
+  return rows;
 }
 
 progressRoutes.get('/episodes/:id/pitstop', (c) => c.json({ pitstop: pitstopRows(intParam(c, 'id')) }));
-
-progressRoutes.post('/episodes/:id/pitstop/auto', hostOnly, (c) => {
-  const episodeId = intParam(c, 'id');
-  const rows = pitstopRows(episodeId);
-  const ranked = rows.filter((r) => r.final_time && r.team_status !== 'withdrawn').sort((a, b) => a.final_time!.localeCompare(b.final_time!));
-  tx(() => {
-    ranked.forEach((r, i) => {
-      run(
-        `INSERT INTO pitstop_results(episode_id, team_id, checkin_at, rank, eliminated, note) VALUES (?,?,?,?,0,'')
-         ON CONFLICT(episode_id, team_id) DO UPDATE SET rank = excluded.rank`,
-        episodeId, r.team_id, r.checkin_at, i + 1,
-      );
-    });
-  });
-  audit(c.get('user'), 'auto_rank', 'pitstop', episodeId, undefined, ranked.map((r) => r.team_code));
-  notify('pitstop', episodeId);
-  notify('progress', episodeId);
-  return c.json({ pitstop: pitstopRows(episodeId) });
-});
 
 progressRoutes.put('/episodes/:id/pitstop/:teamId', async (c) => {
   const episodeId = intParam(c, 'id'), teamId = intParam(c, 'teamId');
@@ -277,7 +264,7 @@ progressRoutes.put('/episodes/:id/pitstop/:teamId', async (c) => {
   }
   const before = get('SELECT * FROM pitstop_results WHERE episode_id = ? AND team_id = ?', episodeId, teamId);
   const checkin = b.checkinAt === undefined ? (before?.checkin_at ?? null) : isoOrNull(b.checkinAt);
-  const rank = b.rank === undefined ? (before?.rank ?? null) : (b.rank === null || b.rank === '' ? null : int(b.rank));
+  const rank = before?.rank ?? null; // 名次自动计算，不再手工设置
   const eliminated = b.eliminated === undefined ? !!before?.eliminated : !!b.eliminated;
   const note = b.note === undefined ? (before?.note ?? '') : str(b.note, 300);
   tx(() => {
