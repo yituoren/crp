@@ -82,14 +82,17 @@ export function canRecordProgress(user: AuthUser, episodeId: number, teamId: num
   return a.role === 'follow' && a.team_id === teamId;
 }
 
-/** 货币：主办任意；站点本赛段任意队伍；跟队仅本赛段所跟的队伍（排班按赛段生效，换队伍自动跟着变） */
+/** 经费：主办任意；跟队仅本赛段所跟的队伍（排班按赛段生效，换队伍自动跟着变）；站点无经费权限 */
 export function canAdjustCurrency(user: AuthUser, episodeId: number, teamId?: number) {
   if (isHostRole(user.role)) return true;
   const a = getAssignment(episodeId, user.id);
-  if (!a) return false;
-  if (a.role === 'station') return true;
-  if (a.role === 'follow') return teamId !== undefined && a.team_id === teamId;
-  return false;
+  return !!a && a.role === 'follow' && teamId !== undefined && a.team_id === teamId;
+}
+/** 罚时/补时：主办任意；站点本赛段 */
+export function canManagePenalty(user: AuthUser, episodeId: number) {
+  if (isHostRole(user.role)) return true;
+  const a = getAssignment(episodeId, user.id);
+  return a?.role === 'station';
 }
 
 export function canUploadToLeg(user: AuthUser, episodeId: number, legId: number) {

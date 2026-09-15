@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { all, get, run, tx, now } from '../db.js';
-import { hostOnly, canRecordProgress, canAdjustCurrency, isHostRole, isPitstopStation, type Env } from '../auth.js';
+import { hostOnly, canRecordProgress, canManagePenalty, isHostRole, isPitstopStation, type Env } from '../auth.js';
 import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forbidden } from '../util.js';
 import { teamLabelMap } from './teams.js';
 
@@ -202,7 +202,7 @@ progressRoutes.put('/progress/:episodeId/:teamId/:legId', async (c) => {
 progressRoutes.post('/episodes/:id/penalties', async (c) => {
   const episodeId = intParam(c, 'id');
   const user = c.get('user');
-  if (!canAdjustCurrency(user, episodeId)) throw forbidden('只有主办或本赛段的站点人员可以补罚时');
+  if (!canManagePenalty(user, episodeId)) throw forbidden('只有主办或本赛段的站点人员可以补罚时');
   const b = await body(c);
   const teamId = int(b.teamId), minutes = int(b.minutes);
   if (!teamId || !minutes) throw bad('缺少队伍或罚时分钟数');
@@ -225,7 +225,7 @@ progressRoutes.post('/penalties/:id/revert', (c) => {
   const user = c.get('user');
   const orig = get('SELECT * FROM penalties WHERE id = ?', id);
   if (!orig) throw notFound('罚时记录不存在');
-  if (!canAdjustCurrency(user, orig.episode_id)) throw forbidden('没有这条记录的撤销权限');
+  if (!canManagePenalty(user, orig.episode_id)) throw forbidden('没有这条记录的撤销权限');
   if (!orig.leg_id && !isHostRole(user.role)) throw forbidden('“其他”环节的记录只能由主办撤销');
   if (orig.reverted) throw bad('这条记录已经撤销过了');
   if (orig.reverts_id) throw bad('撤销记录本身不能再撤销');
