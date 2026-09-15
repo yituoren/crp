@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { all, get, run, tx, now, fromCents } from '../db.js';
-import { canAdjustCurrency, hostOnly, type Env } from '../auth.js';
+import { canAdjustCurrency, type Env } from '../auth.js';
 import { audit, body, str, int, notify, bad, forbidden, notFound, money } from '../util.js';
 import { teamLabelMap } from './teams.js';
 
@@ -56,12 +56,13 @@ ledgerRoutes.post('/ledger', async (c) => {
   return c.json({ id, balance: fromCents(balance) });
 });
 
-/** 撤销一条经费变动（主办）：写一条反向流水，原记录标记为已撤销 */
-ledgerRoutes.post('/ledger/:id/revert', hostOnly, (c) => {
+/** 撤销一条经费变动：有权添加该记录的人就有权撤销（主办任意；站点本赛段；跟队所跟队伍） */
+ledgerRoutes.post('/ledger/:id/revert', (c) => {
   const id = int(c.req.param('id'), 0);
   const user = c.get('user');
   const orig = get('SELECT * FROM currency_ledger WHERE id = ?', id);
   if (!orig) throw notFound('流水不存在');
+  if (!canAdjustCurrency(user, orig.episode_id ?? 0, orig.team_id)) throw forbidden('没有这条记录的撤销权限');
   if (orig.reverted) throw bad('这条变动已经撤销过了');
   if (orig.reverts_id) throw bad('撤销记录本身不能再撤销');
   const team = get('SELECT * FROM teams WHERE id = ?', orig.team_id);

@@ -69,7 +69,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
     <div v-if="!visible.length" class="text-gray text-sm">本赛段暂无罚时或补时记录</div>
     <div v-else class="scroll-table">
       <table class="table">
-        <thead><tr><th>时间</th><th>队伍</th><th v-if="!props.legId">环节</th><th>类型</th><th>分钟</th><th>净罚时</th><th>操作人</th><th>原因</th><th v-if="auth.isHost"></th></tr></thead>
+        <thead><tr><th>时间</th><th>队伍</th><th v-if="!props.legId">环节</th><th>类型</th><th>分钟</th><th>净罚时</th><th>操作人</th><th>原因</th><th v-if="race.canAdjustCurrency"></th></tr></thead>
         <tbody>
           <tr v-for="p in visible" :key="p.id" :style="p.reverted ? 'opacity:.5;text-decoration:line-through' : ''">
             <td>{{ fmtDateTime(p.applied_at) }}</td>
@@ -80,7 +80,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
             <td>{{ totals.get(p.team_id) ?? 0 }}</td>
             <td>{{ p.applied_by_name ?? '-' }}</td>
             <td>{{ p.reason || '-' }}</td>
-            <td v-if="auth.isHost"><button v-if="!p.reverted" class="btn btn-outline btn-sm" @click="revert(p)">撤销</button></td>
+            <td v-if="race.canAdjustCurrency"><button v-if="!p.reverted && (auth.isHost || p.leg_id)" class="btn btn-outline btn-sm" @click="revert(p)">撤销</button></td>
           </tr>
         </tbody>
       </table>

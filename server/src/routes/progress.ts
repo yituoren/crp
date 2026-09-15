@@ -219,12 +219,14 @@ progressRoutes.post('/episodes/:id/penalties', async (c) => {
   return c.json({ id: Number(r.lastInsertRowid) });
 });
 
-/** 撤销一条罚时/补时（主办）：写一条反向记录，原记录标记为已撤销；净罚时与名次随之恢复 */
-progressRoutes.post('/penalties/:id/revert', hostOnly, (c) => {
+/** 撤销一条罚时/补时：有权添加的人就有权撤销（主办任意；站点本赛段带环节的记录） */
+progressRoutes.post('/penalties/:id/revert', (c) => {
   const id = intParam(c, 'id');
   const user = c.get('user');
   const orig = get('SELECT * FROM penalties WHERE id = ?', id);
   if (!orig) throw notFound('罚时记录不存在');
+  if (!canAdjustCurrency(user, orig.episode_id)) throw forbidden('没有这条记录的撤销权限');
+  if (!orig.leg_id && !isHostRole(user.role)) throw forbidden('“其他”环节的记录只能由主办撤销');
   if (orig.reverted) throw bad('这条记录已经撤销过了');
   if (orig.reverts_id) throw bad('撤销记录本身不能再撤销');
   const newId = tx(() => {

@@ -34,6 +34,7 @@ async function apply(t: Team, sign: 1 | -1) {
 }
 // 页面上只显示原始流水（被撤销的划线标出）；反向的撤销记录保留在数据库和操作日志里，不在列表中重复出现
 const rows = computed(() => race.ledger.filter((l) => !l.reverts_id && (!filterTeam.value || l.team_id === filterTeam.value)));
+const canRevertAny = computed(() => race.canAdjustCurrency || race.myAssignment?.role === 'follow');
 async function revert(l: LedgerEntry) {
   if (!(await ui.confirm('撤销经费变动', `撤销「${l.team_name}」的这笔 ${fmtMoney(l.delta, true)} ${moneyUnit()}（${l.reason || '手动调整'}）？会写入一条反向流水，余额相应恢复。`, { danger: true, okText: '撤销' }))) return;
   try { await api(`/ledger/${l.id}/revert`, { method: 'POST' }); await Promise.all([race.loadTeams(), race.loadLedger()]); ui.toast('已撤销'); } catch (e) { ui.error(e); }
@@ -77,13 +78,13 @@ async function revert(l: LedgerEntry) {
     <div v-if="!rows.length" class="empty-state">暂无货币变动记录</div>
     <div v-else class="scroll-table">
       <table class="table">
-        <thead><tr><th>时间</th><th>队伍</th><th>环节</th><th>变动（{{ moneyUnit() }}）</th><th>余额（{{ moneyUnit() }}）</th><th>操作人</th><th>原因</th><th v-if="auth.isHost"></th></tr></thead>
+        <thead><tr><th>时间</th><th>队伍</th><th>环节</th><th>变动（{{ moneyUnit() }}）</th><th>余额（{{ moneyUnit() }}）</th><th>操作人</th><th>原因</th><th v-if="canRevertAny"></th></tr></thead>
         <tbody>
           <tr v-for="l in rows" :key="l.id" :style="l.reverted ? 'opacity:.5;text-decoration:line-through' : ''">
             <td>{{ fmtDateTime(l.created_at) }}</td><td>{{ l.team_name }}</td><td>{{ l.leg_name || '其他' }}</td>
             <td :class="l.delta > 0 ? 'log-positive' : 'log-negative'">{{ fmtMoney(l.delta, true) }}</td>
             <td>{{ fmtMoney(l.balance_after) }}</td><td>{{ l.operator_name }}</td><td>{{ l.reason || '-' }}</td>
-            <td v-if="auth.isHost"><button v-if="!l.reverted && !l.reverts_id" class="btn btn-outline btn-sm" @click="revert(l)">撤销</button></td>
+            <td v-if="canRevertAny"><button v-if="!l.reverted && !l.reverts_id && race.canAdjustCurrencyFor(l.team_id)" class="btn btn-outline btn-sm" @click="revert(l)">撤销</button></td>
           </tr>
         </tbody>
       </table>
