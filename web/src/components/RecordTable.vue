@@ -33,7 +33,7 @@ function detourOptions(): string[] {
 <template>
   <div v-if="isNone" class="alert alert-info">本环节不记录时间。</div>
   <div v-else class="scroll-table">
-    <table class="table">
+    <table class="table record-table">
       <thead>
         <tr>
           <th>队伍</th><th class="col-status">状态</th>
@@ -95,7 +95,7 @@ function detourOptions(): string[] {
               <template v-else-if="auth.isHost && p?.completed_at">
                 <button class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改时间</button>
               </template>
-              <span v-if="can && block && !p?.arrived_at" class="text-xs text-gray">{{ block }}</span>
+              <span v-if="can && block && !p?.arrived_at" class="block-hint" :title="block">{{ block }}</span>
             </div>
           </td>
         </tr>
