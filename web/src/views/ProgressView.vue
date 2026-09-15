@@ -144,7 +144,7 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
             <td :class="r.rank ? 'rank-' + r.rank : ''">{{ r.rank ? '#' + r.rank : '-' }}</td>
             <td><strong>{{ r.team_name }}</strong></td>
             <td><TeamStatus :status="r.team_status" /></td>
-            <td><span class="record-time">{{ fmtTimeSec(r.checkin_at) }}</span> <span v-if="r.checkin_source === 'manual'" class="text-xs text-gray" title="主办在编辑里手填的签到时间，覆盖中继站的记录">主办手填</span></td>
+            <td><span class="record-time">{{ fmtTimeSec(r.checkin_at) }}</span></td>
             <td>{{ r.penalty_minutes > 0 ? `+${r.penalty_minutes} 分` : r.penalty_minutes < 0 ? `${r.penalty_minutes} 分（补时）` : '-' }}</td>
             <td><span class="record-time">{{ fmtTimeSec(r.final_time) }}</span></td>
             <td>{{ r.eliminated ? '淘汰' : '' }}</td>
