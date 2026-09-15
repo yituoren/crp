@@ -43,6 +43,8 @@ const stats = computed(() => ({
 <template>
   <EpSelector />
 
+  <div v-if="race.episodePending" class="alert alert-warning">{{ ep?.code }} 尚未开始。主办点「开始赛段」后才能记录时间、操作经费和罚时。</div>
+
   <!-- 主办概览 -->
   <div v-if="auth.isHost" class="card">
     <div class="card-header">概览</div>

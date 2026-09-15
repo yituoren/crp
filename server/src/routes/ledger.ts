@@ -39,6 +39,10 @@ ledgerRoutes.post('/ledger', async (c) => {
   if (!canAdjustCurrency(user, episodeId ?? 0, teamId)) throw forbidden('只有主办或该队伍的跟队可以操作经费');
   const team = get('SELECT * FROM teams WHERE id = ?', teamId);
   if (!team) throw notFound('队伍不存在');
+  if (episodeId) {
+    const epRow = get('SELECT status, code FROM episodes WHERE id = ?', episodeId);
+    if (epRow?.status === 'pending') throw bad(`${epRow.code} 尚未开始，开始赛段后才能操作经费`);
+  }
   const legId = int(b.legId, 0) || null; // 环节可空 = 其他，不做权限校验
   if (legId && !get('SELECT 1 FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId ?? 0)) throw notFound('环节不存在');
   const balance = team.currency + delta;

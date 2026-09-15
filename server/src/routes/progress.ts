@@ -62,7 +62,8 @@ progressRoutes.post('/progress', async (c) => {
   if (leg.record_mode === 'none' && ['arrive', 'complete', 'single'].includes(action)) throw bad('本环节不记录时间');
   if (leg.record_mode === 'single' && ['arrive', 'complete'].includes(action)) action = 'single';
   const episode = get('SELECT status, code FROM episodes WHERE id = ?', episodeId)!;
-  if (episode.status !== 'running' && !isHostRole(user.role)) throw bad(`${episode.code} ${episode.status === 'finished' ? '已结束' : '尚未开始'}，不能记录`);
+  if (episode.status === 'pending') throw bad(`${episode.code} 尚未开始，开始赛段后才能记录`);
+  if (episode.status !== 'running' && !isHostRole(user.role)) throw bad(`${episode.code} 已结束，不能记录`);
   if (['arrive', 'complete', 'single'].includes(action)) {
     const missing = missingPrerequisites(episodeId, teamId, legId);
     if (missing.length) throw bad(`该队伍还没有完成前面的环节：${missing.join('、')}`);
@@ -181,10 +182,11 @@ progressRoutes.put('/progress/:episodeId/:teamId/:legId', async (c) => {
     note: str(b.note, 1000),
   };
   if (next.completed_at && !next.arrived_at) next.arrived_at = next.completed_at;
+  const episodeRow = get('SELECT status, code FROM episodes WHERE id = ?', episodeId)!;
+  if (episodeRow.status === 'pending') throw bad(`${episodeRow.code} 尚未开始，开始赛段后才能操作`);
   if (!isHostRole(user.role)) {
     if (!canRecordProgress(user, episodeId, teamId, legId)) throw forbidden('只能修改所跟队伍的记录');
-    const episode = get('SELECT status, code FROM episodes WHERE id = ?', episodeId)!;
-    if (episode.status !== 'running') throw bad(`${episode.code} 不在进行中，不能修改记录`);
+    if (episodeRow.status !== 'running') throw bad(`${episodeRow.code} 不在进行中，不能修改记录`);
     if (!before) throw bad('还没有记录，请先记录');
     if ((before.arrived_at && !next.arrived_at) || (before.completed_at && !next.completed_at)) throw bad('跟队不能清空已有时间，如需撤销请联系主办');
     const limit = Date.now() + 2 * 60 * 1000;
@@ -207,6 +209,9 @@ progressRoutes.post('/episodes/:id/penalties', async (c) => {
   const teamId = int(b.teamId), minutes = int(b.minutes);
   if (!teamId || !minutes) throw bad('缺少队伍或罚时分钟数');
   if (!get('SELECT 1 FROM teams WHERE id = ?', teamId)) throw notFound('队伍不存在');
+  const epRow = get('SELECT status, code FROM episodes WHERE id = ?', episodeId);
+  if (!epRow) throw notFound('赛段不存在');
+  if (epRow.status === 'pending') throw bad(`${epRow.code} 尚未开始，开始赛段后才能操作罚时`);
   const legId = int(b.legId, 0) || null;
   if (legId && !get('SELECT 1 FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId)) throw notFound('环节不存在');
   if (!legId && !isHostRole(user.role)) throw forbidden('“其他”环节的罚时/补时只能由主办操作，请选择具体环节');

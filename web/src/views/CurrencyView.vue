@@ -53,11 +53,12 @@ async function revert(l: LedgerEntry) {
     </div>
     <span v-if="!race.canAdjustCurrency" class="text-sm text-gray">主办可操作所有队伍，跟队只能操作所跟队伍</span>
   </div>
+  <div v-if="race.episodePending" class="alert alert-warning">赛段尚未开始，开始赛段后才能操作经费。</div>
   <div class="grid grid-4">
     <div v-for="t in race.teams" :key="t.id" class="team-card" :class="'team-' + t.status">
       <div class="flex-between"><strong>{{ t.label }}</strong><span v-if="t.status !== 'alive'" class="status-eliminated">{{ t.status === 'eliminated' ? '已淘汰' : '已退赛' }}</span></div>
       <div class="currency-box">{{ fmtMoney(t.currency) }} <span class="text-sm text-gray">{{ moneyUnit() }}</span></div>
-      <div v-if="race.canAdjustCurrencyFor(t.id) && t.status === 'alive'" class="mt-1">
+      <div v-if="race.canAdjustCurrencyFor(t.id) && t.status === 'alive' && !race.episodePending" class="mt-1">
         <div class="flex" style="gap: 6px; flex-wrap: nowrap">
           <input v-model="get(t.id).amount" type="number" :inputmode="moneyMode() === 'coin' ? 'numeric' : 'decimal'" min="0" step="1" class="input-sm" :placeholder="moneyUnit() === '币' ? '数量' : '金额'" style="width: 90px" />
           <input v-model="get(t.id).reason" class="input-sm" placeholder="原因" style="flex: 1; min-width: 60px" />

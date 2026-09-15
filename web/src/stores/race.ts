@@ -36,6 +36,8 @@ export const useRace = defineStore('race', () => {
     const a = myAssignment.value;
     return !!a && a.role === 'follow' && a.team_id === teamId;
   }
+  /** 当前赛段尚未开始：环节记录、经费、罚时都不能操作 */
+  const episodePending = computed(() => currentEpisode.value?.status === 'pending');
   /** 罚时/补时：主办、本赛段站点 */
   const canManagePenalty = computed(() => auth.isHost || myAssignment.value?.role === 'station');
   /** 经费：主办任意；跟队仅所跟队伍；站点无 */
@@ -65,7 +67,8 @@ export const useRace = defineStore('race', () => {
   function blockReason(teamId: number, legId: number): string | null {
     const ep = currentEpisode.value;
     if (!ep) return null;
-    if (ep.status !== 'running' && !auth.isHost) return ep.status === 'finished' ? '赛段已结束' : '赛段尚未开始';
+    if (ep.status === 'pending') return '赛段尚未开始';
+    if (ep.status !== 'running' && !auth.isHost) return '赛段已结束';
     const idx = ep.legs.findIndex((l) => l.id === legId);
     const missing: string[] = [];
     for (let i = 0; i < idx; i++) {
@@ -153,7 +156,7 @@ export const useRace = defineStore('race', () => {
 
   return {
     episodes, teams, users, announcements, unreadAnnouncements, markAnnouncementsRead, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
-    aliveTeams, myAssignment, teamById, legById, progressOf, canRecord, canAdjustCurrency, canAdjustCurrencyFor, canManagePenalty, canEliminate, canUploadTo, blockReason, extraMissing,
+    aliveTeams, myAssignment, teamById, legById, progressOf, canRecord, canAdjustCurrency, canAdjustCurrencyFor, canManagePenalty, canEliminate, episodePending, canUploadTo, blockReason, extraMissing,
     loadAll, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
   };
 });
