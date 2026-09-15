@@ -102,6 +102,10 @@ progressRoutes.post('/progress', async (c) => {
     case 'complete':
       if (cur.completed_at) already = true;
       else {
+        // 有附加信息的环节，必须先填完才能记录完成
+        if (leg.type === 'DT' && !cur.detour_choice) throw bad('请先填写绕道选择');
+        if (leg.type === 'RB' && !cur.roadblock_by) throw bad('请先填写路障完成人');
+        if (leg.type === 'FF' && !cur.ff_result) throw bad('请先填写快进结果');
         if (cur.arrived_at && t < cur.arrived_at) throw bad(`完成时间不能早于开始时间（${cur.arrived_at}）`);
         next.completed_at = t;
         if (!next.arrived_at) next.arrived_at = t;

@@ -51,6 +51,13 @@ export const useRace = defineStore('race', () => {
     return a?.role === 'follow' && a.team_id === teamId;
   }
 
+  /** 记录完成前必须填好的附加信息：返回缺什么，null 表示齐了 */
+  function extraMissing(leg: { type: string }, p: { detour_choice?: string | null; roadblock_by?: string | null; ff_result?: string | null } | null): string | null {
+    if (leg.type === 'DT' && !p?.detour_choice) return '先填写绕道选择';
+    if (leg.type === 'RB' && !p?.roadblock_by) return '先填写路障完成人';
+    if (leg.type === 'FF' && !p?.ff_result) return '先填写快进结果';
+    return null;
+  }
   /** 与服务端一致的打卡顺序检查：返回不能打卡的原因，null 表示可以 */
   const MANDATORY_TYPES = new Set(['SL', 'TI', 'DT', 'RB', 'Union', 'Shuffle', 'Trap', 'PS']);
   function blockReason(teamId: number, legId: number): string | null {
@@ -144,7 +151,7 @@ export const useRace = defineStore('race', () => {
 
   return {
     episodes, teams, users, announcements, unreadAnnouncements, markAnnouncementsRead, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
-    aliveTeams, myAssignment, teamById, legById, progressOf, canRecord, canAdjustCurrency, canAdjustCurrencyFor, canEliminate, canUploadTo, blockReason,
+    aliveTeams, myAssignment, teamById, legById, progressOf, canRecord, canAdjustCurrency, canAdjustCurrencyFor, canEliminate, canUploadTo, blockReason, extraMissing,
     loadAll, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
   };
 });

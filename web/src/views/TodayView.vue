@@ -81,10 +81,11 @@ const stats = computed(() => ({
                 </template>
                 <template v-else>
                   <button v-if="!p?.arrived_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.arrive(myTeam!.id, leg.id)">记录开始</button>
-                  <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm btn-slot" @click="rec.complete(myTeam!.id, leg.id)">记录完成</button>
+                  <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm btn-slot" :disabled="!!race.extraMissing(leg, p)" :title="race.extraMissing(leg, p) ?? ''" @click="rec.complete(myTeam!.id, leg.id)">记录完成</button>
                   <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { leg, progress: p }">修改时间</button>
                 </template>
                 <div v-if="block && !p?.arrived_at" class="block-hint" :title="block">{{ block }}</div>
+                <div v-else-if="p?.arrived_at && !p?.completed_at && race.extraMissing(leg, p)" class="block-hint">{{ race.extraMissing(leg, p) }}</div>
               </td>
             </tr>
           </tbody>
