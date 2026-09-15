@@ -16,7 +16,7 @@ const editing = ref<{ team: Team; progress: Progress | null } | null>(null);
 
 const rows = computed(() => {
   const list = props.onlyTeamId ? race.teams.filter((t) => t.id === props.onlyTeamId) : race.teams;
-  return list.map((team) => ({ team, p: race.progressOf(team.id, props.leg.id), can: race.canRecord(team.id, props.leg.id) && (team.status === 'alive' || auth.isHost), block: race.blockReason(team.id, props.leg.id) }));
+  return list.map((team) => ({ team, p: race.progressOf(team.id, props.leg.id), can: race.canRecord(team.id, props.leg.id) && (team.status === 'alive' || auth.isHost), edit: race.canEdit(team.id), block: race.blockReason(team.id, props.leg.id) }));
 });
 const isSingle = computed(() => props.leg.record_mode === 'single');
 const isNone = computed(() => props.leg.record_mode === 'none');
@@ -47,7 +47,7 @@ function detourOptions(): string[] {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="{ team, p, can, block } in rows" :key="team.id" :style="team.status !== 'alive' ? 'opacity:.55' : ''">
+        <tr v-for="{ team, p, can, edit, block } in rows" :key="team.id" :style="team.status !== 'alive' ? 'opacity:.55' : ''">
           <td><strong>{{ team.label }}</strong> <TeamStatus v-if="team.status !== 'alive'" :status="team.status" /></td>
           <td>{{ stateOf(p) }}</td>
           <template v-if="isSingle"><td><span class="record-time">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td></template>
@@ -81,7 +81,11 @@ function detourOptions(): string[] {
           </td>
           <td>
             <div class="flex" style="gap: 6px; flex-wrap: nowrap">
-              <template v-if="can && isSingle">
+              <template v-if="race.episodeFinished">
+                <button v-if="edit" class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改时间</button>
+                <span v-else class="text-gray text-sm">已锁定</span>
+              </template>
+              <template v-else-if="can && isSingle">
                 <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.single(team.id, leg.id, label)">记录{{ label }}</button>
                 <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改时间</button>
               </template>
@@ -90,7 +94,7 @@ function detourOptions(): string[] {
                 <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm btn-slot" :disabled="!!race.extraMissing(leg, p)" :title="race.extraMissing(leg, p) ?? ''" @click="rec.complete(team.id, leg.id)">{{ leg.type === 'Shuffle' ? '记录出发' : '记录完成' }}</button>
                 <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改时间</button>
               </template>
-              <template v-else-if="auth.isHost && p?.completed_at">
+              <template v-else-if="edit && p?.completed_at">
                 <button class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改时间</button>
               </template>
               <span v-if="can && block && !p?.arrived_at" class="block-hint" :title="block">{{ block }}</span>

@@ -24,6 +24,8 @@ const form = reactive({
 const isSingle = props.leg.record_mode === 'single';
 const label = singleLabel(props.leg.type);
 const teams = useRaceStore().teams;
+const detourOptions = [props.leg.detour_a || 'A', props.leg.detour_b || 'B'];
+const isShuffle = props.leg.type === 'Shuffle';
 
 async function save() {
   try {
@@ -45,13 +47,15 @@ async function save() {
     </template>
     <template v-else>
       <div class="form-group"><label>开始时间（留空 = 未开始）</label><input v-model="form.arrivedAt" type="datetime-local" step="1" /></div>
-      <div class="form-group"><label>完成时间（留空 = 未完成）</label><input v-model="form.completedAt" type="datetime-local" step="1" /></div>
+      <div class="form-group"><label>{{ isShuffle ? '出发时间（留空 = 未出发）' : '完成时间（留空 = 未完成）' }}</label><input v-model="form.completedAt" type="datetime-local" step="1" /></div>
     </template>
     <div v-if="leg.type === 'UT' || leg.type === 'YD'" class="form-group"><label>施加对象</label>
       <select v-model="form.targetTeamId"><option value="">未使用</option><option v-for="t in teams.filter((x) => x.id !== team.id)" :key="t.id" :value="t.id">{{ t.label }}</option></select>
     </div>
-    <div v-if="leg.type === 'DT'" class="form-group"><label>绕道选择</label><input v-model="form.detourChoice" /></div>
-    <div v-if="leg.type === 'RB'" class="form-group"><label>路障完成人</label><input v-model="form.roadblockBy" /></div>
+    <div v-if="leg.type === 'DT'" class="form-group"><label>绕道选择</label>
+      <select v-model="form.detourChoice"><option value="">未选</option><option v-for="o in detourOptions" :key="o" :value="o">{{ o }}</option></select>
+    </div>
+    <div v-if="leg.type === 'RB'" class="form-group"><label>路障完成人</label><input v-model="form.roadblockBy" placeholder="姓名" /></div>
     <div v-if="leg.type === 'FF'" class="form-group"><label>快进结果</label>
       <select v-model="form.ffResult"><option value="">未尝试</option><option value="success">成功</option><option value="fail">失败</option></select>
     </div>

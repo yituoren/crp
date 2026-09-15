@@ -43,6 +43,7 @@ async function revert(l: LedgerEntry) {
       <span>{{ moneyLabel() }}操作 <span class="text-gray text-sm">当前余额 {{ fmtMoney(team.currency) }} {{ moneyUnit() }}</span></span>
     </div>
     <div v-if="race.episodePending" class="alert alert-warning">赛段尚未开始，开始赛段后才能操作经费。</div>
+    <div v-else-if="race.episodeFinished && !race.canAdjustCurrencyFor(team.id)" class="alert alert-info">赛段已结束，经费记录已锁定，只有主办可以修改。</div>
     <div v-else class="flex mb-2">
       <input v-model="form.amount" type="number" :inputmode="moneyMode() === 'coin' ? 'numeric' : 'decimal'" min="0" step="1" class="input-inline" :placeholder="moneyUnit() === '币' ? '数量' : '金额'" style="width: 110px" />
       <select v-model="legSel" class="input-inline" style="width: 150px">

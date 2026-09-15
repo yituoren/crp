@@ -30,27 +30,40 @@ export const useRace = defineStore('race', () => {
     return progress.value.find((p) => p.team_id === teamId && p.leg_id === legId) ?? null;
   }
 
-  /** 时间记录：主办任意；跟队仅所跟队伍；站点不记时间 */
+  /** 当前赛段尚未开始：环节记录、经费、罚时都不能操作 */
+  const episodePending = computed(() => currentEpisode.value?.status === 'pending');
+  /** 当前赛段已结束：记录锁定，常规记录按钮全部收起；只有主办能通过“修改时间”修正，普通幕后只读 */
+  const episodeFinished = computed(() => currentEpisode.value?.status === 'finished');
+  /** 时间记录（常规按钮）：主办任意；跟队仅所跟队伍；站点不记时间；赛段结束后所有人都不能 */
   function canRecord(teamId: number, _legId: number) {
+    if (episodeFinished.value) return false;
     if (auth.isHost) return true;
     const a = myAssignment.value;
     return !!a && a.role === 'follow' && a.team_id === teamId;
   }
-  /** 当前赛段尚未开始：环节记录、经费、罚时都不能操作 */
-  const episodePending = computed(() => currentEpisode.value?.status === 'pending');
-  /** 罚时/补时：主办、本赛段站点 */
-  const canManagePenalty = computed(() => auth.isHost || myAssignment.value?.role === 'station');
-  /** 经费：主办任意；跟队仅所跟队伍；站点无 */
-  const canAdjustCurrency = computed(() => auth.isHost || myAssignment.value?.role === 'follow');
-  /** 淘汰权限：主办，或本赛段站在中继站的站点人员 */
+  /** 修改时间（弹窗修正）：主办随时可用（未开始除外）；跟队仅在进行中对所跟队伍可用 */
+  function canEdit(teamId: number) {
+    if (episodePending.value) return false;
+    if (auth.isHost) return true;
+    if (episodeFinished.value) return false;
+    const a = myAssignment.value;
+    return !!a && a.role === 'follow' && a.team_id === teamId;
+  }
+  /** 罚时/补时：主办、本赛段站点（赛段结束后仅主办） */
+  const canManagePenalty = computed(() => auth.isHost || (!episodeFinished.value && myAssignment.value?.role === 'station'));
+  /** 经费：主办任意；跟队仅所跟队伍（赛段结束后仅主办）；站点无 */
+  const canAdjustCurrency = computed(() => auth.isHost || (!episodeFinished.value && myAssignment.value?.role === 'follow'));
+  /** 淘汰权限：主办，或本赛段站在中继站的站点人员（赛段结束后仅主办） */
   const canEliminate = computed(() => {
     if (auth.isHost) return true;
+    if (episodeFinished.value) return false;
     const a = myAssignment.value;
     if (!a || a.role !== 'station' || !a.leg_ids?.length) return false;
     return currentEpisode.value?.legs.some((l) => a.leg_ids.includes(l.id) && l.type === 'PS') ?? false;
   });
   function canAdjustCurrencyFor(teamId: number) {
     if (auth.isHost) return true;
+    if (episodeFinished.value) return false;
     const a = myAssignment.value;
     return a?.role === 'follow' && a.team_id === teamId;
   }
@@ -156,7 +169,7 @@ export const useRace = defineStore('race', () => {
 
   return {
     episodes, teams, users, announcements, unreadAnnouncements, markAnnouncementsRead, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
-    aliveTeams, myAssignment, teamById, legById, progressOf, canRecord, canAdjustCurrency, canAdjustCurrencyFor, canManagePenalty, canEliminate, episodePending, canUploadTo, blockReason, extraMissing,
+    aliveTeams, myAssignment, teamById, legById, progressOf, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, canManagePenalty, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing,
     loadAll, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
   };
 });

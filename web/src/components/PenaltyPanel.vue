@@ -55,6 +55,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
       <span v-if="!race.canManagePenalty" class="text-sm text-gray">只有主办与本赛段站点人员可以操作</span>
     </div>
     <div v-if="race.episodePending" class="alert alert-warning">赛段尚未开始，开始赛段后才能操作罚时。</div>
+    <div v-else-if="race.episodeFinished && !auth.isHost" class="alert alert-info">赛段已结束，罚时记录已锁定，只有主办可以修改。</div>
     <div v-else-if="race.canManagePenalty" class="flex mb-2">
       <select v-model="form.teamId" class="input-inline" style="width: 140px"><option value="">选择队伍</option><option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.label }}</option></select>
       <select v-if="!props.legId" v-model="form.legId" class="input-inline" style="width: 150px">

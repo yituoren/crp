@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { all, get, run, tx, now, fromCents } from '../db.js';
-import { canAdjustCurrency, type Env } from '../auth.js';
+import { canAdjustCurrency, type Env, isHostRole } from '../auth.js';
 import { audit, body, str, int, notify, bad, forbidden, notFound, money } from '../util.js';
 import { teamLabelMap } from './teams.js';
 
@@ -42,6 +42,7 @@ ledgerRoutes.post('/ledger', async (c) => {
   if (episodeId) {
     const epRow = get('SELECT status, code FROM episodes WHERE id = ?', episodeId);
     if (epRow?.status === 'pending') throw bad(`${epRow.code} 尚未开始，开始赛段后才能操作经费`);
+    if (epRow?.status === 'finished' && !isHostRole(user.role)) throw forbidden(`${epRow.code} 已结束，只有主办可以操作经费`);
   }
   const legId = int(b.legId, 0) || null; // 环节可空 = 其他，不做权限校验
   if (legId && !get('SELECT 1 FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId ?? 0)) throw notFound('环节不存在');
@@ -67,6 +68,7 @@ ledgerRoutes.post('/ledger/:id/revert', (c) => {
   const orig = get('SELECT * FROM currency_ledger WHERE id = ?', id);
   if (!orig) throw notFound('流水不存在');
   if (!canAdjustCurrency(user, orig.episode_id ?? 0, orig.team_id)) throw forbidden('没有这条记录的撤销权限');
+  if (!isHostRole(user.role) && orig.episode_id && get('SELECT status FROM episodes WHERE id = ?', orig.episode_id)?.status === 'finished') throw forbidden('赛段已结束，只有主办可以撤销');
   if (orig.reverted) throw bad('这条变动已经撤销过了');
   if (orig.reverts_id) throw bad('撤销记录本身不能再撤销');
   const team = get('SELECT * FROM teams WHERE id = ?', orig.team_id);
