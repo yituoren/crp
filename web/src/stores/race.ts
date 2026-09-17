@@ -93,7 +93,7 @@ export const useRace = defineStore('race', () => {
     return null;
   }
   /** 与服务端一致的打卡顺序检查：返回不能打卡的原因，null 表示可以 */
-  const MANDATORY_TYPES = new Set(['SL', 'TI', 'DT', 'RB', 'Union', 'Shuffle', 'Trap', 'PS']);
+  const MANDATORY_TYPES = new Set(['SL', 'RI', 'TI', 'DT', 'RB', 'Union', 'Shuffle', 'Trap', 'PS']);
   function blockReason(teamId: number, legId: number): string | null {
     const ep = currentEpisode.value;
     if (!ep) return null;
@@ -107,7 +107,7 @@ export const useRace = defineStore('race', () => {
       const l = ep.legs[i]!;
       const p = progressOf(teamId, l.id);
       if (l.type === 'FF' && p?.ff_result === 'success') return null;
-      if (l.record_mode === 'none' || !MANDATORY_TYPES.has(l.type)) continue;
+      if (!MANDATORY_TYPES.has(l.type)) continue;
       if (!p?.completed_at) missing.push(legName(l));
     }
     return missing.length ? `先完成：${missing.join('、')}` : null;

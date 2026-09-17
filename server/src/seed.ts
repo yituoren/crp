@@ -21,8 +21,8 @@ export function seed() {
         const r = run('INSERT INTO episodes(code, name, budget, sort, status, notes) VALUES (?,?,?,?,?,?)', `EP${i}`, `第 ${i} 赛段`, 0, i, 'pending', '');
         const epId = Number(r.lastInsertRowid);
         const legs: [string, string, number, string][] = [
-          ...(i === 1 ? [['SL', '起跑线', 1, 'single'] as [string, string, number, string]] : []),
-          ['RI', '路线信息 1', 0, 'none'], ['TI', '任务点 1', 1, 'full'], ['PS', '中继站', 1, 'single'],
+          ...(i === 1 ? [['SL', '起跑线', 1, 'full'] as [string, string, number, string]] : []),
+          ['RI', '路线信息 1', 0, 'full'], ['TI', '任务点 1', 1, 'full'], ['PS', '中继站', 1, 'full'],
         ];
         legs.forEach(([type, name, staff, mode], j) => run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,?,?)', epId, j + 1, type, name, staff, mode));
       }
@@ -57,11 +57,11 @@ export function seed() {
       eps.forEach((ep, idx) => {
         const legs = all('SELECT id, type, sort FROM legs WHERE episode_id = ? ORDER BY sort, id', ep.id);
         if (!legs.some((l) => l.type === 'PS')) {
-          run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', ep.id, (legs.at(-1)?.sort ?? 0) + 1, 'PS', '中继站', 'single');
+          run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', ep.id, (legs.at(-1)?.sort ?? 0) + 1, 'PS', '中继站', 'full');
         }
         if (idx === 0 && !legs.some((l) => l.type === 'SL')) {
           run('UPDATE legs SET sort = sort + 1 WHERE episode_id = ?', ep.id);
-          run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', ep.id, 1, 'SL', '起跑线', 'single');
+          run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', ep.id, 1, 'SL', '起跑线', 'full');
         }
         if (idx > 0) {
           // 非首赛段的 Starting Line：没有记录的直接删除，有记录的改为任务点保留数据

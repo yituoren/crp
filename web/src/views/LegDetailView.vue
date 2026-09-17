@@ -5,7 +5,8 @@ import { api } from '@/api';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
-import { LEG_TYPES, LEG_TYPE_LABEL, legTypeLabel, TYPE_DEFAULTS, RECORD_MODE_LABEL, typeCode, type LegType, type RecordMode, legName, isDestinationLeg } from '@/types';
+import { LEG_TYPES, LEG_TYPE_LABEL, legTypeLabel, typeCode, type LegType, legName, isDestinationLeg } from '@/types';
+import { fmtDurMs } from '@/utils/time';
 import { reactive } from 'vue';
 import { useAuth } from '@/stores/auth';
 import LegTag from '@/components/LegTag.vue';
@@ -24,22 +25,24 @@ const auth = useAuth();
 // ---- 主办/管理员：页内编辑 ----
 const isFixed = computed(() => leg.value?.type === 'SL' || leg.value?.type === 'PS');
 const selectableTypes = LEG_TYPES.filter((t) => t !== 'SL' && t !== 'PS');
-const form = reactive({ type: 'TI' as LegType, name: '', description: '', address: '', map_url: '', clue_text: '', judge_criteria: '', open_time: '', close_time: '', detour_a: '', detour_b: '', needs_staff: true, record_mode: 'full' as RecordMode });
+// 熔断：开始时间（从赛段开始计）与间隔，都按小时+分钟填写，存为分钟
+const form = reactive({ type: 'TI' as LegType, name: '', description: '', address: '', map_url: '', clue_text: '', judge_criteria: '', open_time: '', close_time: '', detour_a: '', detour_b: '', cutoff_start_h: 0, cutoff_start_m: 0, cutoff_interval_h: 0, cutoff_interval_m: 0 });
 const dirty = ref(false);
 let filling = false;
 function fillForm() {
   const l = leg.value; if (!l) return;
   filling = true;
-  Object.assign(form, { type: l.type, name: l.name, description: l.description, address: l.address, map_url: l.map_url, clue_text: l.clue_text, judge_criteria: l.judge_criteria, open_time: l.open_time, close_time: l.close_time, detour_a: l.detour_a, detour_b: l.detour_b, needs_staff: !!l.needs_staff, record_mode: l.record_mode });
+  Object.assign(form, { type: l.type, name: l.name, description: l.description, address: l.address, map_url: l.map_url, clue_text: l.clue_text, judge_criteria: l.judge_criteria, open_time: l.open_time, close_time: l.close_time, detour_a: l.detour_a, detour_b: l.detour_b, cutoff_start_h: Math.floor((l.cutoff_start ?? 0) / 60), cutoff_start_m: (l.cutoff_start ?? 0) % 60, cutoff_interval_h: Math.floor((l.cutoff_interval ?? 0) / 60), cutoff_interval_m: (l.cutoff_interval ?? 0) % 60 });
   dirty.value = false;
   setTimeout(() => { filling = false; }, 0);
 }
 watch(leg, () => { if (!dirty.value) fillForm(); }, { immediate: true });
 watch(form, () => { if (!filling) dirty.value = true; }, { deep: true });
-watch(() => form.type, (t, prev) => { if (!filling && prev !== undefined && t !== prev) { form.needs_staff = TYPE_DEFAULTS[t].staff; form.record_mode = TYPE_DEFAULTS[t].mode; } });
 async function saveLeg() {
   if (!leg.value) return;
-  try { await api(`/legs/${leg.value.id}`, { method: 'PUT', body: form }); await race.loadEpisodes(); fillForm(); ui.toast('环节已保存'); } catch (e) { ui.error(e); }
+  const mins = (h: number, m: number) => Math.max(0, Number(h) || 0) * 60 + Math.max(0, Number(m) || 0);
+  const body = { ...form, cutoff_start: mins(form.cutoff_start_h, form.cutoff_start_m), cutoff_interval: mins(form.cutoff_interval_h, form.cutoff_interval_m) };
+  try { await api(`/legs/${leg.value.id}`, { method: 'PUT', body }); await race.loadEpisodes(); fillForm(); ui.toast('环节已保存'); } catch (e) { ui.error(e); }
 }
 const fileInput = ref<HTMLInputElement | null>(null);
 const uploading = ref(false);
@@ -92,12 +95,16 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
               </div>
               <div class="form-group"><label>{{ isDestinationLeg(form.type) ? '目的地' : '名称' }}</label><input v-model="form.name" :placeholder="form.type === 'RI' ? '目的地名称，显示时自动加箭头' : form.type === 'PS' ? '中继站所在地' : ''" /></div>
             </div>
+            <p class="text-sm text-gray" style="margin: 0 0 10px">{{ form.type === 'RI' ? '路线信息不需要站点人员' : '需要安排站点人员' }}；每个环节记录开始与结束两个时间，开始时间自动接上一环节的结束时间。</p>
+          </div>
+          <div class="edit-section">
+            <div class="edit-section-title">熔断</div>
             <div class="field-row">
-              <div class="form-group"><label>记录方式</label>
-                <select v-model="form.record_mode"><option v-for="(l, m) in RECORD_MODE_LABEL" :key="m" :value="m">{{ l }}</option></select>
+              <div class="form-group"><label>开始时间<span class="text-gray">（从赛段开始计）</span></label>
+                <div class="hm-row"><input v-model.number="form.cutoff_start_h" type="number" min="0" step="1" inputmode="numeric" /><span>h</span><input v-model.number="form.cutoff_start_m" type="number" min="0" max="59" step="1" inputmode="numeric" /><span>m</span></div>
               </div>
-              <div class="form-group"><label>站点人员</label>
-                <select v-model="form.needs_staff"><option :value="true">需要安排站点人员</option><option :value="false">无需站点（无人值守）</option></select>
+              <div class="form-group"><label>间隔时间</label>
+                <div class="hm-row"><input v-model.number="form.cutoff_interval_h" type="number" min="0" step="1" inputmode="numeric" /><span>h</span><input v-model.number="form.cutoff_interval_m" type="number" min="0" max="59" step="1" inputmode="numeric" /><span>m</span></div>
               </div>
             </div>
           </div>
@@ -139,6 +146,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
         <div>
           <div v-if="leg.address" class="mb-2">地址：{{ leg.address }} <a v-if="leg.map_url" :href="leg.map_url" target="_blank">打开地图</a></div>
           <div v-if="leg.open_time || leg.close_time" class="mb-2">开放时间：{{ leg.open_time || '-' }} ~ {{ leg.close_time || '-' }}</div>
+          <div v-if="leg.cutoff_start || leg.cutoff_interval" class="mb-2">熔断：{{ fmtDurMs(leg.cutoff_start * 60000) }} 起，间隔 {{ fmtDurMs(leg.cutoff_interval * 60000) }}</div>
           <div v-if="leg.type === 'DT'" class="mb-2">绕道：A「{{ leg.detour_a || '未填写' }}」 / B「{{ leg.detour_b || '未填写' }}」</div>
           <div class="section-title text-sm">环节说明</div>
           <div class="pre" :class="{ 'text-gray': !leg.description }">{{ leg.description || '暂无说明' }}</div>

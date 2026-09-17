@@ -4,7 +4,7 @@ import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useRecord } from '@/composables/record';
 import { fmtTime, fmtTimeSec } from '@/utils/time';
-import { singleLabel, type Leg, type Progress, type Team } from '@/types';
+import { endLabel, hasStart, type Leg, type Progress, type Team } from '@/types';
 import TeamStatus from './TeamStatus.vue';
 import ProgressEditModal from './ProgressEditModal.vue';
 
@@ -18,13 +18,14 @@ const rows = computed(() => {
   const list = props.onlyTeamId ? race.teams.filter((t) => t.id === props.onlyTeamId) : race.teams;
   return list.map((team) => ({ team, p: race.progressOf(team.id, props.leg.id), can: race.canRecord(team.id, props.leg.id) && (team.status === 'alive' || auth.isHost), edit: race.canEdit(team.id), block: race.blockReason(team.id, props.leg.id) }));
 });
-const isSingle = computed(() => props.leg.record_mode === 'single');
-/** 附加信息原地编辑：记录开始后、记录完成前允许；完成后只能通过“修改记录”弹窗改 */
+/** 附加信息原地编辑：上一环节完成（本环节开始）后、本环节完成前允许；完成后只能通过“修改记录”弹窗改 */
 const inline = (can: boolean, p: Progress | null) => can && !!p?.arrived_at && !p?.completed_at;
-const isNone = computed(() => props.leg.record_mode === 'none');
 const showTarget = computed(() => props.leg.type === 'UT' || props.leg.type === 'YD');
-const label = computed(() => singleLabel(props.leg.type));
-const stateOf = (p: Progress | null) => (isSingle.value ? (p?.completed_at ? `已${label.value}` : `未${label.value}`) : p?.completed_at ? '已完成' : p?.arrived_at ? '进行中' : '未开始');
+const label = computed(() => endLabel(props.leg.type));
+const withStart = computed(() => hasStart(props.leg.type));
+const stateOf = (p: Progress | null) => (p?.completed_at ? `已${label.value}` : withStart.value && p?.arrived_at ? '进行中' : withStart.value ? '未开始' : `未${label.value}`);
+/** 记录按钮不可用的原因：顺序未到 / 附加信息没填 */
+const disabledReason = (p: Progress | null, block: string | null) => block ?? race.extraMissing(props.leg, p);
 
 function detourOptions(): string[] {
   const l = props.leg;
@@ -33,14 +34,12 @@ function detourOptions(): string[] {
 </script>
 
 <template>
-  <div v-if="isNone" class="alert alert-info">本环节不记录时间。</div>
-  <div v-else class="scroll-table">
+  <div class="scroll-table">
     <table class="table record-table">
       <thead>
         <tr>
           <th class="col-first">队伍</th><th class="col-status">状态</th>
-          <template v-if="isSingle"><th class="col-time">{{ label }}时间</th></template>
-          <template v-else><th class="col-time">开始</th><th class="col-time">{{ leg.type === 'Shuffle' ? '出发' : '完成' }}</th></template>
+          <th v-if="withStart" class="col-time">开始</th><th class="col-time">{{ label }}</th>
           <th v-if="showTarget" class="col-extra">施加对象</th>
           <th v-if="leg.type === 'DT'" class="col-extra">绕道选择</th>
           <th v-if="leg.type === 'RB'" class="col-extra">路障完成人</th>
@@ -52,11 +51,8 @@ function detourOptions(): string[] {
         <tr v-for="{ team, p, can, edit, block } in rows" :key="team.id" :style="team.status !== 'alive' ? 'opacity:.55' : ''">
           <td><strong>{{ team.label }}</strong> <TeamStatus v-if="team.status !== 'alive'" :status="team.status" /></td>
           <td>{{ stateOf(p) }}</td>
-          <template v-if="isSingle"><td><span class="record-time">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td></template>
-          <template v-else>
-            <td><span class="record-time">{{ fmtTime(p?.arrived_at) }}</span></td>
-            <td><span class="record-time">{{ fmtTime(p?.completed_at) }}</span></td>
-          </template>
+          <td v-if="withStart"><span class="record-time">{{ fmtTime(p?.arrived_at) }}</span></td>
+          <td><span class="record-time">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td>
           <td v-if="showTarget">
             <select v-if="inline(can, p)" class="input-sm input-inline" style="width: 120px" :value="p?.target_team_id ?? ''" @change="rec.setValue('target', team.id, leg.id, ($event.target as HTMLSelectElement).value)">
               <option value="">未使用</option>
@@ -87,20 +83,14 @@ function detourOptions(): string[] {
                 <button v-if="edit" class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
                 <span v-else class="text-gray text-sm">已锁定</span>
               </template>
-              <template v-else-if="can && isSingle">
-                <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.single(team.id, leg.id, label)">记录{{ label }}</button>
-                <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
-              </template>
               <template v-else-if="can">
-                <button v-if="!p?.arrived_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.arrive(team.id, leg.id)">记录开始</button>
-                <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm btn-slot" :disabled="!!race.extraMissing(leg, p)" :title="race.extraMissing(leg, p) ?? ''" @click="rec.complete(team.id, leg.id)">{{ leg.type === 'Shuffle' ? '记录出发' : '记录完成' }}</button>
+                <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!disabledReason(p, block)" :title="disabledReason(p, block) ?? ''" @click="rec.complete(team.id, leg.id)">记录{{ label }}</button>
                 <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
               </template>
               <template v-else-if="edit && p?.completed_at">
                 <button class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
               </template>
-              <span v-if="can && block && !p?.arrived_at" class="block-hint" :title="block">{{ block }}</span>
-              <span v-else-if="can && p?.arrived_at && !p?.completed_at && race.extraMissing(leg, p)" class="block-hint">{{ race.extraMissing(leg, p) }}</span>
+              <span v-if="can && !p?.completed_at && disabledReason(p, block)" class="block-hint" :title="disabledReason(p, block) ?? ''">{{ disabledReason(p, block) }}</span>
             </div>
           </td>
         </tr>

@@ -5,7 +5,7 @@ import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { fmtTime, fmtTimeSec, toLocalInput, fromLocalInput, fmtDurMs } from '@/utils/time';
-import { typeCode, type PitstopRow, legName } from '@/types';
+import { typeCode, type PitstopRow, legName, endLabel, hasStart, type LegType } from '@/types';
 import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
 import Modal from '@/components/Modal.vue';
@@ -16,7 +16,7 @@ const auth = useAuth();
 const race = useRace();
 const ui = useUi();
 const ep = computed(() => race.currentEpisode);
-const legs = computed(() => (ep.value?.legs ?? []).filter((l) => l.record_mode !== 'none'));
+const legs = computed(() => ep.value?.legs ?? []);
 
 // 进行中的用时按当前时间计算，每 15 秒刷新一次
 const now = ref(Date.now() + auth.serverOffsetMs);
@@ -56,7 +56,9 @@ function extraVal(teamId: number, l: { id: number; type: string }, i = 0): strin
   if (l.type === 'UT' || l.type === 'YD') return p.target_team_id ? race.teamById.get(p.target_team_id)?.label ?? '-' : '-';
   return '-';
 }
-const colspanOf = (l: { type: string; record_mode: string }) => (l.record_mode === 'single' ? 1 : 3) + extraCols(l).length;
+/** 起跑线只有“出发”一列；其余环节：开始 / 结束 / 用时 */
+const isSingleCol = (l: { type: string }) => !hasStart(l.type as LegType);
+const colspanOf = (l: { type: string }) => (isSingleCol(l) ? 1 : 3) + extraCols(l).length;
 function lastAgo(teamId: number): string {
   let last = 0;
   for (const l of legs.value) {
@@ -118,8 +120,8 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
           </tr>
           <tr>
             <template v-for="l in legs" :key="l.id">
-              <th v-if="l.record_mode === 'single'" class="mx2-sub mx2-first" :class="{ 'mx2-last': !extraCol(l) }">{{ typeCode(l.type) === 'Starting Line' ? '出发' : l.type === 'PS' ? '签到' : '打卡' }}</th>
-              <template v-else><th class="mx2-sub mx2-first">开始</th><th class="mx2-sub">结束</th><th class="mx2-sub" :class="{ 'mx2-last': !extraCol(l) }">用时</th></template>
+              <th v-if="isSingleCol(l)" class="mx2-sub mx2-first" :class="{ 'mx2-last': !extraCol(l) }">{{ endLabel(l.type) }}</th>
+              <template v-else><th class="mx2-sub mx2-first">开始</th><th class="mx2-sub">{{ endLabel(l.type) }}</th><th class="mx2-sub" :class="{ 'mx2-last': !extraCol(l) }">用时</th></template>
               <th v-for="(c, i) in extraCols(l)" :key="c" class="mx2-sub" :class="{ 'mx2-last': i === extraCols(l).length - 1 }">{{ c }}</th>
             </template>
           </tr>
@@ -131,7 +133,7 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
               <div class="text-xs text-gray">{{ lastAgo(t.id) || '尚无记录' }}</div>
             </td>
             <template v-for="l in legs" :key="l.id">
-              <template v-if="l.record_mode === 'single'">
+              <template v-if="isSingleCol(l)">
                 <td class="mx2-cell mx2-first" :class="[cell(t.id, l.id, true, l.type === 'PS').cls, { 'mx2-last': !extraCol(l) }]">{{ cell(t.id, l.id, true, l.type === 'PS').start }}</td>
               </template>
               <template v-else>

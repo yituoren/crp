@@ -5,7 +5,7 @@ import { api } from '@/api';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { toLocalInput, fromLocalInput } from '@/utils/time';
-import { legName, singleLabel, type Leg, type Progress, type Team } from '@/types';
+import { legName, endLabel, hasStart, type Leg, type Progress, type Team } from '@/types';
 import { useRace as useRaceStore } from '@/stores/race';
 
 const props = defineProps<{ leg: Leg; team: Team; progress: Progress | null }>();
@@ -21,17 +21,16 @@ const form = reactive({
   targetTeamId: props.progress?.target_team_id ?? '',
   note: props.progress?.note ?? '',
 });
-const isSingle = props.leg.record_mode === 'single';
-const label = singleLabel(props.leg.type);
+const withStart = hasStart(props.leg.type);
+const label = endLabel(props.leg.type);
 const teams = useRaceStore().teams;
 const detourOptions = [props.leg.detour_a || 'A', props.leg.detour_b || 'B'];
-const isShuffle = props.leg.type === 'Shuffle';
 
 async function save() {
   try {
     await api(`/progress/${props.leg.episode_id}/${props.team.id}/${props.leg.id}`, {
       method: 'PUT',
-      body: { ...form, arrivedAt: isSingle ? fromLocalInput(form.completedAt) : fromLocalInput(form.arrivedAt), completedAt: fromLocalInput(form.completedAt) },
+      body: { ...form, arrivedAt: withStart ? fromLocalInput(form.arrivedAt) : null, completedAt: fromLocalInput(form.completedAt) },
     });
     await race.loadProgress();
     ui.toast('记录已更新');
@@ -42,13 +41,8 @@ async function save() {
 
 <template>
   <Modal :title="`修改记录 · ${team.label} · ${legName(leg)}`" small @close="emit('close')">
-    <template v-if="isSingle">
-      <div class="form-group"><label>{{ label }}时间（留空 = 未{{ label }}）</label><input v-model="form.completedAt" type="datetime-local" step="1" /></div>
-    </template>
-    <template v-else>
-      <div class="form-group"><label>开始时间（留空 = 未开始）</label><input v-model="form.arrivedAt" type="datetime-local" step="1" /></div>
-      <div class="form-group"><label>{{ isShuffle ? '出发时间（留空 = 未出发）' : '完成时间（留空 = 未完成）' }}</label><input v-model="form.completedAt" type="datetime-local" step="1" /></div>
-    </template>
+    <div v-if="withStart" class="form-group"><label>开始时间<span class="text-gray">（默认 = 上一环节的{{ label === '完成' ? '结束' : '结束' }}时间，留空 = 未开始）</span></label><input v-model="form.arrivedAt" type="datetime-local" step="1" /></div>
+    <div class="form-group"><label>{{ label }}时间<span class="text-gray">（留空 = 未{{ label }}；改动会同步为下一环节的开始时间）</span></label><input v-model="form.completedAt" type="datetime-local" step="1" /></div>
     <div v-if="leg.type === 'UT' || leg.type === 'YD'" class="form-group"><label>施加对象</label>
       <select v-model="form.targetTeamId"><option value="">未使用</option><option v-for="t in teams.filter((x) => x.id !== team.id)" :key="t.id" :value="t.id">{{ t.label }}</option></select>
     </div>

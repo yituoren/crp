@@ -4,7 +4,8 @@ import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
-import { legName, type Leg } from '@/types';
+import { legName, endLabel, type Leg } from '@/types';
+import { fmtDurMs } from '@/utils/time';
 import { fmtMoney, moneyUnit, moneyLabel, moneyMode } from '@/utils/money';
 import { fmtDateTime } from '@/utils/time';
 import EpSelector from '@/components/EpSelector.vue';
@@ -132,10 +133,9 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
         <div class="text-sm text-gray">站点：<template v-if="leg.needs_staff">{{ staffOf(leg.id).join('、') || '未分配' }}</template><span v-else>无需站点</span></div>
         <div v-if="leg.address" class="text-sm text-gray">地址：{{ leg.address }}</div>
         <div class="text-xs text-gray mt-1">
-          <template v-if="leg.record_mode === 'none'">不记录时间</template>
-          <template v-else-if="leg.record_mode === 'single'">{{ doneCount(leg.id) }} 已打卡</template>
-          <template v-else>{{ doneCount(leg.id) }} 完成 · {{ arrivedCount(leg.id) }} 进行中</template>
+          {{ doneCount(leg.id) }} 已{{ endLabel(leg.type) }}<template v-if="leg.type !== 'SL'"> · {{ arrivedCount(leg.id) }} 进行中</template>
           · {{ leg.attachments.length }} 附件
+          <template v-if="leg.cutoff_start || leg.cutoff_interval"> · 熔断 {{ fmtDurMs(leg.cutoff_start * 60000) }} 起，每 {{ fmtDurMs(leg.cutoff_interval * 60000) }}</template>
         </div>
         <div v-if="auth.isHost" class="flex mt-2" @click.stop>
           <template v-if="!isFixed(leg)">

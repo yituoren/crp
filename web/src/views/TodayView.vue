@@ -12,7 +12,7 @@ import LegExtraField from '@/components/LegExtraField.vue';
 import TeamCurrencyPanel from '@/components/TeamCurrencyPanel.vue';
 import ProgressEditModal from '@/components/ProgressEditModal.vue';
 import { type Leg, type Progress, legName } from '@/types';
-import { singleLabel } from '@/types';
+import { endLabel, hasStart } from '@/types';
 import { fmtMoney, moneyUnit } from '@/utils/money';
 
 const auth = useAuth();
@@ -28,7 +28,11 @@ const myLegs = computed(() => (ep.value?.legs ?? []).filter((l) => (my.value?.le
 
 const legRows = computed(() => {
   if (!ep.value || !myTeam.value) return [];
-  return ep.value.legs.filter((leg) => leg.record_mode !== 'none').map((leg) => ({ leg, p: race.progressOf(myTeam.value!.id, leg.id), single: leg.record_mode === 'single', label: singleLabel(leg.type), block: race.blockReason(myTeam.value!.id, leg.id) }));
+  return ep.value.legs.map((leg) => {
+    const p = race.progressOf(myTeam.value!.id, leg.id);
+    const block = race.blockReason(myTeam.value!.id, leg.id) ?? race.extraMissing(leg, p);
+    return { leg, p, label: endLabel(leg.type), block, state: p?.completed_at ? `已${endLabel(leg.type)}` : hasStart(leg.type) ? (p?.arrived_at ? '进行中' : '未开始') : '未出发' };
+  });
 });
 const stats = computed(() => ({
   alive: race.aliveTeams.length,
@@ -71,12 +75,12 @@ const stats = computed(() => ({
       <p><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.label }}</strong>，当前余额 <strong class="text-warning">{{ fmtMoney(myTeam.currency) }} {{ moneyUnit() }}</strong></p>
       <div class="scroll-table">
         <table class="table record-table">
-          <thead><tr><th class="col-first">环节</th><th class="col-status">状态</th><th class="col-time">开始</th><th class="col-time">完成 / 打卡</th><th class="col-extra">记录信息</th><th class="col-action">操作</th></tr></thead>
+          <thead><tr><th class="col-first">环节</th><th class="col-status">状态</th><th class="col-time">开始</th><th class="col-time">结束</th><th class="col-extra">记录信息</th><th class="col-action">操作</th></tr></thead>
           <tbody>
-            <tr v-for="{ leg, p, single, label, block } in legRows" :key="leg.id">
+            <tr v-for="{ leg, p, label, block, state } in legRows" :key="leg.id">
               <td><LegTag :type="leg.type" /> <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: leg.id } }">{{ legName(leg) }}</router-link></td>
-              <td>{{ single ? (p?.completed_at ? `已${label}` : `未${label}`) : p?.completed_at ? '已完成' : p?.arrived_at ? '进行中' : '未开始' }}</td>
-              <td><span class="record-time">{{ single ? '-' : fmtTime(p?.arrived_at) }}</span></td>
+              <td>{{ state }}</td>
+              <td><span class="record-time">{{ hasStart(leg.type) ? fmtTime(p?.arrived_at) : '-' }}</span></td>
               <td><span class="record-time">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td>
               <td><LegExtraField :leg="leg" :team-id="myTeam!.id" :progress="p" :can="!!p?.arrived_at && !p?.completed_at && !race.episodeFinished" /></td>
               <td>
@@ -84,17 +88,11 @@ const stats = computed(() => ({
                   <button v-if="race.canEdit(myTeam!.id)" class="btn btn-outline btn-sm btn-slot" @click="editing = { leg, progress: p }">修改记录</button>
                   <span v-else class="text-gray text-sm">已锁定</span>
                 </template>
-                <template v-else-if="single">
-                  <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.single(myTeam!.id, leg.id, label)">记录{{ label }}</button>
-                  <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { leg, progress: p }">修改记录</button>
-                </template>
                 <template v-else>
-                  <button v-if="!p?.arrived_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.arrive(myTeam!.id, leg.id)">记录开始</button>
-                  <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm btn-slot" :disabled="!!race.extraMissing(leg, p)" :title="race.extraMissing(leg, p) ?? ''" @click="rec.complete(myTeam!.id, leg.id)">记录完成</button>
+                  <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.complete(myTeam!.id, leg.id)">记录{{ label }}</button>
                   <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { leg, progress: p }">修改记录</button>
                 </template>
-                <div v-if="block && !p?.arrived_at" class="block-hint" :title="block">{{ block }}</div>
-                <div v-else-if="p?.arrived_at && !p?.completed_at && race.extraMissing(leg, p)" class="block-hint">{{ race.extraMissing(leg, p) }}</div>
+                <div v-if="block && !p?.completed_at" class="block-hint" :title="block">{{ block }}</div>
               </td>
             </tr>
           </tbody>

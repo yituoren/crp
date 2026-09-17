@@ -3,6 +3,7 @@ import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { fmtTime, fmtTimeSec, toLocalInput, fromLocalInput } from '@/utils/time';
+import { endLabel, legName } from '@/types';
 
 /** 进度记录动作（带确认） */
 export function useRecord() {
@@ -27,34 +28,16 @@ export function useRecord() {
     return iso;
   }
 
-  async function arrive(teamId: number, legId: number) {
-    const team = race.teamById.get(teamId)?.label ?? '';
-    const leg = race.legById.get(legId)?.name ?? '';
-    const at = await pickTime('记录开始', `「${team}」开始「${leg}」。此操作会实时同步给所有幕后。`);
-    if (!at) return;
-    try {
-      const d = await post('arrive', teamId, legId, undefined, at);
-      ui.toast(d.already ? `已有开始记录：${fmtTime(d.progress.arrived_at)}` : `开始时间已记录：${fmtTime(d.progress.arrived_at)}`);
-    } catch (e) { ui.error(e); }
-  }
+  /** 记录本环节的结束时间（出发/到达/签到/完成）；开始时间由服务端自动接上一个环节 */
   async function complete(teamId: number, legId: number) {
     const team = race.teamById.get(teamId)?.label ?? '';
-    const leg = race.legById.get(legId)?.name ?? '';
-    const at = await pickTime('记录完成', `「${team}」完成「${leg}」。`);
+    const leg = race.legById.get(legId);
+    const label = leg ? endLabel(leg.type) : '完成';
+    const at = await pickTime(`记录${label}`, `「${team}」在「${leg ? legName(leg) : ''}」${label}。此操作会实时同步给所有幕后。`);
     if (!at) return;
     try {
       const d = await post('complete', teamId, legId, undefined, at);
-      ui.toast(d.already ? `已有完成记录：${fmtTime(d.progress.completed_at)}` : `完成时间已记录：${fmtTime(d.progress.completed_at)}`);
-    } catch (e) { ui.error(e); }
-  }
-  async function single(teamId: number, legId: number, label: string) {
-    const team = race.teamById.get(teamId)?.label ?? '';
-    const leg = race.legById.get(legId)?.name ?? '';
-    const at = await pickTime(`记录${label}`, `「${team}」在「${leg}」${label}。`);
-    if (!at) return;
-    try {
-      const d = await post('single', teamId, legId, undefined, at);
-      const f = label === '签到' ? fmtTimeSec : fmtTime;
+      const f = leg?.type === 'PS' ? fmtTimeSec : fmtTime;
       ui.toast(d.already ? `已有${label}记录：${f(d.progress.completed_at)}` : `${label}时间已记录：${f(d.progress.completed_at)}`);
     } catch (e) { ui.error(e); }
   }
@@ -65,5 +48,5 @@ export function useRecord() {
   async function setValue(action: 'detour' | 'roadblock' | 'ff' | 'note' | 'target', teamId: number, legId: number, value: string) {
     try { await post(action, teamId, legId, value); ui.toast('已保存'); } catch (e) { ui.error(e); }
   }
-  return { arrive, complete, single, undo, setValue };
+  return { complete, undo, setValue };
 }

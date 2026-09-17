@@ -10,20 +10,20 @@ export const LEG_TYPES = ['SL', 'RI', 'TI', 'DT', 'RB', 'FF', 'Union', 'Shuffle'
 export type RecordMode = 'none' | 'single' | 'full';
 /** 各类型环节的默认行为：是否需要站点人员、记录方式 */
 export const TYPE_DEFAULTS: Record<string, { staff: 0 | 1; mode: RecordMode }> = {
-  SL: { staff: 1, mode: 'single' },   // 起跑线：记出发
-  RI: { staff: 0, mode: 'none' },     // 路线信息：不排人不记时
+  SL: { staff: 1, mode: 'full' },   // 起跑线：记出发
+  RI: { staff: 0, mode: 'full' },     // 路线信息：不排人不记时
   TI: { staff: 1, mode: 'full' },
   DT: { staff: 1, mode: 'full' },
   RB: { staff: 1, mode: 'full' },
   FF: { staff: 1, mode: 'full' },     // 快进 Fast Forward
   Union: { staff: 1, mode: 'full' },
   Shuffle: { staff: 1, mode: 'full' },  // 洗牌：全员到齐后重新出发，记到达/出发
-  UT: { staff: 1, mode: 'single' },   // 回转点：打卡 + 施加对象
-  YD: { staff: 1, mode: 'single' },   // 让路点：打卡 + 施加对象
+  UT: { staff: 1, mode: 'full' },   // 回转点：打卡 + 施加对象
+  YD: { staff: 1, mode: 'full' },   // 让路点：打卡 + 施加对象
   SB: { staff: 1, mode: 'full' },     // 减速带
   FO: { staff: 1, mode: 'full' },     // 对抗 Face Off
   Trap: { staff: 1, mode: 'full' },
-  PS: { staff: 1, mode: 'single' },   // 中继站：记签到
+  PS: { staff: 1, mode: 'full' },   // 中继站：记签到
 };
 export const episodeRoutes = new Hono<Env>();
 
@@ -60,8 +60,8 @@ episodeRoutes.post('/episodes', hostOnly, async (c) => {
     );
     const id = Number(r.lastInsertRowid);
     // 固定结构：第一个赛段以 Starting Line 开头；每个赛段以中继站结尾
-    if (count === 0) run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', id, 1, 'SL', '起跑线', 'single');
-    run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', id, 99, 'PS', '中继站', 'single');
+    if (count === 0) run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', id, 1, 'SL', '起跑线', 'full');
+    run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', id, 99, 'PS', '中继站', 'full');
     return id;
   });
   const r = { lastInsertRowid: epId };
@@ -147,14 +147,16 @@ episodeRoutes.post('/episodes/:id/finish', hostOnly, (c) => {
 function legFields(b: any, before?: any) {
   const pick = (k: string, max = 5000) => (b[k] === undefined ? (before?.[k] ?? '') : str(b[k], max));
   const type = LEG_TYPES.includes(b.type) ? b.type : (before?.type ?? 'TI');
-  const typeChanged = !before || before.type !== type;
-  const d = TYPE_DEFAULTS[type] ?? { staff: 1, mode: 'full' };
-  const needs_staff = b.needs_staff === undefined ? (typeChanged ? d.staff : before.needs_staff) : (b.needs_staff ? 1 : 0);
-  const record_mode = ['none', 'single', 'full'].includes(b.record_mode) ? b.record_mode : (typeChanged ? d.mode : before.record_mode);
+  // 是否需要站点由类型查表决定（目前只有路线信息不需要）；所有环节都记录开始/结束两个时间
+  const needs_staff = (TYPE_DEFAULTS[type] ?? { staff: 1 }).staff;
+  const record_mode = 'full';
+  const minutes = (k: string) => (b[k] === undefined ? (before?.[k] ?? 0) : Math.max(0, int(b[k], 0)));
   return {
     type,
     needs_staff,
     record_mode,
+    cutoff_start: minutes('cutoff_start'),
+    cutoff_interval: minutes('cutoff_interval'),
     name: b.name === undefined ? (before?.name ?? '') : str(b.name, 50) || (before?.name ?? '新环节'),
     description: pick('description'),
     address: pick('address', 300),
@@ -182,9 +184,9 @@ episodeRoutes.post('/episodes/:id/legs', hostOnly, async (c) => {
   const r = tx(() => {
     if (ps) run('UPDATE legs SET sort = sort + 1 WHERE episode_id = ? AND sort >= ?', episodeId, ps.sort);
     return run(
-      `INSERT INTO legs(episode_id, sort, type, name, description, address, map_url, clue_text, judge_criteria, open_time, close_time, detour_a, detour_b, needs_staff, record_mode)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      episodeId, sort, f.type, f.name, f.description, f.address, f.map_url, f.clue_text, f.judge_criteria, f.open_time, f.close_time, f.detour_a, f.detour_b, f.needs_staff, f.record_mode,
+      `INSERT INTO legs(episode_id, sort, type, name, description, address, map_url, clue_text, judge_criteria, open_time, close_time, detour_a, detour_b, needs_staff, record_mode, cutoff_start, cutoff_interval)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      episodeId, sort, f.type, f.name, f.description, f.address, f.map_url, f.clue_text, f.judge_criteria, f.open_time, f.close_time, f.detour_a, f.detour_b, f.needs_staff, f.record_mode, f.cutoff_start, f.cutoff_interval,
     );
   });
   audit(c.get('user'), 'create', 'leg', Number(r.lastInsertRowid), undefined, f);
@@ -201,8 +203,8 @@ episodeRoutes.put('/legs/:id', hostOnly, async (c) => {
   if (b.type !== undefined && b.type !== before.type && (fixed || b.type === 'SL' || b.type === 'PS')) throw bad('Starting Line 与中继站的类型固定，不能改成或改自其他类型');
   const f = legFields(b, before);
   run(
-    `UPDATE legs SET type=?, name=?, description=?, address=?, map_url=?, clue_text=?, judge_criteria=?, open_time=?, close_time=?, detour_a=?, detour_b=?, needs_staff=?, record_mode=? WHERE id=?`,
-    f.type, f.name, f.description, f.address, f.map_url, f.clue_text, f.judge_criteria, f.open_time, f.close_time, f.detour_a, f.detour_b, f.needs_staff, f.record_mode, id,
+    `UPDATE legs SET type=?, name=?, description=?, address=?, map_url=?, clue_text=?, judge_criteria=?, open_time=?, close_time=?, detour_a=?, detour_b=?, needs_staff=?, record_mode=?, cutoff_start=?, cutoff_interval=? WHERE id=?`,
+    f.type, f.name, f.description, f.address, f.map_url, f.clue_text, f.judge_criteria, f.open_time, f.close_time, f.detour_a, f.detour_b, f.needs_staff, f.record_mode, f.cutoff_start, f.cutoff_interval, id,
   );
   audit(c.get('user'), 'update', 'leg', id, before, f);
   notify('episodes', before.episode_id);
