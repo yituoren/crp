@@ -64,7 +64,7 @@ async function revert(l: LedgerEntry) {
             <td>{{ fmtDateTime(l.created_at) }}</td><td><template v-if="l.leg_id && race.legById.get(l.leg_id)"><LegTag :type="race.legById.get(l.leg_id)!.type" /> {{ legName(race.legById.get(l.leg_id)!) }}</template><template v-else>{{ l.leg_name || '其他' }}</template></td>
             <td :class="l.delta > 0 ? 'log-positive' : 'log-negative'">{{ fmtMoney(l.delta, true) }}</td>
             <td>{{ fmtMoney(l.balance_after) }}</td><td>{{ l.operator_name }}</td><td>{{ l.reason || '-' }}</td>
-            <td><button v-if="!l.reverted" class="btn btn-outline btn-sm" @click="revert(l)">撤销</button></td>
+            <td><button v-if="!l.reverted && race.canRevert(l.operator_id)" class="btn btn-outline btn-sm" @click="revert(l)">撤销</button></td>
           </tr>
         </tbody>
       </table>

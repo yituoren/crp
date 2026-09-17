@@ -96,11 +96,13 @@ export function canAdjustCurrency(user: AuthUser, episodeId: number, teamId?: nu
   const a = getAssignment(episodeId, user.id);
   return !!a && a.role === 'follow' && teamId !== undefined && a.team_id === teamId;
 }
-/** 罚时/补时：主办任意；站点本赛段 */
-export function canManagePenalty(user: AuthUser, episodeId: number) {
+/** 罚时/补时：主办任意；站点本赛段任意队伍；跟队仅本赛段所跟的队伍 */
+export function canManagePenalty(user: AuthUser, episodeId: number, teamId?: number) {
   if (isHostRole(user.role)) return true;
   const a = getAssignment(episodeId, user.id);
-  return a?.role === 'station';
+  if (!a) return false;
+  if (a.role === 'station') return true;
+  return a.role === 'follow' && teamId !== undefined && a.team_id === teamId;
 }
 
 export function canUploadToLeg(user: AuthUser, episodeId: number, legId: number) {

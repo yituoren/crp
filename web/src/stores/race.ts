@@ -25,6 +25,9 @@ export const useRace = defineStore('race', () => {
   const myAssignment = computed(() => assignments.value.find((a) => a.user_id === auth.user?.id) ?? null);
   const teamById = computed(() => new Map(teams.value.map((t) => [t.id, t])));
   const legById = computed(() => new Map(episodes.value.flatMap((e) => e.legs).map((l) => [l.id, l])));
+  /** 最后一个赛段：它的中继站显示为“终点” */
+  const lastEpisodeId = computed(() => episodes.value[episodes.value.length - 1]?.id ?? 0);
+  const isLastEpisode = (episodeId?: number | null) => (episodeId ?? currentEpisode.value?.id) === lastEpisodeId.value;
 
   function progressOf(teamId: number, legId: number) {
     return progress.value.find((p) => p.team_id === teamId && p.leg_id === legId) ?? null;
@@ -52,8 +55,20 @@ export const useRace = defineStore('race', () => {
     const a = myAssignment.value;
     return !!a && a.role === 'follow' && a.team_id === teamId;
   }
-  /** 罚时/补时：主办、本赛段站点（赛段结束后仅主办） */
-  const canManagePenalty = computed(() => auth.isHost || (!episodeFinished.value && myAssignment.value?.role === 'station'));
+  /** 罚时/补时：主办；本赛段站点任意队伍；跟队仅所跟队伍（赛段结束后仅主办） */
+  const canManagePenalty = computed(() => auth.isHost || (!episodeFinished.value && (myAssignment.value?.role === 'station' || myAssignment.value?.role === 'follow')));
+  function canManagePenaltyFor(teamId: number) {
+    if (auth.isHost) return true;
+    if (episodeFinished.value) return false;
+    const a = myAssignment.value;
+    return a?.role === 'station' || (a?.role === 'follow' && a.team_id === teamId);
+  }
+  /** 撤销罚时/经费：只有发出记录的本人和主办 */
+  function canRevert(authorId: number | null | undefined) {
+    if (auth.isHost) return true;
+    if (episodeFinished.value) return false;
+    return !!authorId && authorId === auth.user?.id;
+  }
   /** 经费：主办任意；跟队仅所跟队伍（赛段结束后仅主办）；站点无 */
   const canAdjustCurrency = computed(() => auth.isHost || (!episodeFinished.value && myAssignment.value?.role === 'follow'));
   /** 淘汰权限：主办，或本赛段站在中继站的站点人员；不受赛段开始/结束限制 */
@@ -173,7 +188,7 @@ export const useRace = defineStore('race', () => {
 
   return {
     episodes, teams, users, announcements, unreadAnnouncements, markAnnouncementsRead, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
-    aliveTeams, myAssignment, teamById, legById, progressOf, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, canManagePenalty, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing,
+    aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing,
     loadAll, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
   };
 });

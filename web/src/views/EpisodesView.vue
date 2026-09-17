@@ -125,7 +125,7 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
     <div class="grid grid-3">
       <div v-for="(leg, i) in ep.legs" :key="leg.id" class="leg-item" @click="$router.push({ name: 'leg', params: { episodeId: ep.id, legId: leg.id } })">
         <div class="flex-between" style="margin-bottom: 6px">
-          <LegTag :type="leg.type" full />
+          <LegTag :type="leg.type" :episode-id="ep.id" full />
           <span class="text-xs text-gray">#{{ i + 1 }}</span>
         </div>
         <div style="font-weight: 700; font-size: 15px">{{ legName(leg) }}</div>

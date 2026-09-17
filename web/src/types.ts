@@ -9,7 +9,7 @@ export type RecordMode = 'none' | 'single' | 'full';
 /** 类型缩写的显示文字：SL 显示为 Starting Line，其余用缩写 */
 export const typeCode = (t: LegType): string => (t === 'SL' ? 'Starting Line' : t);
 export const LEG_TYPE_LABEL: Record<LegType, string> = {
-  SL: '起跑线', RI: '路线信息', TI: '任务点', DT: '绕道', RB: '路障', FF: '快进/捷径', Union: '联合', Shuffle: '洗牌', UT: '回转点', YD: '让路点', SB: '减速带', FO: '对抗', Trap: '陷阱', PS: '中继站/终点',
+  SL: '起跑线', RI: '路线信息', TI: '任务点', DT: '绕道', RB: '路障', FF: '快进/捷径', Union: '联合', Shuffle: '洗牌', UT: '回转点', YD: '让路点', SB: '减速带', FO: '对抗', Trap: '陷阱', PS: '中继站',
 };
 export const TYPE_DEFAULTS: Record<LegType, { staff: boolean; mode: RecordMode }> = {
   SL: { staff: true, mode: 'single' }, RI: { staff: false, mode: 'none' }, TI: { staff: true, mode: 'full' }, DT: { staff: true, mode: 'full' },
@@ -21,6 +21,8 @@ export const SINGLE_LABEL: Partial<Record<LegType, string>> = { SL: '出发', PS
 export const singleLabel = (t: LegType) => SINGLE_LABEL[t] ?? '打卡';
 /** 路线信息和中继站的“名称”栏填的是目的地：RI 显示时自动加箭头，PS 直接显示 */
 export const isDestinationLeg = (t: LegType) => t === 'RI' || t === 'PS';
+/** 类型名：中继站在最后一个赛段里叫“终点” */
+export const legTypeLabel = (t: LegType, lastEpisode: boolean) => (t === 'PS' && lastEpisode ? '终点' : LEG_TYPE_LABEL[t]);
 export const legName = (l: { type: LegType; name: string }) => (l.type === 'RI' ? `→ ${l.name}` : l.name);
 export const RECORD_MODE_LABEL: Record<RecordMode, string> = { none: '不记录时间', single: '只记一次（出发/打卡/签到）', full: '记开始与完成' };
 
@@ -36,10 +38,10 @@ export interface Progress {
   id: number; episode_id: number; team_id: number; leg_id: number; arrived_at: string | null; completed_at: string | null;
   detour_choice: string | null; roadblock_by: string | null; ff_result: 'success' | 'fail' | null; target_team_id: number | null; note: string; recorded_by: number | null; updated_at: string;
 }
-export interface Penalty { id: number; episode_id: number; team_id: number; team_name: string; minutes: number; reason: string; applied_at: string; applied_by_name: string | null; reverted: number; reverts_id: number | null; leg_id: number | null; leg_name: string | null }
+export interface Penalty { id: number; episode_id: number; team_id: number; team_name: string; minutes: number; reason: string; applied_at: string; applied_by: number | null; applied_by_name: string | null; reverted: number; reverts_id: number | null; leg_id: number | null; leg_name: string | null }
 export interface PitstopRow {
   team_id: number; team_code: string; team_name: string; team_status: Team['status']; checkin_at: string | null; checkin_source: 'manual' | 'progress' | null;
   penalty_minutes: number; final_time: string | null; rank: number | null; eliminated: boolean; note: string;
 }
-export interface LedgerEntry { id: number; episode_id: number | null; episode_code: string | null; team_id: number; team_name: string; team_code: string; delta: number; balance_after: number; reason: string; operator_name: string; created_at: string; reverted: number; reverts_id: number | null; leg_id: number | null; leg_name: string | null }
+export interface LedgerEntry { id: number; episode_id: number | null; episode_code: string | null; team_id: number; team_name: string; team_code: string; delta: number; balance_after: number; reason: string; operator_id: number | null; operator_name: string; created_at: string; reverted: number; reverts_id: number | null; leg_id: number | null; leg_name: string | null }
 export interface Announcement { id: number; content: string; level: 'info' | 'warning' | 'urgent'; created_by: string; created_at: string; pinned_at: string | null; audience: string }

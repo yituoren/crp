@@ -211,10 +211,10 @@ progressRoutes.put('/progress/:episodeId/:teamId/:legId', async (c) => {
 progressRoutes.post('/episodes/:id/penalties', async (c) => {
   const episodeId = intParam(c, 'id');
   const user = c.get('user');
-  if (!canManagePenalty(user, episodeId)) throw forbidden('只有主办或本赛段的站点人员可以补罚时');
   const b = await body(c);
   const teamId = int(b.teamId), minutes = int(b.minutes);
   if (!teamId || !minutes) throw bad('缺少队伍或罚时分钟数');
+  if (!canManagePenalty(user, episodeId, teamId)) throw forbidden('只有主办、本赛段站点人员或该队伍的跟队可以操作罚时');
   if (!get('SELECT 1 FROM teams WHERE id = ?', teamId)) throw notFound('队伍不存在');
   const epRow = get('SELECT status, code FROM episodes WHERE id = ?', episodeId);
   if (!epRow) throw notFound('赛段不存在');
@@ -232,15 +232,16 @@ progressRoutes.post('/episodes/:id/penalties', async (c) => {
   return c.json({ id: Number(r.lastInsertRowid) });
 });
 
-/** 撤销一条罚时/补时：有权添加的人就有权撤销（主办任意；站点本赛段带环节的记录） */
+/** 撤销一条罚时/补时：只有发出这条记录的本人和主办可以撤销 */
 progressRoutes.post('/penalties/:id/revert', (c) => {
   const id = intParam(c, 'id');
   const user = c.get('user');
   const orig = get('SELECT * FROM penalties WHERE id = ?', id);
   if (!orig) throw notFound('罚时记录不存在');
-  if (!canManagePenalty(user, orig.episode_id)) throw forbidden('没有这条记录的撤销权限');
-  if (!orig.leg_id && !isHostRole(user.role)) throw forbidden('“其他”环节的记录只能由主办撤销');
-  if (!isHostRole(user.role) && get('SELECT status FROM episodes WHERE id = ?', orig.episode_id)?.status === 'finished') throw forbidden('赛段已结束，只有主办可以撤销');
+  if (!isHostRole(user.role)) {
+    if (orig.applied_by !== user.id) throw forbidden('只有发出这条记录的本人或主办可以撤销');
+    if (get('SELECT status FROM episodes WHERE id = ?', orig.episode_id)?.status === 'finished') throw forbidden('赛段已结束，只有主办可以撤销');
+  }
   if (orig.reverted) throw bad('这条记录已经撤销过了');
   if (orig.reverts_id) throw bad('撤销记录本身不能再撤销');
   const newId = tx(() => {

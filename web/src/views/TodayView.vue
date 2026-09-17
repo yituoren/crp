@@ -101,6 +101,7 @@ const stats = computed(() => ({
         </table>
       </div>
       <div class="mt-3"><TeamCurrencyPanel :team-id="myTeam.id" /></div>
+      <div class="mt-3"><PenaltyPanel :team-id="myTeam.id" /></div>
     </template>
 
     <template v-else-if="my?.role === 'station' && myLegs.length">

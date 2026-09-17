@@ -8,12 +8,16 @@ import { legName } from '@/types';
 import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
 
-const props = defineProps<{ legId?: number }>(); // 传入环节时：只显示该环节（站点）的记录，新增也记在该环节上
+// legId：只显示该环节（站点）的记录，新增也记在该环节上；teamId：只显示该队伍（跟队）的记录，新增也只针对该队
+const props = defineProps<{ legId?: number; teamId?: number }>();
 const auth = useAuth();
 const race = useRace();
 const ui = useUi();
 const ep = computed(() => race.currentEpisode);
-const form = reactive({ teamId: '' as number | '', minutes: '', reason: '', legId: '' as number | '' });
+const form = reactive({ teamId: (props.teamId ?? '') as number | '', minutes: '', reason: '', legId: '' as number | '' });
+const canAdd = computed(() => (props.teamId ? race.canManagePenaltyFor(props.teamId) : race.canManagePenalty));
+// 站点可选所有队伍；跟队只能选所跟队伍
+const teamOptions = computed(() => race.teams.filter((t) => race.canManagePenaltyFor(t.id)));
 // 环节选项：本赛段所有环节；“其他”只有主办能选
 const legOptions = computed(() => (ep.value?.legs ?? []));
 const totals = computed(() => {
@@ -47,19 +51,19 @@ async function revert(p: { id: number; team_name: string; minutes: number; reaso
   try { await api(`/penalties/${p.id}/revert`, { method: 'POST' }); await race.loadProgress(); ui.toast('已撤销'); } catch (e) { ui.error(e); }
 }
 // 页面只显示原始记录（被撤销的划线）；反向记录留在数据库与操作日志里
-const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!props.legId || p.leg_id === props.legId)));
+const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!props.legId || p.leg_id === props.legId) && (!props.teamId || p.team_id === props.teamId)));
 </script>
 
 <template>
   <div class="card">
     <div class="card-header">
-      <span>{{ props.legId ? '本站点罚时与补时' : '罚时与补时' }}</span>
-      <span v-if="!race.canManagePenalty" class="text-sm text-gray">只有主办与本赛段站点人员可以操作</span>
+      <span>{{ props.legId ? '本站点罚时与补时' : props.teamId ? '本队罚时与补时' : '罚时与补时' }}</span>
+      <span v-if="!canAdd" class="text-sm text-gray">主办、本赛段站点可操作所有队伍，跟队只能操作所跟队伍</span>
     </div>
     <div v-if="race.episodePending" class="alert alert-warning">赛段尚未开始，开始赛段后才能操作罚时。</div>
     <div v-else-if="race.episodeFinished && !auth.isHost" class="alert alert-info">赛段已结束，罚时记录已锁定，只有主办可以修改。</div>
-    <div v-else-if="race.canManagePenalty" class="flex mb-2">
-      <select v-model="form.teamId" class="input-inline" style="width: 140px"><option value="">选择队伍</option><option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.label }}</option></select>
+    <div v-else-if="canAdd" class="flex mb-2">
+      <select v-if="!props.teamId" v-model="form.teamId" class="input-inline" style="width: 140px"><option value="">选择队伍</option><option v-for="t in teamOptions" :key="t.id" :value="t.id">{{ t.label }}</option></select>
       <select v-if="!props.legId" v-model="form.legId" class="input-inline" style="width: 150px">
         <option value="" disabled>选择环节</option>
         <option v-for="l in legOptions" :key="l.id" :value="l.id">{{ legName(l) }}</option>
@@ -73,7 +77,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
     <div v-if="!visible.length" class="text-gray text-sm">本赛段暂无罚时或补时记录</div>
     <div v-else class="scroll-table">
       <table class="table">
-        <thead><tr><th>时间</th><th>队伍</th><th v-if="!props.legId">环节</th><th>类型</th><th>分钟</th><th>净罚时</th><th>操作人</th><th>原因</th><th v-if="race.canManagePenalty"></th></tr></thead>
+        <thead><tr><th>时间</th><th>队伍</th><th v-if="!props.legId">环节</th><th>类型</th><th>分钟</th><th>净罚时</th><th>操作人</th><th>原因</th><th v-if="canAdd"></th></tr></thead>
         <tbody>
           <tr v-for="p in visible" :key="p.id" :style="p.reverted ? 'opacity:.5;text-decoration:line-through' : ''">
             <td>{{ fmtDateTime(p.applied_at) }}</td>
@@ -84,7 +88,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
             <td>{{ totals.get(p.team_id) ?? 0 }}</td>
             <td>{{ p.applied_by_name ?? '-' }}</td>
             <td>{{ p.reason || '-' }}</td>
-            <td v-if="race.canManagePenalty"><button v-if="!p.reverted && (auth.isHost || p.leg_id)" class="btn btn-outline btn-sm" @click="revert(p)">撤销</button></td>
+            <td v-if="canAdd"><button v-if="!p.reverted && race.canRevert(p.applied_by)" class="btn btn-outline btn-sm" @click="revert(p)">撤销</button></td>
           </tr>
         </tbody>
       </table>
