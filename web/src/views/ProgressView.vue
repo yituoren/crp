@@ -26,10 +26,11 @@ onUnmounted(() => clearInterval(timer));
 
 function cell(teamId: number, legId: number, single: boolean, isPs = false) {
   const p = race.progressOf(teamId, legId);
-  if (!p || !p.arrived_at) return { start: '-', end: '-', dur: '-', cls: '' };
-  if (single) return { start: (isPs ? fmtTimeSec : fmtTime)(p.completed_at), end: '-', dur: '-', cls: 'mx-done' };
+  // 起跑线没有开始时间，只看出发（completed_at）
+  if (single) return p?.completed_at ? { start: (isPs ? fmtTimeSec : fmtTime)(p.completed_at), end: '-', dur: '-', cls: 'mx-done' } : { start: '-', end: '-', dur: '-', cls: '' };
+  if (!p || !p.arrived_at) return { start: '-', end: p?.completed_at ? fmtTime(p.completed_at) : '-', dur: '-', cls: p?.completed_at ? 'mx-done' : '' };
   const startMs = new Date(p.arrived_at).getTime();
-  if (p.completed_at) return { start: fmtTime(p.arrived_at), end: fmtTime(p.completed_at), dur: fmtDurMs(new Date(p.completed_at).getTime() - startMs), cls: 'mx-done' };
+  if (p.completed_at) return { start: fmtTime(p.arrived_at), end: (isPs ? fmtTimeSec : fmtTime)(p.completed_at), dur: fmtDurMs(new Date(p.completed_at).getTime() - startMs), cls: 'mx-done' };
   return { start: fmtTime(p.arrived_at), end: '进行中', dur: fmtDurMs(now.value - startMs), cls: 'mx-arrived' };
 }
 /** 需要附加信息的环节在组末尾多几列；中继站多“罚时”“结算”两列 */
@@ -137,9 +138,9 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
                 <td class="mx2-cell mx2-first" :class="[cell(t.id, l.id, true, l.type === 'PS').cls, { 'mx2-last': !extraCol(l) }]">{{ cell(t.id, l.id, true, l.type === 'PS').start }}</td>
               </template>
               <template v-else>
-                <td class="mx2-cell mx2-first" :class="cell(t.id, l.id, false).cls">{{ cell(t.id, l.id, false).start }}</td>
-                <td class="mx2-cell" :class="cell(t.id, l.id, false).cls">{{ cell(t.id, l.id, false).end }}</td>
-                <td class="mx2-cell" :class="[cell(t.id, l.id, false).cls, { 'mx2-last': !extraCol(l) }]">{{ cell(t.id, l.id, false).dur }}</td>
+                <td class="mx2-cell mx2-first" :class="cell(t.id, l.id, false, l.type === 'PS').cls">{{ cell(t.id, l.id, false, l.type === 'PS').start }}</td>
+                <td class="mx2-cell" :class="cell(t.id, l.id, false, l.type === 'PS').cls">{{ cell(t.id, l.id, false, l.type === 'PS').end }}</td>
+                <td class="mx2-cell" :class="[cell(t.id, l.id, false, l.type === 'PS').cls, { 'mx2-last': !extraCol(l) }]">{{ cell(t.id, l.id, false, l.type === 'PS').dur }}</td>
               </template>
               <td v-for="(c, i) in extraCols(l)" :key="c" class="mx2-cell mx2-extra" :class="{ 'mx2-last': i === extraCols(l).length - 1 }">{{ extraVal(t.id, l, i) }}</td>
             </template>

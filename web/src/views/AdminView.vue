@@ -45,7 +45,7 @@ async function deleteUser(u: any) {
 }
 
 // 设置
-const settings = reactive({ eventName: '', hosts: '', teamSize: 2, currencyMode: 'yuan' });
+const settings = reactive({ eventName: '', hosts: '', teamSize: 2, currencyMode: 'yuan', rbGap: 2 });
 async function loadSettings() { Object.assign(settings, await api('/admin/settings')); }
 async function saveSettings() {
   try { await api('/admin/settings', { method: 'PUT', body: settings }); await auth.fetchMe(); await loadAccess(); await Promise.all([race.loadTeams(), race.loadEpisodes(), race.loadLedger()]); ui.toast('设置已保存'); } catch (e) { ui.error(e); }
@@ -164,8 +164,9 @@ onMounted(() => { loadAccess(); loadUsers(); loadSettings(); if (auth.isAdmin) l
   <div v-if="tab === 'settings'" class="card" style="max-width: 520px">
     <div class="card-header">赛事设置</div>
     <div class="form-group"><label>赛事名称</label><input v-model="settings.eventName" /></div>
-    <div class="form-group"><label>经费类型</label><select v-model="settings.currencyMode"><option value="yuan">经费（以元计，精确到小数点后两位）</option><option value="coin">货币（以币计，精确到个位）</option></select><div class="info-text">影响所有金额的显示和校验；已有余额不会换算，切换前请确认数据含义一致。</div></div>
+    <div class="form-group"><label>经费类型</label><select v-model="settings.currencyMode"><option value="yuan">经费（以元计，精确到小数点后两位）</option><option value="coin">货币（以币计，精确到个位）</option></select></div>
     <div class="form-group"><label>每队人数（大于等于 1 的整数；决定队伍编辑页有几个成员栏）</label><input v-model.number="settings.teamSize" type="number" min="1" max="20" step="1" inputmode="numeric" /></div>
+    <div class="form-group"><label>路障限制（同队成员完成路障次数之差不能超过的整数，默认 2）</label><input v-model.number="settings.rbGap" type="number" min="0" max="99" step="1" inputmode="numeric" /></div>
     <div class="form-group"><label>主办名单（逗号分隔；名单内的ID注册即为主办，且自动加入准入名单）</label><input v-model="settings.hosts" /></div>
     <button class="btn" @click="saveSettings">保存设置</button>
   </div>

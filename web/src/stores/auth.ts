@@ -6,7 +6,7 @@ import { setMoneyMode } from '@/utils/money';
 
 export const useAuth = defineStore('auth', () => {
   const user = ref<User | null>(null);
-  const event = ref<EventInfo>({ name: '城市飞奔', hosts: [], teamSize: 2, currencyMode: 'yuan' });
+  const event = ref<EventInfo>({ name: '城市飞奔', hosts: [], teamSize: 2, currencyMode: 'yuan', rbGap: 2 });
   const ready = ref(false);
   /** 服务器时间 - 本机时间（毫秒），用于给记录表单填默认时间 */
   const serverOffsetMs = ref(0);

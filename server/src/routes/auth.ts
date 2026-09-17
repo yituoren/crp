@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { all, get, run, now, getSetting } from '../db.js';
 import { authRequired, issueToken, clearToken, type Env } from '../auth.js';
 import { audit, body, str } from '../util.js';
+import { rbGap } from './admin.js';
 
 export const authRoutes = new Hono<Env>();
 
@@ -60,6 +61,7 @@ authRoutes.get('/me', authRequired, (c) => {
       hosts: hostNames(),
       teamSize: Math.max(1, Number(getSetting('team_size', '2')) || 2),
       currencyMode: getSetting('currency_mode', 'yuan') === 'coin' ? 'coin' : 'yuan',
+      rbGap: rbGap(),
     },
     serverTime: now(),
   });

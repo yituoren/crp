@@ -7,17 +7,24 @@ import { importPrototype } from '../import-prototype.js';
 import { seed } from '../seed.js';
 
 export const adminRoutes = new Hono<Env>();
+/** 路障限制：同队成员完成路障次数之差不能超过这个数 */
+export function rbGap() {
+  const n = Number(getSetting('rb_gap', '2'));
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 2;
+}
+
 adminRoutes.use('/admin/*', hostOnly);
 
 // ---------- 设置 ----------
 adminRoutes.get('/admin/settings', (c) =>
-  c.json({ eventName: getSetting('event_name'), hosts: getSetting('hosts'), teamSize: Math.max(1, Number(getSetting('team_size', '2')) || 2), currencyMode: getSetting('currency_mode', 'yuan') === 'coin' ? 'coin' : 'yuan' }),
+  c.json({ eventName: getSetting('event_name'), hosts: getSetting('hosts'), teamSize: Math.max(1, Number(getSetting('team_size', '2')) || 2), currencyMode: getSetting('currency_mode', 'yuan') === 'coin' ? 'coin' : 'yuan', rbGap: rbGap() }),
 );
 adminRoutes.put('/admin/settings', async (c) => {
   const b = await body(c);
   if (b.eventName !== undefined) setSetting('event_name', str(b.eventName, 50) || '城市飞奔');
   if (b.currencyMode !== undefined) { if (!['yuan', 'coin'].includes(b.currencyMode)) throw bad('经费类型只能是 yuan 或 coin'); setSetting('currency_mode', b.currencyMode); }
   if (b.teamSize !== undefined) { const n = int(b.teamSize, 0); if (n < 1 || n > 20) throw bad('每队人数必须是 1 到 20 的整数'); setSetting('team_size', String(n)); }
+  if (b.rbGap !== undefined) { const n = int(b.rbGap, -1); if (n < 0 || n > 99) throw bad('路障次数差必须是 0 到 99 的整数'); setSetting('rb_gap', String(n)); }
   if (b.hosts !== undefined) {
     const hosts = String(b.hosts).split(/[,，]/).map((s) => s.trim()).filter(Boolean);
     setSetting('hosts', hosts.join(','));

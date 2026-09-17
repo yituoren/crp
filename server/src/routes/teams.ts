@@ -18,11 +18,25 @@ export const teamLabel = (name: string, members: string[]) => (members.length ? 
 export function teamLabelMap(): Map<number, string> {
   return new Map(all('SELECT id, name, members FROM teams').map((t) => [t.id, teamLabel(t.name, parseMembers(t.members))]));
 }
-export const listTeams = () =>
-  all('SELECT id, code, name, members, status, currency, sort FROM teams ORDER BY sort, id').map((t) => {
+/** 每队各成员完成路障的次数（跨赛段），用于路障人选限制 */
+function rbCountsByTeam() {
+  const m = new Map<number, Record<string, number>>();
+  for (const r of all(
+    `SELECT p.team_id, p.roadblock_by, COUNT(*) AS c FROM progress p JOIN legs l ON l.id = p.leg_id
+     WHERE l.type = 'RB' AND p.roadblock_by IS NOT NULL AND p.roadblock_by != '' GROUP BY p.team_id, p.roadblock_by`,
+  )) {
+    if (!m.has(r.team_id)) m.set(r.team_id, {});
+    m.get(r.team_id)![r.roadblock_by] = r.c;
+  }
+  return m;
+}
+export const listTeams = () => {
+  const rb = rbCountsByTeam();
+  return all('SELECT id, code, name, members, status, currency, sort FROM teams ORDER BY sort, id').map((t) => {
     const members = parseMembers(t.members);
-    return { ...t, members, label: teamLabel(t.name, members), currency: fromCents(t.currency) };
+    return { ...t, members, label: teamLabel(t.name, members), currency: fromCents(t.currency), rbCounts: rb.get(t.id) ?? {} };
   });
+};
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
 teamRoutes.get('/teams', (c) => c.json({ teams: listTeams() }));

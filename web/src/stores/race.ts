@@ -85,13 +85,26 @@ export const useRace = defineStore('race', () => {
     return a?.role === 'follow' && a.team_id === teamId;
   }
 
-  /** 路障完成人下拉选项：按队伍人数列出成员名，没登记名字的写成“成员1/成员2” */
-  function memberOptions(teamId: number, current?: string | null): string[] {
+  /**
+   * 路障完成人下拉选项：按队伍人数列出成员名，没登记名字的写成“成员1/成员2”。
+   * 路障限制：选了某人之后，他的路障次数减去队内最少的人不能超过设置值；超出的选项直接不显示。
+   * saved = 这条记录里已存的人选（计数时要先扣掉），selected = 当前选中的值（始终保留在选项里）
+   */
+  function memberOptions(teamId: number, saved?: string | null, selected?: string | null): string[] {
     const t = teamById.value.get(teamId);
     const size = Math.max(1, auth.event.teamSize || 1, t?.members.length ?? 0);
-    const opts = Array.from({ length: size }, (_, i) => t?.members[i] || `成员${i + 1}`);
-    if (current && !opts.includes(current)) opts.push(current); // 旧的自由填写值也能显示
-    return opts;
+    const all = Array.from({ length: size }, (_, i) => t?.members[i] || `成员${i + 1}`);
+    const counts: Record<string, number> = {};
+    for (const m of all) counts[m] = t?.rbCounts?.[m] ?? 0;
+    if (saved && counts[saved] !== undefined) counts[saved] = Math.max(0, counts[saved]! - 1);
+    const gap = Math.max(0, auth.event.rbGap ?? 2);
+    const ok = all.filter((m) => {
+      const others = all.filter((x) => x !== m).map((x) => counts[x] ?? 0);
+      const min = others.length ? Math.min(...others) : counts[m]!;
+      return (counts[m]! + 1) - min <= gap;
+    });
+    for (const v of [saved, selected]) if (v && !ok.includes(v)) ok.push(v); // 已存/已选的值始终可见
+    return ok;
   }
   /** 记录完成前必须填好的附加信息：返回缺什么，null 表示齐了 */
   function extraMissing(leg: { type: string }, p: { detour_choice?: string | null; roadblock_by?: string | null; ff_result?: string | null } | null): string | null {
@@ -187,7 +200,7 @@ export const useRace = defineStore('race', () => {
       case 'episodes': await loadEpisodes(); if (mine) await loadAssignments(); break;
       case 'teams': await loadTeams(); break;
       case 'assignments': if (mine) await loadAssignments(); break;
-      case 'progress': case 'pitstop': if (mine) await loadProgress(); break;
+      case 'progress': case 'pitstop': await Promise.all([mine ? loadProgress() : Promise.resolve(), loadTeams()]); break; // 路障次数随进度变
       case 'ledger': await loadTeams(); if (mine) await loadLedger(); break;
       case 'announcements': await loadAnnouncements(); break;
       case 'admin': await Promise.all([loadUsers(), loadEpisodes(), loadTeams()]); break;
