@@ -38,15 +38,22 @@ function cell(teamId: number, legId: number, single: boolean, isPs = false) {
   if (p.completed_at) return { start: fmtTime(p.arrived_at), end: fmtTime(p.completed_at), dur: fmtDur(new Date(p.completed_at).getTime() - startMs), cls: 'mx-done' };
   return { start: fmtTime(p.arrived_at), end: '进行中', dur: fmtDur(now.value - startMs), cls: 'mx-arrived' };
 }
-/** 需要附加信息的环节在组末尾多一列 */
-function extraCol(l: { type: string }): string | null {
-  if (l.type === 'DT') return '绕道选择';
-  if (l.type === 'RB') return '完成人';
-  if (l.type === 'FF') return '快进结果';
-  if (l.type === 'UT' || l.type === 'YD') return '施加对象';
-  return null;
+/** 需要附加信息的环节在组末尾多几列；中继站多“罚时”“结算”两列 */
+function extraCols(l: { type: string }): string[] {
+  if (l.type === 'DT') return ['绕道选择'];
+  if (l.type === 'RB') return ['完成人'];
+  if (l.type === 'FF') return ['快进结果'];
+  if (l.type === 'UT' || l.type === 'YD') return ['施加对象'];
+  if (l.type === 'PS') return ['罚时', '结算'];
+  return [];
 }
-function extraVal(teamId: number, l: { id: number; type: string }): string {
+const extraCol = (l: { type: string }) => extraCols(l).length > 0;
+function extraVal(teamId: number, l: { id: number; type: string }, i = 0): string {
+  if (l.type === 'PS') {
+    const r = race.pitstop.find((x) => x.team_id === teamId);
+    if (i === 0) return !r || !r.penalty_minutes ? '-' : r.penalty_minutes > 0 ? `+${r.penalty_minutes} 分` : `${r.penalty_minutes} 分`;
+    return r?.final_time ? fmtTimeSec(r.final_time) : '-';
+  }
   const p = race.progressOf(teamId, l.id);
   if (!p) return '-';
   if (l.type === 'DT') return p.detour_choice || '-';
@@ -55,7 +62,7 @@ function extraVal(teamId: number, l: { id: number; type: string }): string {
   if (l.type === 'UT' || l.type === 'YD') return p.target_team_id ? race.teamById.get(p.target_team_id)?.label ?? '-' : '-';
   return '-';
 }
-const colspanOf = (l: { type: string; record_mode: string }) => (l.record_mode === 'single' ? 1 : 3) + (extraCol(l) ? 1 : 0);
+const colspanOf = (l: { type: string; record_mode: string }) => (l.record_mode === 'single' ? 1 : 3) + extraCols(l).length;
 function lastAgo(teamId: number): string {
   let last = 0;
   for (const l of legs.value) {
@@ -119,7 +126,7 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
             <template v-for="l in legs" :key="l.id">
               <th v-if="l.record_mode === 'single'" class="mx2-sub mx2-first" :class="{ 'mx2-last': !extraCol(l) }">{{ typeCode(l.type) === 'Starting Line' ? '出发' : l.type === 'PS' ? '签到' : '打卡' }}</th>
               <template v-else><th class="mx2-sub mx2-first">开始</th><th class="mx2-sub">结束</th><th class="mx2-sub" :class="{ 'mx2-last': !extraCol(l) }">用时</th></template>
-              <th v-if="extraCol(l)" class="mx2-sub mx2-last">{{ extraCol(l) }}</th>
+              <th v-for="(c, i) in extraCols(l)" :key="c" class="mx2-sub" :class="{ 'mx2-last': i === extraCols(l).length - 1 }">{{ c }}</th>
             </template>
           </tr>
         </thead>
@@ -138,7 +145,7 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
                 <td class="mx2-cell" :class="cell(t.id, l.id, false).cls">{{ cell(t.id, l.id, false).end }}</td>
                 <td class="mx2-cell" :class="[cell(t.id, l.id, false).cls, { 'mx2-last': !extraCol(l) }]">{{ cell(t.id, l.id, false).dur }}</td>
               </template>
-              <td v-if="extraCol(l)" class="mx2-cell mx2-extra mx2-last">{{ extraVal(t.id, l) }}</td>
+              <td v-for="(c, i) in extraCols(l)" :key="c" class="mx2-cell mx2-extra" :class="{ 'mx2-last': i === extraCols(l).length - 1 }">{{ extraVal(t.id, l, i) }}</td>
             </template>
           </tr>
         </tbody>
