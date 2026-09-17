@@ -3,6 +3,7 @@ import { computed, reactive } from 'vue';
 import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
+import LegTag from './LegTag.vue';
 import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
 
@@ -76,7 +77,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
           <tr v-for="p in visible" :key="p.id" :style="p.reverted ? 'opacity:.5;text-decoration:line-through' : ''">
             <td>{{ fmtDateTime(p.applied_at) }}</td>
             <td>{{ p.team_name }}</td>
-            <td v-if="!props.legId">{{ p.leg_name || '其他' }}</td>
+            <td v-if="!props.legId"><template v-if="p.leg_id && race.legById.get(p.leg_id)"><LegTag :type="race.legById.get(p.leg_id)!.type" /> {{ p.leg_name }}</template><template v-else>{{ p.leg_name || '其他' }}</template></td>
             <td :class="p.minutes > 0 ? 'log-negative' : 'log-positive'">{{ p.minutes > 0 ? '罚时' : '补时' }}</td>
             <td :class="p.minutes > 0 ? 'log-negative' : 'log-positive'">{{ p.minutes > 0 ? '+' : '' }}{{ p.minutes }}</td>
             <td>{{ totals.get(p.team_id) ?? 0 }}</td>

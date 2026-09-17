@@ -3,6 +3,7 @@ import { computed, reactive, watch } from 'vue';
 import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
+import LegTag from '@/components/LegTag.vue';
 import { useUi } from '@/stores/ui';
 import EpSelector from '@/components/EpSelector.vue';
 import MultiSelect from '@/components/MultiSelect.vue';
@@ -31,12 +32,21 @@ function displayRole(userId: number) {
   const r = userById.value.get(userId)?.role;
   return r === 'admin' ? roleLabel.admin! : r === 'host' ? roleLabel.host! : roleLabel.crew!;
 }
+function assignOf(userId: number) {
+  return race.assignments.find((x) => x.user_id === userId) ?? null;
+}
 function assignText(userId: number) {
-  const a = race.assignments.find((x) => x.user_id === userId);
+  const a = assignOf(userId);
   if (!a) return '-';
   if (a.role === 'follow') return `跟队 → ${a.team_name ?? '?'}`;
   if (a.role === 'live') return '直播员 → 全赛段（只读）';
-  return `站点 → ${a.leg_names?.length ? a.leg_names.join('、') : '?'}`;
+  return a.leg_ids?.length ? '站点 → ' : '站点 → ?';
+}
+/** 站点驻守的环节（带类型，供表格里显示 tag） */
+function stationLegs(userId: number) {
+  const a = assignOf(userId);
+  if (!a || a.role !== 'station') return [];
+  return (a.leg_ids ?? []).map((id) => race.legById.get(id)).filter((l): l is NonNullable<typeof l> => !!l);
 }
 const conflicts = computed(() => {
   const seen = new Map<number, number>();
@@ -87,7 +97,7 @@ async function copyPrev() {
           <tr v-for="r in form.rows" :key="r.userId">
             <td><strong>{{ userById.get(r.userId)?.displayName }}</strong> <span v-if="userById.get(r.userId)?.role === 'admin'" class="badge badge-host">管理员</span><span v-else-if="userById.get(r.userId)?.role === 'host'" class="badge badge-host">主办</span></td>
             <td><span class="badge" :class="displayRole(r.userId)[1]">{{ displayRole(r.userId)[0] }}</span></td>
-            <td>{{ assignText(r.userId) }}</td>
+            <td>{{ assignText(r.userId) }}<template v-for="(l, i) in stationLegs(r.userId)" :key="l.id"><template v-if="i">、</template><LegTag :type="l.type" /> {{ l.name }}</template></td>
             <td v-if="auth.isHost">
               <div class="flex" style="gap: 6px; flex-wrap: nowrap">
                 <select v-model="r.role" class="input-sm input-inline" style="width: 90px; flex: none">

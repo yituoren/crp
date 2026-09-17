@@ -2,6 +2,7 @@
 import { computed, reactive, ref } from 'vue';
 import { api } from '@/api';
 import { useRace } from '@/stores/race';
+import LegTag from './LegTag.vue';
 import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
 import { fmtMoney, parseMoney, moneyUnit, moneyLabel, moneyMode } from '@/utils/money';
@@ -60,7 +61,7 @@ async function revert(l: LedgerEntry) {
         <thead><tr><th>时间</th><th>环节</th><th>变动（{{ moneyUnit() }}）</th><th>余额（{{ moneyUnit() }}）</th><th>操作人</th><th>原因</th><th></th></tr></thead>
         <tbody>
           <tr v-for="l in rows" :key="l.id" :style="l.reverted ? 'opacity:.5;text-decoration:line-through' : ''">
-            <td>{{ fmtDateTime(l.created_at) }}</td><td>{{ l.leg_name || '其他' }}</td>
+            <td>{{ fmtDateTime(l.created_at) }}</td><td><template v-if="l.leg_id && race.legById.get(l.leg_id)"><LegTag :type="race.legById.get(l.leg_id)!.type" /> {{ l.leg_name }}</template><template v-else>{{ l.leg_name || '其他' }}</template></td>
             <td :class="l.delta > 0 ? 'log-positive' : 'log-negative'">{{ fmtMoney(l.delta, true) }}</td>
             <td>{{ fmtMoney(l.balance_after) }}</td><td>{{ l.operator_name }}</td><td>{{ l.reason || '-' }}</td>
             <td><button v-if="!l.reverted" class="btn btn-outline btn-sm" @click="revert(l)">撤销</button></td>
