@@ -5,7 +5,7 @@ import { api } from '@/api';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
-import { LEG_TYPES, LEG_TYPE_LABEL, TYPE_DEFAULTS, RECORD_MODE_LABEL, typeCode, type LegType, type RecordMode } from '@/types';
+import { LEG_TYPES, LEG_TYPE_LABEL, TYPE_DEFAULTS, RECORD_MODE_LABEL, typeCode, type LegType, type RecordMode, legName, isDestinationLeg } from '@/types';
 import { reactive } from 'vue';
 import { useAuth } from '@/stores/auth';
 import LegTag from '@/components/LegTag.vue';
@@ -75,7 +75,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
     <!-- 主办/管理员：页内编辑 -->
     <div v-if="auth.isHost" class="card leg-edit">
       <div class="card-header">
-        <span><LegTag :type="leg.type" /> {{ leg.name }} <span class="text-gray text-sm">站点：{{ staff.join('、') || '未分配' }}</span></span>
+        <span><LegTag :type="leg.type" /> {{ legName(leg) }} <span class="text-gray text-sm">站点：{{ staff.join('、') || '未分配' }}</span></span>
         <span class="flex">
           <span v-if="dirty" class="text-xs text-warning">有未保存的修改</span>
           <button class="btn" :disabled="!dirty" @click="saveLeg">保存修改</button>
@@ -90,7 +90,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
                 <input v-if="isFixed" :value="`${typeCode(form.type)} · ${LEG_TYPE_LABEL[form.type]}（固定）`" disabled />
                 <select v-else v-model="form.type"><option v-for="t in selectableTypes" :key="t" :value="t">{{ typeCode(t) }} · {{ LEG_TYPE_LABEL[t] }}</option></select>
               </div>
-              <div class="form-group"><label>名称</label><input v-model="form.name" /></div>
+              <div class="form-group"><label>{{ isDestinationLeg(form.type) ? '目的地' : '名称' }}</label><input v-model="form.name" :placeholder="form.type === 'RI' ? '目的地名称，显示时自动加箭头' : form.type === 'PS' ? '中继站所在地' : ''" /></div>
             </div>
             <div class="field-row">
               <div class="form-group"><label>记录方式</label>
@@ -132,7 +132,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
     <!-- 其他人：只读信息 -->
     <div v-else class="card">
       <div class="card-header">
-        <span><LegTag :type="leg.type" /> {{ leg.name }} <span class="text-gray text-sm">{{ LEG_TYPE_LABEL[leg.type] }}</span></span>
+        <span><LegTag :type="leg.type" /> {{ legName(leg) }} <span class="text-gray text-sm">{{ LEG_TYPE_LABEL[leg.type] }}</span></span>
         <span class="text-sm text-gray">站点：{{ staff.join('、') || '未分配' }}</span>
       </div>
       <div class="grid grid-2">

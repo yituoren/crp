@@ -8,7 +8,7 @@ import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
 import { fmtMoney, parseMoney, moneyUnit, moneyLabel, moneyMode } from '@/utils/money';
 import EpSelector from '@/components/EpSelector.vue';
-import type { Team, LedgerEntry } from '@/types';
+import { type Team, type LedgerEntry, legName } from '@/types';
 
 const auth = useAuth();
 const race = useRace();
@@ -49,7 +49,7 @@ async function revert(l: LedgerEntry) {
       <div class="section-title">{{ moneyLabel() }}操作</div>
       <select v-if="race.canAdjustCurrency" v-model="legSel" class="input-sm input-inline" style="width: 150px" title="本次变动发生的环节">
         <option value="">环节：其他</option>
-        <option v-for="l in ep?.legs ?? []" :key="l.id" :value="l.id">环节：{{ l.name }}</option>
+        <option v-for="l in ep?.legs ?? []" :key="l.id" :value="l.id">环节：{{ legName(l) }}</option>
       </select>
     </div>
     <span v-if="!race.canAdjustCurrency" class="text-sm text-gray">主办可操作所有队伍，跟队只能操作所跟队伍</span>
@@ -84,7 +84,7 @@ async function revert(l: LedgerEntry) {
         <thead><tr><th>时间</th><th>队伍</th><th>环节</th><th>变动（{{ moneyUnit() }}）</th><th>余额（{{ moneyUnit() }}）</th><th>操作人</th><th>原因</th><th v-if="canRevertAny"></th></tr></thead>
         <tbody>
           <tr v-for="l in rows" :key="l.id" :style="l.reverted ? 'opacity:.5;text-decoration:line-through' : ''">
-            <td>{{ fmtDateTime(l.created_at) }}</td><td>{{ l.team_name }}</td><td><template v-if="l.leg_id && race.legById.get(l.leg_id)"><LegTag :type="race.legById.get(l.leg_id)!.type" /> {{ l.leg_name }}</template><template v-else>{{ l.leg_name || '其他' }}</template></td>
+            <td>{{ fmtDateTime(l.created_at) }}</td><td>{{ l.team_name }}</td><td><template v-if="l.leg_id && race.legById.get(l.leg_id)"><LegTag :type="race.legById.get(l.leg_id)!.type" /> {{ legName(race.legById.get(l.leg_id)!) }}</template><template v-else>{{ l.leg_name || '其他' }}</template></td>
             <td :class="l.delta > 0 ? 'log-positive' : 'log-negative'">{{ fmtMoney(l.delta, true) }}</td>
             <td>{{ fmtMoney(l.balance_after) }}</td><td>{{ l.operator_name }}</td><td>{{ l.reason || '-' }}</td>
             <td v-if="canRevertAny"><button v-if="!l.reverted && !l.reverts_id && race.canAdjustCurrencyFor(l.team_id)" class="btn btn-outline btn-sm" @click="revert(l)">撤销</button></td>

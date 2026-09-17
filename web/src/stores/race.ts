@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { api } from '@/api';
 import { useAuth } from './auth';
-import type { Announcement, Assignment, Episode, LedgerEntry, Penalty, PitstopRow, Progress, Team, User } from '@/types';
+import { legName, type Announcement, type Assignment, type Episode, type LedgerEntry, type Penalty, type PitstopRow, type Progress, type Team, type User } from '@/types';
 
 const EP_KEY = 'crp.currentEpisodeId';
 
@@ -93,7 +93,7 @@ export const useRace = defineStore('race', () => {
       const p = progressOf(teamId, l.id);
       if (l.type === 'FF' && p?.ff_result === 'success') return null;
       if (l.record_mode === 'none' || !MANDATORY_TYPES.has(l.type)) continue;
-      if (!p?.completed_at) missing.push(l.name);
+      if (!p?.completed_at) missing.push(legName(l));
     }
     return missing.length ? `先完成：${missing.join('、')}` : null;
   }

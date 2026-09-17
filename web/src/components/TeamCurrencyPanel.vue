@@ -6,7 +6,7 @@ import LegTag from './LegTag.vue';
 import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
 import { fmtMoney, parseMoney, moneyUnit, moneyLabel, moneyMode } from '@/utils/money';
-import type { LedgerEntry } from '@/types';
+import { legName, type LedgerEntry } from '@/types';
 
 // 跟队在「我的」页面对所跟队伍的经费操作：加减、环节、最近流水与撤销
 const props = defineProps<{ teamId: number }>();
@@ -49,7 +49,7 @@ async function revert(l: LedgerEntry) {
       <input v-model="form.amount" type="number" :inputmode="moneyMode() === 'coin' ? 'numeric' : 'decimal'" min="0" step="1" class="input-inline" :placeholder="moneyUnit() === '币' ? '数量' : '金额'" style="width: 110px" />
       <select v-model="legSel" class="input-inline" style="width: 150px">
         <option value="">环节：其他</option>
-        <option v-for="l in ep?.legs ?? []" :key="l.id" :value="l.id">环节：{{ l.name }}</option>
+        <option v-for="l in ep?.legs ?? []" :key="l.id" :value="l.id">环节：{{ legName(l) }}</option>
       </select>
       <input v-model="form.reason" class="input-inline" placeholder="原因（如：任务奖励、买线索）" style="flex: 1; min-width: 160px" />
       <button class="btn btn-success" @click="apply(1)">增加</button>
@@ -61,7 +61,7 @@ async function revert(l: LedgerEntry) {
         <thead><tr><th>时间</th><th>环节</th><th>变动（{{ moneyUnit() }}）</th><th>余额（{{ moneyUnit() }}）</th><th>操作人</th><th>原因</th><th></th></tr></thead>
         <tbody>
           <tr v-for="l in rows" :key="l.id" :style="l.reverted ? 'opacity:.5;text-decoration:line-through' : ''">
-            <td>{{ fmtDateTime(l.created_at) }}</td><td><template v-if="l.leg_id && race.legById.get(l.leg_id)"><LegTag :type="race.legById.get(l.leg_id)!.type" /> {{ l.leg_name }}</template><template v-else>{{ l.leg_name || '其他' }}</template></td>
+            <td>{{ fmtDateTime(l.created_at) }}</td><td><template v-if="l.leg_id && race.legById.get(l.leg_id)"><LegTag :type="race.legById.get(l.leg_id)!.type" /> {{ legName(race.legById.get(l.leg_id)!) }}</template><template v-else>{{ l.leg_name || '其他' }}</template></td>
             <td :class="l.delta > 0 ? 'log-positive' : 'log-negative'">{{ fmtMoney(l.delta, true) }}</td>
             <td>{{ fmtMoney(l.balance_after) }}</td><td>{{ l.operator_name }}</td><td>{{ l.reason || '-' }}</td>
             <td><button v-if="!l.reverted" class="btn btn-outline btn-sm" @click="revert(l)">撤销</button></td>

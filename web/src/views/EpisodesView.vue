@@ -4,7 +4,7 @@ import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
-import type { Leg } from '@/types';
+import { legName, type Leg } from '@/types';
 import { fmtMoney, moneyUnit, moneyLabel, moneyMode } from '@/utils/money';
 import { fmtDateTime } from '@/utils/time';
 import EpSelector from '@/components/EpSelector.vue';
@@ -79,7 +79,7 @@ async function addLeg() {
   } catch (e) { ui.error(e); }
 }
 async function deleteLeg(leg: Leg) {
-  if (!(await ui.confirm('删除环节', `删除「${leg.name}」？相关记录和附件也将丢失。`, { danger: true, okText: '删除' }))) return;
+  if (!(await ui.confirm('删除环节', `删除「${legName(leg)}」？相关记录和附件也将丢失。`, { danger: true, okText: '删除' }))) return;
   try { await api(`/legs/${leg.id}`, { method: 'DELETE' }); await race.loadEpisodes(); ui.toast('已删除'); } catch (e) { ui.error(e); }
 }
 async function move(leg: Leg, dir: -1 | 1) {
@@ -128,7 +128,7 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
           <LegTag :type="leg.type" full />
           <span class="text-xs text-gray">#{{ i + 1 }}</span>
         </div>
-        <div style="font-weight: 700; font-size: 15px">{{ leg.name }}</div>
+        <div style="font-weight: 700; font-size: 15px">{{ legName(leg) }}</div>
         <div class="text-sm text-gray">站点：<template v-if="leg.needs_staff">{{ staffOf(leg.id).join('、') || '未分配' }}</template><span v-else>无需站点</span></div>
         <div v-if="leg.address" class="text-sm text-gray">地址：{{ leg.address }}</div>
         <div class="text-xs text-gray mt-1">

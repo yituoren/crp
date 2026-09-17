@@ -4,8 +4,8 @@ import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
-import { fmtTime, fmtTimeSec, toLocalInput, fromLocalInput } from '@/utils/time';
-import { typeCode, type PitstopRow } from '@/types';
+import { fmtTime, fmtTimeSec, toLocalInput, fromLocalInput, fmtDurMs } from '@/utils/time';
+import { typeCode, type PitstopRow, legName } from '@/types';
 import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
 import Modal from '@/components/Modal.vue';
@@ -24,19 +24,13 @@ let timer: number | undefined;
 onMounted(() => { timer = window.setInterval(() => { now.value = Date.now() + auth.serverOffsetMs; }, 15000); });
 onUnmounted(() => clearInterval(timer));
 
-function fmtDur(ms: number): string {
-  if (ms < 0) ms = 0;
-  const m = Math.floor(ms / 60000);
-  const h = Math.floor(m / 60);
-  return h ? `${h}:${String(m % 60).padStart(2, '0')}` : `${m} 分`;
-}
 function cell(teamId: number, legId: number, single: boolean, isPs = false) {
   const p = race.progressOf(teamId, legId);
   if (!p || !p.arrived_at) return { start: '-', end: '-', dur: '-', cls: '' };
   if (single) return { start: (isPs ? fmtTimeSec : fmtTime)(p.completed_at), end: '-', dur: '-', cls: 'mx-done' };
   const startMs = new Date(p.arrived_at).getTime();
-  if (p.completed_at) return { start: fmtTime(p.arrived_at), end: fmtTime(p.completed_at), dur: fmtDur(new Date(p.completed_at).getTime() - startMs), cls: 'mx-done' };
-  return { start: fmtTime(p.arrived_at), end: '进行中', dur: fmtDur(now.value - startMs), cls: 'mx-arrived' };
+  if (p.completed_at) return { start: fmtTime(p.arrived_at), end: fmtTime(p.completed_at), dur: fmtDurMs(new Date(p.completed_at).getTime() - startMs), cls: 'mx-done' };
+  return { start: fmtTime(p.arrived_at), end: '进行中', dur: fmtDurMs(now.value - startMs), cls: 'mx-arrived' };
 }
 /** 需要附加信息的环节在组末尾多几列；中继站多“罚时”“结算”两列 */
 function extraCols(l: { type: string }): string[] {
@@ -120,7 +114,7 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
         <thead>
           <tr>
             <th class="mx2-team" rowspan="2">队伍</th>
-            <th v-for="l in legs" :key="l.id" :colspan="colspanOf(l)" class="mx2-leg mx2-first mx2-last"><LegTag :type="l.type" /> {{ l.name }}</th>
+            <th v-for="l in legs" :key="l.id" :colspan="colspanOf(l)" class="mx2-leg mx2-first mx2-last"><LegTag :type="l.type" /> {{ legName(l) }}</th>
           </tr>
           <tr>
             <template v-for="l in legs" :key="l.id">

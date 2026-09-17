@@ -4,6 +4,7 @@ import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import LegTag from './LegTag.vue';
+import { legName } from '@/types';
 import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
 
@@ -61,7 +62,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
       <select v-model="form.teamId" class="input-inline" style="width: 140px"><option value="">选择队伍</option><option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.label }}</option></select>
       <select v-if="!props.legId" v-model="form.legId" class="input-inline" style="width: 150px">
         <option value="" disabled>选择环节</option>
-        <option v-for="l in legOptions" :key="l.id" :value="l.id">{{ l.name }}</option>
+        <option v-for="l in legOptions" :key="l.id" :value="l.id">{{ legName(l) }}</option>
         <option v-if="auth.isHost" :value="0">其他</option>
       </select>
       <input v-model="form.minutes" type="number" inputmode="numeric" min="1" step="1" class="input-inline" placeholder="分钟" style="width: 90px" />
@@ -77,7 +78,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
           <tr v-for="p in visible" :key="p.id" :style="p.reverted ? 'opacity:.5;text-decoration:line-through' : ''">
             <td>{{ fmtDateTime(p.applied_at) }}</td>
             <td>{{ p.team_name }}</td>
-            <td v-if="!props.legId"><template v-if="p.leg_id && race.legById.get(p.leg_id)"><LegTag :type="race.legById.get(p.leg_id)!.type" /> {{ p.leg_name }}</template><template v-else>{{ p.leg_name || '其他' }}</template></td>
+            <td v-if="!props.legId"><template v-if="p.leg_id && race.legById.get(p.leg_id)"><LegTag :type="race.legById.get(p.leg_id)!.type" /> {{ legName(race.legById.get(p.leg_id)!) }}</template><template v-else>{{ p.leg_name || '其他' }}</template></td>
             <td :class="p.minutes > 0 ? 'log-negative' : 'log-positive'">{{ p.minutes > 0 ? '罚时' : '补时' }}</td>
             <td :class="p.minutes > 0 ? 'log-negative' : 'log-positive'">{{ p.minutes > 0 ? '+' : '' }}{{ p.minutes }}</td>
             <td>{{ totals.get(p.team_id) ?? 0 }}</td>

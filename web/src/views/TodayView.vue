@@ -11,7 +11,7 @@ import PenaltyPanel from '@/components/PenaltyPanel.vue';
 import LegExtraField from '@/components/LegExtraField.vue';
 import TeamCurrencyPanel from '@/components/TeamCurrencyPanel.vue';
 import ProgressEditModal from '@/components/ProgressEditModal.vue';
-import type { Leg, Progress } from '@/types';
+import { type Leg, type Progress, legName } from '@/types';
 import { singleLabel } from '@/types';
 import { fmtMoney, moneyUnit } from '@/utils/money';
 
@@ -74,7 +74,7 @@ const stats = computed(() => ({
           <thead><tr><th class="col-first">环节</th><th class="col-status">状态</th><th class="col-time">开始</th><th class="col-time">完成 / 打卡</th><th class="col-extra">记录信息</th><th class="col-action">操作</th></tr></thead>
           <tbody>
             <tr v-for="{ leg, p, single, label, block } in legRows" :key="leg.id">
-              <td><LegTag :type="leg.type" /> <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: leg.id } }">{{ leg.name }}</router-link></td>
+              <td><LegTag :type="leg.type" /> <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: leg.id } }">{{ legName(leg) }}</router-link></td>
               <td>{{ single ? (p?.completed_at ? `已${label}` : `未${label}`) : p?.completed_at ? '已完成' : p?.arrived_at ? '进行中' : '未开始' }}</td>
               <td><span class="record-time">{{ single ? '-' : fmtTime(p?.arrived_at) }}</span></td>
               <td><span class="record-time">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td>
@@ -104,10 +104,10 @@ const stats = computed(() => ({
     </template>
 
     <template v-else-if="my?.role === 'station' && myLegs.length">
-      <p><span class="badge badge-station">站点</span> 你本赛段驻守 {{ myLegs.length }} 个环节：{{ myLegs.map((l) => l.name).join('、') }}。开始和完成时间由各队跟队记录，站点这里只看；本站点的罚时、补时在各环节下方操作。</p>
+      <p><span class="badge badge-station">站点</span> 你本赛段驻守 {{ myLegs.length }} 个环节：{{ myLegs.map((l) => legName(l)).join('、') }}。开始和完成时间由各队跟队记录，站点这里只看；本站点的罚时、补时在各环节下方操作。</p>
       <div v-for="(l, i) in myLegs" :key="l.id" class="station-leg" :class="{ 'mt-3': i > 0 }">
         <div class="flex-between mb-1">
-          <span class="section-title"><LegTag :type="l.type" full /> {{ l.name }}</span>
+          <span class="section-title"><LegTag :type="l.type" full /> {{ legName(l) }}</span>
           <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: l.id } }" class="btn btn-outline btn-sm">环节详情 / 附件</router-link>
         </div>
         <p v-if="l.address" class="text-sm text-gray">地址：{{ l.address }} <a v-if="l.map_url" :href="l.map_url" target="_blank">地图</a></p>

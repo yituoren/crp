@@ -59,11 +59,16 @@ export function minutesBetween(a?: string | null, b?: string | null): number | n
   if (!a || !b) return null;
   return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 60000);
 }
+/** 用时：不到 1 小时只显示 “x m”，否则 “x h x m” */
+export function fmtDurMs(ms: number): string {
+  if (ms < 0) ms = 0;
+  const m = Math.floor(ms / 60000);
+  const h = Math.floor(m / 60);
+  return h ? `${h} h ${m % 60} m` : `${m} m`;
+}
 export function fmtDuration(a?: string | null, b?: string | null): string {
-  const m = minutesBetween(a, b);
-  if (m === null) return '-';
-  if (m < 60) return `${m} 分钟`;
-  return `${Math.floor(m / 60)} 小时 ${m % 60} 分`;
+  if (!a || !b) return '-';
+  return fmtDurMs(new Date(b).getTime() - new Date(a).getTime());
 }
 export function fmtAgo(min?: number | null): string {
   if (min === null || min === undefined) return '';

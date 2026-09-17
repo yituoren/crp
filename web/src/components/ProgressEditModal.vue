@@ -5,7 +5,7 @@ import { api } from '@/api';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { toLocalInput, fromLocalInput } from '@/utils/time';
-import { singleLabel, type Leg, type Progress, type Team } from '@/types';
+import { legName, singleLabel, type Leg, type Progress, type Team } from '@/types';
 import { useRace as useRaceStore } from '@/stores/race';
 
 const props = defineProps<{ leg: Leg; team: Team; progress: Progress | null }>();
@@ -41,7 +41,7 @@ async function save() {
 </script>
 
 <template>
-  <Modal :title="`修改记录 · ${team.label} · ${leg.name}`" small @close="emit('close')">
+  <Modal :title="`修改记录 · ${team.label} · ${legName(leg)}`" small @close="emit('close')">
     <template v-if="isSingle">
       <div class="form-group"><label>{{ label }}时间（留空 = 未{{ label }}）</label><input v-model="form.completedAt" type="datetime-local" step="1" /></div>
     </template>

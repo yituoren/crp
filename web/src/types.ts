@@ -19,6 +19,9 @@ export const TYPE_DEFAULTS: Record<LegType, { staff: boolean; mode: RecordMode }
 /** single 模式下按钮/列的文案 */
 export const SINGLE_LABEL: Partial<Record<LegType, string>> = { SL: '出发', PS: '签到', UT: '打卡', YD: '打卡' };
 export const singleLabel = (t: LegType) => SINGLE_LABEL[t] ?? '打卡';
+/** 路线信息和中继站的“名称”栏填的是目的地：RI 显示时自动加箭头，PS 直接显示 */
+export const isDestinationLeg = (t: LegType) => t === 'RI' || t === 'PS';
+export const legName = (l: { type: LegType; name: string }) => (l.type === 'RI' ? `→ ${l.name}` : l.name);
 export const RECORD_MODE_LABEL: Record<RecordMode, string> = { none: '不记录时间', single: '只记一次（出发/打卡/签到）', full: '记开始与完成' };
 
 export interface Attachment { id: number; leg_id: number; filename: string; mime: string; size: number; url: string; created_at: string }

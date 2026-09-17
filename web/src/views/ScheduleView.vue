@@ -4,6 +4,7 @@ import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import LegTag from '@/components/LegTag.vue';
+import { legName } from '@/types';
 import { useUi } from '@/stores/ui';
 import EpSelector from '@/components/EpSelector.vue';
 import MultiSelect from '@/components/MultiSelect.vue';
@@ -56,7 +57,7 @@ const conflicts = computed(() => {
 });
 const unassignedTeams = computed(() => race.aliveTeams.filter((t) => !form.rows.some((r) => r.role === 'follow' && Number(r.teamId) === t.id)).map((t) => t.label));
 
-const legOptions = computed(() => (ep.value?.legs ?? []).filter((x) => x.needs_staff).map((l) => ({ value: l.id, label: l.name })));
+const legOptions = computed(() => (ep.value?.legs ?? []).filter((x) => x.needs_staff).map((l) => ({ value: l.id, label: legName(l) })));
 async function save() {
   if (!ep.value) return;
   for (const r of form.rows) {
@@ -97,7 +98,7 @@ async function copyPrev() {
           <tr v-for="r in form.rows" :key="r.userId">
             <td><strong>{{ userById.get(r.userId)?.displayName }}</strong> <span v-if="userById.get(r.userId)?.role === 'admin'" class="badge badge-host">管理员</span><span v-else-if="userById.get(r.userId)?.role === 'host'" class="badge badge-host">主办</span></td>
             <td><span class="badge" :class="displayRole(r.userId)[1]">{{ displayRole(r.userId)[0] }}</span></td>
-            <td>{{ assignText(r.userId) }}<template v-for="(l, i) in stationLegs(r.userId)" :key="l.id"><template v-if="i">、</template><LegTag :type="l.type" /> {{ l.name }}</template></td>
+            <td>{{ assignText(r.userId) }}<template v-for="(l, i) in stationLegs(r.userId)" :key="l.id"><template v-if="i">、</template><LegTag :type="l.type" /> {{ legName(l) }}</template></td>
             <td v-if="auth.isHost">
               <div class="flex" style="gap: 6px; flex-wrap: nowrap">
                 <select v-model="r.role" class="input-sm input-inline" style="width: 90px; flex: none">
