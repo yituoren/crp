@@ -85,6 +85,14 @@ export const useRace = defineStore('race', () => {
     return a?.role === 'follow' && a.team_id === teamId;
   }
 
+  /** 路障完成人下拉选项：按队伍人数列出成员名，没登记名字的写成“成员1/成员2” */
+  function memberOptions(teamId: number, current?: string | null): string[] {
+    const t = teamById.value.get(teamId);
+    const size = Math.max(1, auth.event.teamSize || 1, t?.members.length ?? 0);
+    const opts = Array.from({ length: size }, (_, i) => t?.members[i] || `成员${i + 1}`);
+    if (current && !opts.includes(current)) opts.push(current); // 旧的自由填写值也能显示
+    return opts;
+  }
   /** 记录完成前必须填好的附加信息：返回缺什么，null 表示齐了 */
   function extraMissing(leg: { type: string }, p: { detour_choice?: string | null; roadblock_by?: string | null; ff_result?: string | null } | null): string | null {
     if (leg.type === 'DT' && !p?.detour_choice) return '先填写绕道选择';
@@ -188,7 +196,7 @@ export const useRace = defineStore('race', () => {
 
   return {
     episodes, teams, users, announcements, unreadAnnouncements, markAnnouncementsRead, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
-    aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing,
+    aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
     loadAll, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
   };
 });

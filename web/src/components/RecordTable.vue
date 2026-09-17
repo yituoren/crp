@@ -68,7 +68,10 @@ function detourOptions(): string[] {
             <span v-else>{{ p?.detour_choice || '-' }}</span>
           </td>
           <td v-if="leg.type === 'RB'">
-            <input v-if="inline(can, p)" class="input-sm input-inline" style="width: 110px" :value="p?.roadblock_by ?? ''" placeholder="姓名" @change="rec.setValue('roadblock', team.id, leg.id, ($event.target as HTMLInputElement).value)" />
+            <select v-if="inline(can, p)" class="input-sm input-inline" style="width: 110px" :value="p?.roadblock_by ?? ''" @change="rec.setValue('roadblock', team.id, leg.id, ($event.target as HTMLSelectElement).value)">
+              <option value="">未选</option>
+              <option v-for="m in race.memberOptions(team.id, p?.roadblock_by)" :key="m" :value="m">{{ m }}</option>
+            </select>
             <span v-else>{{ p?.roadblock_by || '-' }}</span>
           </td>
           <td v-if="leg.type === 'FF'">

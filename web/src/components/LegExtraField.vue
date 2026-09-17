@@ -37,7 +37,10 @@ const text = computed(() => {
     <option value="">绕道未选</option>
     <option v-for="o in detourOptions" :key="o" :value="o">{{ o }}</option>
   </select>
-  <input v-else-if="kind === 'roadblock'" class="input-sm input-inline extra-ctl" :value="progress?.roadblock_by ?? ''" placeholder="路障完成人" @change="rec.setValue('roadblock', teamId, leg.id, ($event.target as HTMLInputElement).value)" />
+  <select v-else-if="kind === 'roadblock'" class="input-sm input-inline extra-ctl" :value="progress?.roadblock_by ?? ''" @change="rec.setValue('roadblock', teamId, leg.id, ($event.target as HTMLSelectElement).value)">
+    <option value="">路障完成人</option>
+    <option v-for="m in race.memberOptions(teamId, progress?.roadblock_by)" :key="m" :value="m">{{ m }}</option>
+  </select>
   <select v-else-if="kind === 'ff'" class="input-sm input-inline extra-ctl" :value="progress?.ff_result ?? ''" @change="rec.setValue('ff', teamId, leg.id, ($event.target as HTMLSelectElement).value)">
     <option value="">快进未尝试</option><option value="success">快进成功</option><option value="fail">快进失败</option>
   </select>

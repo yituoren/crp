@@ -49,7 +49,9 @@ async function save() {
     <div v-if="leg.type === 'DT'" class="form-group"><label>绕道选择</label>
       <select v-model="form.detourChoice"><option value="">未选</option><option v-for="o in detourOptions" :key="o" :value="o">{{ o }}</option></select>
     </div>
-    <div v-if="leg.type === 'RB'" class="form-group"><label>路障完成人</label><input v-model="form.roadblockBy" placeholder="姓名" /></div>
+    <div v-if="leg.type === 'RB'" class="form-group"><label>路障完成人</label>
+      <select v-model="form.roadblockBy"><option value="">未选</option><option v-for="m in race.memberOptions(team.id, form.roadblockBy)" :key="m" :value="m">{{ m }}</option></select>
+    </div>
     <div v-if="leg.type === 'FF'" class="form-group"><label>快进结果</label>
       <select v-model="form.ffResult"><option value="">未尝试</option><option value="success">成功</option><option value="fail">失败</option></select>
     </div>
