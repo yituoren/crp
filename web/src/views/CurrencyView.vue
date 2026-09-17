@@ -35,7 +35,8 @@ async function apply(t: Team, sign: 1 | -1) {
 }
 // 页面上只显示原始流水（被撤销的划线标出）；反向的撤销记录保留在数据库和操作日志里，不在列表中重复出现
 const rows = computed(() => race.ledger.filter((l) => !l.reverts_id && (!filterTeam.value || l.team_id === filterTeam.value)));
-const canRevertAny = computed(() => race.canAdjustCurrency);
+/** 谁撤销了这条记录：找到它的反向流水的操作人 */
+const revertedBy = (l: LedgerEntry) => race.ledger.find((x) => x.reverts_id === l.id)?.operator_name ?? '';
 async function revert(l: LedgerEntry) {
   if (!(await ui.confirm('撤销经费变动', `撤销「${l.team_name}」的这笔 ${fmtMoney(l.delta, true)} ${moneyUnit()}（${l.reason || '手动调整'}）？会写入一条反向流水，余额相应恢复。`, { danger: true, okText: '撤销' }))) return;
   try { await api(`/ledger/${l.id}/revert`, { method: 'POST' }); await Promise.all([race.loadTeams(), race.loadLedger()]); ui.toast('已撤销'); } catch (e) { ui.error(e); }
@@ -81,13 +82,13 @@ async function revert(l: LedgerEntry) {
     <div v-if="!rows.length" class="empty-state">暂无货币变动记录</div>
     <div v-else class="scroll-table">
       <table class="table">
-        <thead><tr><th>时间</th><th>队伍</th><th>环节</th><th>变动（{{ moneyUnit() }}）</th><th>余额（{{ moneyUnit() }}）</th><th>操作人</th><th>原因</th><th v-if="canRevertAny"></th></tr></thead>
+        <thead><tr><th>时间</th><th>队伍</th><th>环节</th><th>变动（{{ moneyUnit() }}）</th><th>余额（{{ moneyUnit() }}）</th><th>操作人</th><th>原因</th><th>其他</th></tr></thead>
         <tbody>
-          <tr v-for="l in rows" :key="l.id" :style="l.reverted ? 'opacity:.5;text-decoration:line-through' : ''">
+          <tr v-for="l in rows" :key="l.id" :class="{ 'row-reverted': l.reverted }">
             <td>{{ fmtDateTime(l.created_at) }}</td><td>{{ l.team_name }}</td><td><template v-if="l.leg_id && race.legById.get(l.leg_id)"><LegTag :type="race.legById.get(l.leg_id)!.type" /> {{ legName(race.legById.get(l.leg_id)!) }}</template><template v-else>{{ l.leg_name || '其他' }}</template></td>
             <td :class="l.delta > 0 ? 'log-positive' : 'log-negative'">{{ fmtMoney(l.delta, true) }}</td>
             <td>{{ fmtMoney(l.balance_after) }}</td><td>{{ l.operator_name }}</td><td>{{ l.reason || '-' }}</td>
-            <td v-if="canRevertAny"><button v-if="!l.reverted && !l.reverts_id && race.canRevert(l.operator_id)" class="btn btn-outline btn-sm" @click="revert(l)">撤销</button></td>
+            <td><span v-if="l.reverted" class="text-gray text-sm">{{ revertedBy(l) }}撤销</span><button v-else-if="race.canRevert(l.operator_id)" class="btn btn-outline btn-sm" @click="revert(l)">撤销</button></td>
           </tr>
         </tbody>
       </table>

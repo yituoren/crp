@@ -51,6 +51,7 @@ async function revert(p: { id: number; team_name: string; minutes: number; reaso
   try { await api(`/penalties/${p.id}/revert`, { method: 'POST' }); await race.loadProgress(); ui.toast('已撤销'); } catch (e) { ui.error(e); }
 }
 // 页面只显示原始记录（被撤销的划线）；反向记录留在数据库与操作日志里
+const revertedBy = (id: number) => race.penalties.find((x) => x.reverts_id === id)?.applied_by_name ?? '';
 const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!props.legId || p.leg_id === props.legId) && (!props.teamId || p.team_id === props.teamId)));
 </script>
 
@@ -77,9 +78,9 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
     <div v-if="!visible.length" class="text-gray text-sm">本赛段暂无罚时或补时记录</div>
     <div v-else class="scroll-table">
       <table class="table">
-        <thead><tr><th>时间</th><th>队伍</th><th v-if="!props.legId">环节</th><th>类型</th><th>分钟</th><th>净罚时</th><th>操作人</th><th>原因</th><th v-if="canAdd"></th></tr></thead>
+        <thead><tr><th>时间</th><th>队伍</th><th v-if="!props.legId">环节</th><th>类型</th><th>分钟</th><th>净罚时</th><th>操作人</th><th>原因</th><th>其他</th></tr></thead>
         <tbody>
-          <tr v-for="p in visible" :key="p.id" :style="p.reverted ? 'opacity:.5;text-decoration:line-through' : ''">
+          <tr v-for="p in visible" :key="p.id" :class="{ 'row-reverted': p.reverted }">
             <td>{{ fmtDateTime(p.applied_at) }}</td>
             <td>{{ p.team_name }}</td>
             <td v-if="!props.legId"><template v-if="p.leg_id && race.legById.get(p.leg_id)"><LegTag :type="race.legById.get(p.leg_id)!.type" /> {{ legName(race.legById.get(p.leg_id)!) }}</template><template v-else>{{ p.leg_name || '其他' }}</template></td>
@@ -88,7 +89,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
             <td>{{ totals.get(p.team_id) ?? 0 }}</td>
             <td>{{ p.applied_by_name ?? '-' }}</td>
             <td>{{ p.reason || '-' }}</td>
-            <td v-if="canAdd"><button v-if="!p.reverted && race.canRevert(p.applied_by)" class="btn btn-outline btn-sm" @click="revert(p)">撤销</button></td>
+            <td><span v-if="p.reverted" class="text-gray text-sm">{{ revertedBy(p.id) }}撤销</span><button v-else-if="race.canRevert(p.applied_by)" class="btn btn-outline btn-sm" @click="revert(p)">撤销</button></td>
           </tr>
         </tbody>
       </table>

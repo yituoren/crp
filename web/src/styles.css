@@ -295,3 +295,7 @@ html, body { overscroll-behavior: none; }
 .hm-row { display: flex; align-items: center; gap: 6px; }
 .hm-row input { width: 0; flex: 1; min-width: 56px; }
 .hm-row span { color: var(--gray-500); font-size: 13px; }
+
+/* 已撤销的记录：整行变淡，除“其他”列外划线，“其他”列写明是谁撤销的 */
+.row-reverted { opacity: .55; }
+.row-reverted td:not(:last-child) { text-decoration: line-through; }

@@ -17,6 +17,7 @@ const team = computed(() => race.teamById.get(props.teamId));
 const form = reactive({ amount: '', reason: '' });
 const legSel = ref<number | ''>('');
 const rows = computed(() => race.ledger.filter((l) => l.team_id === props.teamId && !l.reverts_id).slice(0, 20));
+const revertedBy = (l: LedgerEntry) => race.ledger.find((x) => x.reverts_id === l.id)?.operator_name ?? '';
 
 async function apply(sign: 1 | -1) {
   const t = team.value; if (!t) return;
@@ -58,13 +59,13 @@ async function revert(l: LedgerEntry) {
     <div v-if="!rows.length" class="text-gray text-sm">本赛段暂无变动</div>
     <div v-else class="scroll-table">
       <table class="table">
-        <thead><tr><th>时间</th><th>环节</th><th>变动（{{ moneyUnit() }}）</th><th>余额（{{ moneyUnit() }}）</th><th>操作人</th><th>原因</th><th></th></tr></thead>
+        <thead><tr><th>时间</th><th>环节</th><th>变动（{{ moneyUnit() }}）</th><th>余额（{{ moneyUnit() }}）</th><th>操作人</th><th>原因</th><th>其他</th></tr></thead>
         <tbody>
-          <tr v-for="l in rows" :key="l.id" :style="l.reverted ? 'opacity:.5;text-decoration:line-through' : ''">
+          <tr v-for="l in rows" :key="l.id" :class="{ 'row-reverted': l.reverted }">
             <td>{{ fmtDateTime(l.created_at) }}</td><td><template v-if="l.leg_id && race.legById.get(l.leg_id)"><LegTag :type="race.legById.get(l.leg_id)!.type" /> {{ legName(race.legById.get(l.leg_id)!) }}</template><template v-else>{{ l.leg_name || '其他' }}</template></td>
             <td :class="l.delta > 0 ? 'log-positive' : 'log-negative'">{{ fmtMoney(l.delta, true) }}</td>
             <td>{{ fmtMoney(l.balance_after) }}</td><td>{{ l.operator_name }}</td><td>{{ l.reason || '-' }}</td>
-            <td><button v-if="!l.reverted && race.canRevert(l.operator_id)" class="btn btn-outline btn-sm" @click="revert(l)">撤销</button></td>
+            <td><span v-if="l.reverted" class="text-gray text-sm">{{ revertedBy(l) }}撤销</span><button v-else-if="race.canRevert(l.operator_id)" class="btn btn-outline btn-sm" @click="revert(l)">撤销</button></td>
           </tr>
         </tbody>
       </table>
