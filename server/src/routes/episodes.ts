@@ -1,8 +1,8 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import fs from 'node:fs';
 import path from 'node:path';
 import { all, get, run, tx, now, UPLOAD_DIR, fromCents } from '../db.js';
-import { hostOnly, canUploadToLeg, type Env } from '../auth.js';
+import { hostOnly, canUploadToLeg, type Env, type EventRow } from '../auth.js';
 import { audit, body, str, int, intParam, notify, bad, notFound, forbidden, money } from '../util.js';
 import { teamLabelMap } from './teams.js';
 
@@ -29,10 +29,10 @@ export const episodeRoutes = new Hono<Env>();
 
 const MAX_UPLOAD = 10 * 1024 * 1024;
 
-export function loadEpisodes() {
-  const episodes = all('SELECT * FROM episodes ORDER BY sort, id');
-  const legs = all('SELECT * FROM legs ORDER BY episode_id, sort, id');
-  const atts = all('SELECT id, leg_id, filename, mime, size, uploaded_by, created_at FROM attachments ORDER BY id');
+export function loadEpisodes(eventId: number) {
+  const episodes = all('SELECT * FROM episodes WHERE event_id = ? ORDER BY sort, id', eventId);
+  const legs = all('SELECT l.* FROM legs l JOIN episodes e ON e.id = l.episode_id WHERE e.event_id = ? ORDER BY l.episode_id, l.sort, l.id', eventId);
+  const atts = all('SELECT a.id, a.leg_id, a.filename, a.mime, a.size, a.uploaded_by, a.created_at FROM attachments a JOIN legs l ON l.id = a.leg_id JOIN episodes e ON e.id = l.episode_id WHERE e.event_id = ? ORDER BY a.id', eventId);
   const attByLeg = new Map<number, any[]>();
   for (const a of atts) {
     if (!attByLeg.has(a.leg_id)) attByLeg.set(a.leg_id, []);
@@ -46,17 +46,30 @@ export function loadEpisodes() {
   return episodes.map((e) => ({ ...e, budget: fromCents(e.budget), legs: legsByEp.get(e.id) ?? [] }));
 }
 
-episodeRoutes.get('/episodes', (c) => c.json({ episodes: loadEpisodes() }));
+/** 赛段必须属于当前比赛 */
+export function episodeInEvent(c: Context, id: number) {
+  const ep = get('SELECT * FROM episodes WHERE id = ?', id);
+  if (!ep || ep.event_id !== (c.get('event') as EventRow).id) throw notFound('赛段不存在');
+  return ep;
+}
+export function legInEvent(c: Context, id: number) {
+  const leg = get('SELECT l.*, e.event_id FROM legs l JOIN episodes e ON e.id = l.episode_id WHERE l.id = ?', id);
+  if (!leg || leg.event_id !== (c.get('event') as EventRow).id) throw notFound('环节不存在');
+  return leg;
+}
+
+episodeRoutes.get('/episodes', (c) => c.json({ episodes: loadEpisodes(c.get('event').id) }));
 
 episodeRoutes.post('/episodes', hostOnly, async (c) => {
   const b = await body(c);
-  const count = get<{ n: number }>('SELECT COUNT(*) AS n FROM episodes')!.n;
+  const eventId = c.get('event').id;
+  const count = get<{ n: number }>('SELECT COUNT(*) AS n FROM episodes WHERE event_id = ?', eventId)!.n;
   const code = str(b.code, 20) || `EP${count + 1}`;
-  if (get('SELECT 1 FROM episodes WHERE code = ?', code)) throw bad(`赛段编号 ${code} 已存在`);
+  if (get('SELECT 1 FROM episodes WHERE code = ? AND event_id = ?', code, eventId)) throw bad(`赛段编号 ${code} 已存在`);
   const epId = tx(() => {
     const r = run(
-      'INSERT INTO episodes(code, name, budget, sort, status, notes) VALUES (?,?,?,?,?,?)',
-      code, str(b.name, 50) || code, b.budget === undefined ? 0 : money(b.budget, '经费'), count + 1, 'pending', str(b.notes),
+      'INSERT INTO episodes(code, name, budget, sort, status, notes, event_id) VALUES (?,?,?,?,?,?,?)',
+      code, str(b.name, 50) || code, b.budget === undefined ? 0 : money(b.budget, '经费'), count + 1, 'pending', str(b.notes), eventId,
     );
     const id = Number(r.lastInsertRowid);
     // 固定结构：第一个赛段以 Starting Line 开头；每个赛段以中继站结尾
@@ -72,8 +85,7 @@ episodeRoutes.post('/episodes', hostOnly, async (c) => {
 
 episodeRoutes.put('/episodes/:id', hostOnly, async (c) => {
   const id = intParam(c, 'id');
-  const before = get('SELECT * FROM episodes WHERE id = ?', id);
-  if (!before) throw notFound('赛段不存在');
+  const before = episodeInEvent(c, id);
   const b = await body(c);
   const next = {
     name: b.name === undefined ? before.name : str(b.name, 50) || before.name,
@@ -90,8 +102,7 @@ episodeRoutes.put('/episodes/:id', hostOnly, async (c) => {
 
 episodeRoutes.delete('/episodes/:id', hostOnly, (c) => {
   const id = intParam(c, 'id');
-  const before = get('SELECT * FROM episodes WHERE id = ?', id);
-  if (!before) throw notFound('赛段不存在');
+  const before = episodeInEvent(c, id);
   removeAttachmentFiles(all('SELECT path FROM attachments WHERE leg_id IN (SELECT id FROM legs WHERE episode_id = ?)', id));
   run('DELETE FROM episodes WHERE id = ?', id);
   audit(c.get('user'), 'delete', 'episode', id, before);
@@ -102,12 +113,11 @@ episodeRoutes.delete('/episodes/:id', hostOnly, (c) => {
 /** 开始赛段：状态改为进行中，记录开始时间，并给每支存活队伍发放本赛段经费（只发一次） */
 episodeRoutes.post('/episodes/:id/start', hostOnly, (c) => {
   const id = intParam(c, 'id');
-  const ep = get('SELECT * FROM episodes WHERE id = ?', id);
-  if (!ep) throw notFound('赛段不存在');
+  const ep = episodeInEvent(c, id);
   if (ep.status === 'running') throw bad('该赛段已在进行中');
-  const running = get("SELECT code FROM episodes WHERE status = 'running' AND id != ?", id);
+  const running = get("SELECT code FROM episodes WHERE status = 'running' AND id != ? AND event_id = ?", id, ep.event_id);
   if (running) throw bad(`${running.code} 仍在进行中，请先结束它再开始新的赛段`);
-  const unfinished = all("SELECT code FROM episodes WHERE (sort < ? OR (sort = ? AND id < ?)) AND status != 'finished' ORDER BY sort, id", ep.sort, ep.sort, id);
+  const unfinished = all("SELECT code FROM episodes WHERE event_id = ? AND (sort < ? OR (sort = ? AND id < ?)) AND status != 'finished' ORDER BY sort, id", ep.event_id, ep.sort, ep.sort, id);
   if (unfinished.length) throw bad(`前面的赛段还没有结束：${unfinished.map((e) => e.code).join('、')}`);
   const user = c.get('user');
   const t = now();
@@ -116,7 +126,7 @@ episodeRoutes.post('/episodes/:id/start', hostOnly, (c) => {
   tx(() => {
     run("UPDATE episodes SET status = 'running', started_at = COALESCE(started_at, ?) WHERE id = ?", t, id);
     if (!ep.started_at && ep.budget > 0) {
-      for (const team of all("SELECT id, name, currency FROM teams WHERE status = 'alive' ORDER BY sort, id")) {
+      for (const team of all("SELECT id, name, currency FROM teams WHERE status = 'alive' AND event_id = ? ORDER BY sort, id", ep.event_id)) {
         const balance = team.currency + ep.budget;
         run('UPDATE teams SET currency = ? WHERE id = ?', balance, team.id);
         run(
@@ -135,8 +145,7 @@ episodeRoutes.post('/episodes/:id/start', hostOnly, (c) => {
 /** 结束赛段：状态改为已结束，记录结束时间 */
 episodeRoutes.post('/episodes/:id/finish', hostOnly, (c) => {
   const id = intParam(c, 'id');
-  const ep = get('SELECT * FROM episodes WHERE id = ?', id);
-  if (!ep) throw notFound('赛段不存在');
+  const ep = episodeInEvent(c, id);
   if (ep.status !== 'running') throw bad('只有进行中的赛段可以结束');
   run("UPDATE episodes SET status = 'finished', finished_at = COALESCE(finished_at, ?) WHERE id = ?", now(), id);
   audit(c.get('user'), 'finish', 'episode', id, { status: ep.status });
@@ -172,7 +181,7 @@ function legFields(b: any, before?: any) {
 
 episodeRoutes.post('/episodes/:id/legs', hostOnly, async (c) => {
   const episodeId = intParam(c, 'id');
-  if (!get('SELECT 1 FROM episodes WHERE id = ?', episodeId)) throw notFound('赛段不存在');
+  episodeInEvent(c, episodeId);
   const b = await body(c);
   if (b.type === 'SL' || b.type === 'PS') throw bad('Starting Line 与中继站由系统固定生成，不能手动添加');
   const f = legFields(b);
@@ -196,8 +205,7 @@ episodeRoutes.post('/episodes/:id/legs', hostOnly, async (c) => {
 
 episodeRoutes.put('/legs/:id', hostOnly, async (c) => {
   const id = intParam(c, 'id');
-  const before = get('SELECT * FROM legs WHERE id = ?', id);
-  if (!before) throw notFound('环节不存在');
+  const before = legInEvent(c, id);
   const b = await body(c);
   const fixed = before.type === 'SL' || before.type === 'PS';
   if (b.type !== undefined && b.type !== before.type && (fixed || b.type === 'SL' || b.type === 'PS')) throw bad('Starting Line 与中继站的类型固定，不能改成或改自其他类型');
@@ -213,8 +221,7 @@ episodeRoutes.put('/legs/:id', hostOnly, async (c) => {
 
 episodeRoutes.delete('/legs/:id', hostOnly, (c) => {
   const id = intParam(c, 'id');
-  const before = get('SELECT * FROM legs WHERE id = ?', id);
-  if (!before) throw notFound('环节不存在');
+  const before = legInEvent(c, id);
   if (before.type === 'SL' || before.type === 'PS') throw bad('Starting Line 与中继站不能删除');
   removeAttachmentFiles(all('SELECT path FROM attachments WHERE leg_id = ?', id));
   run('DELETE FROM legs WHERE id = ?', id);
@@ -283,7 +290,8 @@ episodeRoutes.delete('/attachments/:id', async (c) => {
   return c.json({ ok: true });
 });
 
-episodeRoutes.get('/files/:id', (c) => {
+export const fileRoutes = new Hono<Env>();
+fileRoutes.get('/files/:id', (c) => {
   const id = intParam(c, 'id');
   const att = get('SELECT * FROM attachments WHERE id = ?', id);
   if (!att) throw notFound('附件不存在');

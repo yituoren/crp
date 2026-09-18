@@ -1,6 +1,6 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { all, get, run, tx, fromCents } from '../db.js';
-import { hostOnly, type Env } from '../auth.js';
+import { hostOnly, type Env, type EventRow } from '../auth.js';
 import { audit, body, str, int, intParam, notify, bad, notFound, money } from '../util.js';
 
 export const teamRoutes = new Hono<Env>();
@@ -30,27 +30,35 @@ function rbCountsByTeam() {
   }
   return m;
 }
-export const listTeams = () => {
+export const listTeams = (eventId: number) => {
   const rb = rbCountsByTeam();
-  return all('SELECT id, code, name, members, status, currency, sort FROM teams ORDER BY sort, id').map((t) => {
+  return all('SELECT id, code, name, members, status, currency, sort FROM teams WHERE event_id = ? ORDER BY sort, id', eventId).map((t) => {
     const members = parseMembers(t.members);
     return { ...t, members, label: teamLabel(t.name, members), currency: fromCents(t.currency), rbCounts: rb.get(t.id) ?? {} };
   });
 };
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
-teamRoutes.get('/teams', (c) => c.json({ teams: listTeams() }));
+/** 队伍必须属于当前比赛 */
+export function teamInEvent(c: Context, id: number) {
+  const t = get('SELECT * FROM teams WHERE id = ?', id);
+  if (!t || t.event_id !== (c.get('event') as EventRow).id) throw notFound('队伍不存在');
+  return t;
+}
+
+teamRoutes.get('/teams', (c) => c.json({ teams: listTeams(c.get('event').id) }));
 
 teamRoutes.post('/teams', hostOnly, async (c) => {
   const b = await body(c);
-  const count = get<{ n: number }>('SELECT COUNT(*) AS n FROM teams')!.n;
+  const eventId = c.get('event').id;
+  const count = get<{ n: number }>('SELECT COUNT(*) AS n FROM teams WHERE event_id = ?', eventId)!.n;
   const name = str(b.name, 50) || pad2(count + 1);
   let code = str(b.code, 20) || `T${count + 1}`;
-  while (get('SELECT 1 FROM teams WHERE code = ?', code)) code = code + '_';
+  while (get('SELECT 1 FROM teams WHERE code = ? AND event_id = ?', code, eventId)) code = code + '_';
   const currency = b.currency === undefined ? 0 : money(b.currency, '货币');
   const r = run(
-    'INSERT INTO teams(code, name, members, status, currency, sort) VALUES (?,?,?,?,?,?)',
-    code, name, JSON.stringify(parseMembers(b.members).slice(0, 20)), 'alive', currency, count + 1,
+    'INSERT INTO teams(code, name, members, status, currency, sort, event_id) VALUES (?,?,?,?,?,?,?)',
+    code, name, JSON.stringify(parseMembers(b.members).slice(0, 20)), 'alive', currency, count + 1, eventId,
   );
   audit(c.get('user'), 'create', 'team', Number(r.lastInsertRowid), undefined, { code, name });
   notify('teams');
@@ -59,8 +67,7 @@ teamRoutes.post('/teams', hostOnly, async (c) => {
 
 teamRoutes.put('/teams/:id', hostOnly, async (c) => {
   const id = intParam(c, 'id');
-  const before = get('SELECT * FROM teams WHERE id = ?', id);
-  if (!before) throw notFound('队伍不存在');
+  const before = teamInEvent(c, id);
   const b = await body(c);
   const name = b.name === undefined ? before.name : str(b.name, 50) || before.name;
   const members = b.members === undefined ? before.members : JSON.stringify(parseMembers(b.members).slice(0, 20));
@@ -74,8 +81,7 @@ teamRoutes.put('/teams/:id', hostOnly, async (c) => {
 
 teamRoutes.delete('/teams/:id', hostOnly, (c) => {
   const id = intParam(c, 'id');
-  const before = get('SELECT * FROM teams WHERE id = ?', id);
-  if (!before) throw notFound('队伍不存在');
+  const before = teamInEvent(c, id);
   run('DELETE FROM teams WHERE id = ?', id);
   audit(c.get('user'), 'delete', 'team', id, before);
   notify('teams');
@@ -85,7 +91,7 @@ teamRoutes.delete('/teams/:id', hostOnly, (c) => {
 /** 重置全部队伍：状态恢复存活、货币清零（不改队名） */
 teamRoutes.post('/teams/reset', hostOnly, (c) => {
   tx(() => {
-    run('UPDATE teams SET status = ?, currency = 0', 'alive');
+    run('UPDATE teams SET status = ?, currency = 0 WHERE event_id = ?', 'alive', c.get('event').id);
   });
   audit(c.get('user'), 'reset', 'team', 'all');
   notify('teams');

@@ -1,6 +1,6 @@
 import type { Context } from 'hono';
-import { run, now, toCents, getSetting } from './db.js';
-import type { AuthUser } from './auth.js';
+import { run, now, toCents } from './db.js';
+import { currentEvent, type AuthUser } from './auth.js';
 import { io } from './realtime.js';
 
 export class HttpError extends Error {
@@ -14,7 +14,7 @@ export const forbidden = (msg = '无权操作') => new HttpError(403, msg);
 
 export function audit(user: AuthUser, action: string, targetType: string, targetId: string | number = '', before?: unknown, after?: unknown) {
   run(
-    'INSERT INTO audit_logs(user_id, username, action, target_type, target_id, before, after, created_at) VALUES (?,?,?,?,?,?,?,?)',
+    'INSERT INTO audit_logs(user_id, username, action, target_type, target_id, before, after, created_at, event_id) VALUES (?,?,?,?,?,?,?,?,?)',
     user.id,
     user.username,
     action,
@@ -23,6 +23,7 @@ export function audit(user: AuthUser, action: string, targetType: string, target
     before === undefined ? null : JSON.stringify(before),
     after === undefined ? null : JSON.stringify(after),
     now(),
+    currentEvent()?.id ?? null,
   );
 }
 
@@ -53,7 +54,7 @@ export const isoOrNull = (v: unknown): string | null => {
   if (Number.isNaN(d.getTime())) throw bad(`时间格式无效：${v}`);
   return d.toISOString();
 };
-export const currencyMode = (): 'yuan' | 'coin' => (getSetting('currency_mode', 'yuan') === 'coin' ? 'coin' : 'yuan');
+export const currencyMode = (): 'yuan' | 'coin' => (currentEvent()?.currency_mode === 'coin' ? 'coin' : 'yuan');
 /** 金额格式化（服务端提示用）：经费两位小数，货币整数 */
 export function fmtMoneyServer(cents: number): string {
   const v = cents / 100;

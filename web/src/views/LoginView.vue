@@ -31,11 +31,11 @@ async function submit() {
 <template>
   <div class="login-wrap">
     <div class="login-box">
-      <h2>{{ auth.event.name }}<br /><span style="font-size: 15px; font-weight: 500; color: var(--gray-500)">幕后指挥系统</span></h2>
+      <h2>城市飞奔<br /><span style="font-size: 15px; font-weight: 500; color: var(--gray-500)">幕后指挥系统</span></h2>
       <form @submit.prevent="submit">
         <div class="form-group">
           <label>幕后ID</label>
-          <input v-model="form.username" autocomplete="username" :placeholder="mode === 'login' ? '请输入你的幕后ID' : 'ID需在主办准入名单中'" />
+          <input v-model="form.username" autocomplete="username" :placeholder="mode === 'login' ? '请输入你的幕后ID' : '起一个幕后ID'" />
         </div>
         <div class="form-group">
           <label>{{ mode === 'login' ? '密码' : '设置密码' }}</label>
@@ -52,7 +52,7 @@ async function submit() {
         <a v-if="mode === 'login'" href="#" @click.prevent="mode = 'register'; msg = ''">还没有账号？立即注册</a>
         <a v-else href="#" @click.prevent="mode = 'login'; msg = ''">已有账号？去登录</a>
       </div>
-      <p class="info-text mt-2" style="text-align: center">注册需要主办先把你的ID加入准入名单。忘记密码请联系主办重置。</p>
+      <p class="info-text mt-2" style="text-align: center">注册后在主页输入主办给的邀请码加入比赛。忘记密码请联系主办或管理员重置。</p>
     </div>
   </div>
 </template>

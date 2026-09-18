@@ -3,6 +3,7 @@ import { all, get, run, tx, now } from '../db.js';
 import { hostOnly, canRecordProgress, canManagePenalty, isHostRole, isPitstopStation, type Env, isAdminRole } from '../auth.js';
 import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forbidden } from '../util.js';
 import { teamLabelMap } from './teams.js';
+import { episodeInEvent } from './episodes.js';
 
 export const progressRoutes = new Hono<Env>();
 
@@ -44,6 +45,7 @@ export function listPenalties(episodeId: number) {
 
 progressRoutes.get('/episodes/:id/progress', (c) => {
   const episodeId = intParam(c, 'id');
+  episodeInEvent(c, episodeId);
   return c.json({ progress: listProgress(episodeId), penalties: listPenalties(episodeId), pitstop: pitstopRows(episodeId) });
 });
 
@@ -57,6 +59,7 @@ progressRoutes.post('/progress', async (c) => {
   const episodeId = int(b.episodeId), teamId = int(b.teamId), legId = int(b.legId);
   let action = String(b.action ?? '');
   if (!episodeId || !teamId || !legId) throw bad('缺少赛段/队伍/环节');
+  episodeInEvent(c, episodeId);
   const leg = get('SELECT * FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId);
   if (!leg) throw notFound('环节不存在');
   if (action === 'single') action = 'complete'; // 旧客户端兼容：所有环节都记开始/结束
@@ -228,6 +231,7 @@ function upsertProgress(episodeId: number, teamId: number, legId: number, p: any
 /** 修改记录：主办任意；跟队可改所跟队伍在进行中赛段的已有记录（不能清空时间、不能填未来） */
 progressRoutes.put('/progress/:episodeId/:teamId/:legId', async (c) => {
   const episodeId = intParam(c, 'episodeId'), teamId = intParam(c, 'teamId'), legId = intParam(c, 'legId');
+  episodeInEvent(c, episodeId);
   const user = c.get('user');
   if (!get('SELECT 1 FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId)) throw notFound('环节不存在');
   const b = await body(c);
@@ -266,6 +270,7 @@ progressRoutes.put('/progress/:episodeId/:teamId/:legId', async (c) => {
 /** 补罚时：minutes 为正是增加罚时，为负是减少罚时。主办与本赛段站点人员可操作 */
 progressRoutes.post('/episodes/:id/penalties', async (c) => {
   const episodeId = intParam(c, 'id');
+  episodeInEvent(c, episodeId);
   const user = c.get('user');
   const b = await body(c);
   const teamId = int(b.teamId), minutes = int(b.minutes);
@@ -317,7 +322,7 @@ progressRoutes.post('/penalties/:id/revert', (c) => {
 export function pitstopRows(episodeId: number) {
   const psLeg = get('SELECT id FROM legs WHERE episode_id = ? AND type = ? ORDER BY sort DESC LIMIT 1', episodeId, 'PS');
   const labels = teamLabelMap();
-  const teams = all<any>('SELECT id, code, name, status FROM teams ORDER BY sort, id').map((t): any => ({ ...t, name: labels.get(t.id) ?? t.name }));
+  const teams = all<any>('SELECT id, code, name, status FROM teams WHERE event_id = (SELECT event_id FROM episodes WHERE id = ?) ORDER BY sort, id', episodeId).map((t): any => ({ ...t, name: labels.get(t.id) ?? t.name }));
   const results = new Map(all('SELECT * FROM pitstop_results WHERE episode_id = ?', episodeId).map((r) => [r.team_id, r]));
   const penalties = new Map<number, number>();
   for (const p of all('SELECT team_id, SUM(minutes) AS m FROM penalties WHERE episode_id = ? GROUP BY team_id', episodeId)) penalties.set(p.team_id, p.m);
@@ -343,10 +348,11 @@ export function pitstopRows(episodeId: number) {
   return rows;
 }
 
-progressRoutes.get('/episodes/:id/pitstop', (c) => c.json({ pitstop: pitstopRows(intParam(c, 'id')) }));
+progressRoutes.get('/episodes/:id/pitstop', (c) => { episodeInEvent(c, intParam(c, 'id')); return c.json({ pitstop: pitstopRows(intParam(c, 'id')) }); });
 
 progressRoutes.put('/episodes/:id/pitstop/:teamId', async (c) => {
   const episodeId = intParam(c, 'id'), teamId = intParam(c, 'teamId');
+  episodeInEvent(c, episodeId);
   const user = c.get('user');
   let b = await body(c);
   if (!isHostRole(user.role)) {

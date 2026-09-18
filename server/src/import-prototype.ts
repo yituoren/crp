@@ -6,7 +6,7 @@
 import bcrypt from 'bcryptjs';
 import fs from 'node:fs';
 import path from 'node:path';
-import { all, get, run, tx, now, getSetting, UPLOAD_DIR } from './db.js';
+import { all, get, run, tx, now, UPLOAD_DIR } from './db.js';
 import { LEG_TYPES, TYPE_DEFAULTS } from './routes/episodes.js';
 
 export interface ImportOptions {
@@ -25,18 +25,18 @@ function toIso(hms: string | null | undefined, baseDate: string): string | null 
 export async function importPrototype(data: any, opts: ImportOptions = {}) {
   const baseDate = opts.baseDate ?? new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
   const report = { users: 0, accessList: 0, teams: 0, episodes: 0, legs: 0, attachments: 0, assignments: 0, progress: 0, ledger: 0, warnings: [] as string[] };
-  const hosts = getSetting('hosts', '').split(',').map((s) => s.trim()).filter(Boolean);
 
   // 密码哈希放在事务外（异步）
   const accounts: { username: string; hash: string; role: string; createdAt: string }[] = [];
   for (const [username, acc] of Object.entries<any>(data.accounts ?? {})) {
     const hash = await bcrypt.hash(String(acc.password ?? '1234'), 10);
-    accounts.push({ username, hash, role: acc.role === 'host' || hosts.includes(username) ? 'host' : 'crew', createdAt: acc.createdAt ?? now() });
+    accounts.push({ username, hash, role: 'crew', createdAt: acc.createdAt ?? now() });
   }
 
   tx(() => {
     if (opts.wipe) {
-      for (const t of ['pitstop_results', 'penalties', 'progress', 'currency_ledger', 'assignments', 'attachments', 'legs', 'episodes', 'teams']) run(`DELETE FROM ${t}`);
+      for (const t of ['pitstop_results', 'penalties', 'progress', 'currency_ledger', 'assignments', 'attachments']) run(`DELETE FROM ${t}`);
+      run('DELETE FROM legs WHERE episode_id IN (SELECT id FROM episodes WHERE event_id = 1)'); run('DELETE FROM episodes WHERE event_id = 1'); run('DELETE FROM teams WHERE event_id = 1');
     }
     for (const a of accounts) {
       if (get('SELECT 1 FROM users WHERE username = ?', a.username)) { report.warnings.push(`账号 ${a.username} 已存在，跳过`); continue; }
@@ -53,12 +53,12 @@ export async function importPrototype(data: any, opts: ImportOptions = {}) {
     let sort = 0;
     for (const [code, t] of Object.entries<any>(data.teams ?? {})) {
       sort++;
-      const existing = get('SELECT id FROM teams WHERE code = ?', code);
+      const existing = get('SELECT id FROM teams WHERE code = ? AND event_id = 1', code);
       if (existing) {
         run('UPDATE teams SET name = ?, status = ?, currency = ? WHERE id = ?', t.name ?? code, t.eliminated ? 'eliminated' : 'alive', Math.round(Number(t.currency ?? 0) * 100), existing.id);
         teamIds.set(code, existing.id);
       } else {
-        const r = run('INSERT INTO teams(code, name, members, status, currency, sort) VALUES (?,?,?,?,?,?)', code, t.name ?? code, '', t.eliminated ? 'eliminated' : 'alive', Math.round(Number(t.currency ?? 0) * 100), sort);
+        const r = run('INSERT INTO teams(code, name, members, status, currency, sort, event_id) VALUES (?,?,?,?,?,?,1)', code, t.name ?? code, '', t.eliminated ? 'eliminated' : 'alive', Math.round(Number(t.currency ?? 0) * 100), sort);
         teamIds.set(code, Number(r.lastInsertRowid));
       }
       report.teams++;
@@ -67,9 +67,9 @@ export async function importPrototype(data: any, opts: ImportOptions = {}) {
     let epSort = 0;
     for (const [code, ep] of Object.entries<any>(data.episodes ?? {})) {
       epSort++;
-      let epId = get('SELECT id FROM episodes WHERE code = ?', code)?.id;
+      let epId = get('SELECT id FROM episodes WHERE code = ? AND event_id = 1', code)?.id;
       if (!epId) {
-        epId = Number(run('INSERT INTO episodes(code, name, budget, sort, status, notes) VALUES (?,?,?,?,?,?)', code, code, 0, epSort, 'pending', '').lastInsertRowid);
+        epId = Number(run('INSERT INTO episodes(code, name, budget, sort, status, notes, event_id) VALUES (?,?,?,?,?,?,1)', code, code, 0, epSort, 'pending', '').lastInsertRowid);
       } else {
         run('DELETE FROM legs WHERE episode_id = ?', epId);
       }

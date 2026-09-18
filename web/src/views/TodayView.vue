@@ -61,8 +61,8 @@ const stats = computed(() => ({
         <div class="team-card"><div class="text-gray text-sm">已到中继站</div><div class="stat-num" style="color: #db2777">{{ stats.finished }}</div></div>
       </div>
       <div class="flex mt-2">
-        <router-link to="/progress" class="btn">查看进度</router-link>
-        <router-link to="/schedule" class="btn btn-outline">去排班</router-link>
+        <router-link :to="{ name: 'progress' }" class="btn">查看进度</router-link>
+        <router-link :to="{ name: 'schedule' }" class="btn btn-outline">去排班</router-link>
         
       </div>
     </template>
@@ -120,9 +120,9 @@ const stats = computed(() => ({
     <template v-else-if="my?.role === 'live'">
       <p><span class="badge badge-live">直播员</span> 你本赛段负责直播跟进，可以查看所有队伍、环节、经费与罚时数据，但不做记录。</p>
       <div class="flex">
-        <router-link to="/progress" class="btn">查看进度</router-link>
-        <router-link to="/episodes" class="btn btn-outline">赛段与环节</router-link>
-        <router-link to="/announcements" class="btn btn-outline">公告</router-link>
+        <router-link :to="{ name: 'progress' }" class="btn">查看进度</router-link>
+        <router-link :to="{ name: 'episodes' }" class="btn btn-outline">赛段与环节</router-link>
+        <router-link :to="{ name: 'announcements' }" class="btn btn-outline">公告</router-link>
       </div>
     </template>
 

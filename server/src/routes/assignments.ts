@@ -3,6 +3,7 @@ import { all, get, run, tx } from '../db.js';
 import { hostOnly, parseLegIds, type Env } from '../auth.js';
 import { audit, body, int, intParam, notify, bad, notFound } from '../util.js';
 import { teamLabelMap } from './teams.js';
+import { episodeInEvent } from './episodes.js';
 
 export const assignmentRoutes = new Hono<Env>();
 
@@ -27,13 +28,14 @@ export function listAssignments(episodeId: number) {
 
 assignmentRoutes.get('/episodes/:id/assignments', (c) => {
   const episodeId = intParam(c, 'id');
+  episodeInEvent(c, episodeId);
   return c.json({ assignments: listAssignments(episodeId) });
 });
 
 /** 整体替换某赛段的排班。items: [{ userId, role: 'follow'|'station'|'live'|'crew', teamId?, legIds?: number[] }] */
 assignmentRoutes.put('/episodes/:id/assignments', hostOnly, async (c) => {
   const episodeId = intParam(c, 'id');
-  if (!get('SELECT 1 FROM episodes WHERE id = ?', episodeId)) throw notFound('赛段不存在');
+  episodeInEvent(c, episodeId);
   const { items } = await body(c);
   if (!Array.isArray(items)) throw bad('items 必须是数组');
   const before = listAssignments(episodeId);

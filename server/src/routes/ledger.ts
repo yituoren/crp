@@ -9,8 +9,8 @@ export const ledgerRoutes = new Hono<Env>();
 ledgerRoutes.get('/ledger', (c) => {
   const ep = c.req.query('episodeId');
   const teamId = c.req.query('teamId');
-  const conds: string[] = [];
-  const params: (number | string)[] = [];
+  const conds: string[] = ['t.event_id = ?'];
+  const params: (number | string)[] = [c.get('event').id];
   if (ep) { conds.push('l.episode_id = ?'); params.push(Number(ep)); }
   if (teamId) { conds.push('l.team_id = ?'); params.push(Number(teamId)); }
   const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
@@ -38,7 +38,7 @@ ledgerRoutes.post('/ledger', async (c) => {
   if (!delta) throw bad('金额不能为 0');
   if (!canAdjustCurrency(user, episodeId ?? 0, teamId)) throw forbidden('只有主办或该队伍的跟队可以操作经费');
   const team = get('SELECT * FROM teams WHERE id = ?', teamId);
-  if (!team) throw notFound('队伍不存在');
+  if (!team || team.event_id !== c.get('event').id) throw notFound('队伍不存在');
   if (episodeId) {
     const epRow = get('SELECT status, code FROM episodes WHERE id = ?', episodeId);
     if (epRow?.status === 'pending' && !isAdminRole(user.role)) throw bad(`${epRow.code} 尚未开始，开始赛段后才能操作经费`);

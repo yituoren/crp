@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { onMounted, onUnmounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
@@ -13,6 +13,19 @@ const auth = useAuth();
 const race = useRace();
 const ui = useUi();
 const router = useRouter();
+const route = useRoute();
+const hash = computed(() => String(route.params.hash ?? ''));
+/** 进入/切换比赛：加载比赛信息，再加载数据 */
+async function enterEvent() {
+  race.reset();
+  try {
+    await auth.loadEvent(hash.value);
+    await race.loadAll();
+  } catch (e) {
+    ui.error(e);
+    router.replace('/');
+  }
+}
 
 // 手机端：左右两屏（左：实时大屏，右：常规页面），像 iPhone 桌面一样整页切换。
 // 不依赖浏览器的横向滚动，用 JS 识别手势/触控板横滑后整屏平移，手机和电脑缩窄窗口都可用。
@@ -82,9 +95,10 @@ onMounted(async () => {
   window.addEventListener('touchmove', onTouchMove, { passive: true });
   window.addEventListener('touchend', onTouchEnd, { passive: true });
   window.addEventListener('wheel', onWheel, { passive: true });
-  try { await race.loadAll(); } catch (e) { ui.error(e); }
+  await enterEvent();
   connectRealtime();
 });
+watch(hash, (h, prev) => { if (h && prev && h !== prev) enterEvent(); });
 onUnmounted(() => {
   disconnectRealtime();
   narrowQuery.removeEventListener('change', onLayoutChange);
@@ -114,7 +128,7 @@ async function logout() {
     <section class="pane pane-main">
   <div class="container" :class="{ 'container-fixed': $route.meta.fillPage }">
     <div class="page-header">
-      <h1>{{ auth.event.name }}</h1>
+      <h1><router-link to="/" class="btn btn-outline btn-sm back-btn" title="返回主页">返回</router-link> {{ auth.event.name }}</h1>
       <div class="user-bar">
         <span class="sync-status" :class="ui.online ? 'online' : 'offline'">● {{ ui.online ? '实时同步中' : '连接中断' }}</span>
         <span class="badge" :class="auth.isHost ? 'badge-host' : 'badge-crew'">{{ auth.isAdmin ? '管理员' : auth.isHost ? '主办' : '幕后' }}</span>
@@ -124,14 +138,14 @@ async function logout() {
       </div>
     </div>
     <nav class="nav">
-      <router-link to="/" active-class="" exact-active-class="router-link-active">我的</router-link>
-      <router-link to="/announcements" class="nav-dot-wrap">公告<span v-if="race.unreadAnnouncements" class="nav-dot" :title="`${race.unreadAnnouncements} 条未读`"></span></router-link>
-      <router-link to="/episodes" :class="{ 'router-link-active': $route.name === 'leg' }">赛段</router-link>
-      <router-link to="/schedule">排班</router-link>
-      <router-link to="/teams">队伍</router-link>
-      <router-link to="/currency">经费</router-link>
-      <router-link to="/progress">进度</router-link>
-      <router-link v-if="auth.isHost" to="/admin">后台</router-link>
+      <router-link :to="{ name: 'today' }" active-class="" exact-active-class="router-link-active">我的</router-link>
+      <router-link :to="{ name: 'announcements' }" class="nav-dot-wrap">公告<span v-if="race.unreadAnnouncements" class="nav-dot" :title="`${race.unreadAnnouncements} 条未读`"></span></router-link>
+      <router-link :to="{ name: 'episodes' }" :class="{ 'router-link-active': $route.name === 'leg' }">赛段</router-link>
+      <router-link :to="{ name: 'schedule' }">排班</router-link>
+      <router-link :to="{ name: 'teams' }">队伍</router-link>
+      <router-link :to="{ name: 'currency' }">经费</router-link>
+      <router-link :to="{ name: 'progress' }">进度</router-link>
+      <router-link v-if="auth.isHost" :to="{ name: 'admin' }">后台</router-link>
     </nav>
     <div class="page-body">
       <router-view v-if="race.loaded" />

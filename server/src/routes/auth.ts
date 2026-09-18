@@ -1,15 +1,10 @@
 import { Hono } from 'hono';
 import bcrypt from 'bcryptjs';
-import { all, get, run, now, getSetting } from '../db.js';
-import { authRequired, issueToken, clearToken, type Env } from '../auth.js';
+import { get, run, now } from '../db.js';
+import { authRequired, issueToken, clearToken, hostAnywhere, type Env } from '../auth.js';
 import { audit, body, str } from '../util.js';
-import { rbGap } from './admin.js';
 
 export const authRoutes = new Hono<Env>();
-
-function hostNames(): string[] {
-  return getSetting('hosts', '').split(',').map((s) => s.trim()).filter(Boolean);
-}
 
 authRoutes.post('/login', async (c) => {
   const { username, password } = await body(c);
@@ -24,26 +19,23 @@ authRoutes.post('/login', async (c) => {
   return c.json({ user });
 });
 
+/** 注册：任何人都可以注册，加入比赛靠邀请码 */
 authRoutes.post('/register', async (c) => {
   const { username, password, displayName } = await body(c);
   const u = str(username, 50);
   const pw = String(password ?? '');
   if (!u || !pw) return c.json({ error: '请填写完整信息' }, 400);
   if (pw.length < 4) return c.json({ error: '密码至少 4 位' }, 400);
-  if (!get('SELECT 1 FROM access_list WHERE username = ?', u)) {
-    return c.json({ error: '你的ID不在主办准入名单中，请联系主办添加' }, 403);
-  }
   if (get('SELECT 1 FROM users WHERE username = ?', u)) {
-    return c.json({ error: '该ID已注册，如需重置密码请联系主办' }, 409);
+    return c.json({ error: '该ID已注册，如需重置密码请联系主办或管理员' }, 409);
   }
-  const role = hostNames().includes(u) ? 'host' : 'crew';
   const hash = await bcrypt.hash(pw, 10);
   const r = run(
     'INSERT INTO users(username, password_hash, display_name, role, created_at) VALUES (?,?,?,?,?)',
-    u, hash, str(displayName, 50) || u, role, now(),
+    u, hash, str(displayName, 50) || u, 'crew', now(),
   );
-  const user = { id: Number(r.lastInsertRowid), username: u, displayName: str(displayName, 50) || u, role: role as 'host' | 'crew' };
-  audit(user, 'register', 'user', user.id, undefined, { username: u, role });
+  const user = { id: Number(r.lastInsertRowid), username: u, displayName: str(displayName, 50) || u, role: 'crew' as const };
+  audit(user, 'register', 'user', user.id, undefined, { username: u });
   await issueToken(c, user);
   return c.json({ user });
 });
@@ -54,17 +46,8 @@ authRoutes.post('/logout', (c) => {
 });
 
 authRoutes.get('/me', authRequired, (c) => {
-  return c.json({
-    user: c.get('user'),
-    event: {
-      name: getSetting('event_name', '城市飞奔'),
-      hosts: hostNames(),
-      teamSize: Math.max(1, Number(getSetting('team_size', '2')) || 2),
-      currencyMode: getSetting('currency_mode', 'yuan') === 'coin' ? 'coin' : 'yuan',
-      rbGap: rbGap(),
-    },
-    serverTime: now(),
-  });
+  const user = c.get('user');
+  return c.json({ user, hostAnywhere: user.role === 'admin' || hostAnywhere(user.username), serverTime: now() });
 });
 
 authRoutes.post('/change-password', authRequired, async (c) => {
@@ -77,11 +60,4 @@ authRoutes.post('/change-password', authRequired, async (c) => {
   run('UPDATE users SET password_hash = ? WHERE id = ?', await bcrypt.hash(pw, 10), user.id);
   audit(user, 'change_password', 'user', user.id);
   return c.json({ ok: true });
-});
-
-/** 所有幕后（供排班等页面使用） */
-authRoutes.get('/users', authRequired, (c) => {
-  return c.json({
-    users: all('SELECT id, username, display_name AS displayName, role, disabled FROM users ORDER BY role DESC, username'),
-  });
 });

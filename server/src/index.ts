@@ -6,7 +6,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { authRequired, type Env } from './auth.js';
+import { authRequired, eventContext, type Env } from './auth.js';
 import { HttpError } from './util.js';
 import { attachRealtime } from './realtime.js';
 import { seed } from './seed.js';
@@ -19,13 +19,16 @@ import { ledgerRoutes } from './routes/ledger.js';
 import { announcementRoutes } from './routes/announcements.js';
 import { adminRoutes } from './routes/admin.js';
 import { dashboardRoutes } from './routes/dashboard.js';
+import { eventListRoutes, eventInfoRoutes } from './routes/events.js';
+import { userRoutes, systemRoutes } from './routes/admin.js';
+import { fileRoutes } from './routes/episodes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3000);
 const PUBLIC_DIR = process.env.PUBLIC_DIR ?? path.resolve(__dirname, '..', 'public');
 
 const seeded = seed();
-console.log(`[seed] hosts=${seeded.hosts.join(',')} episodes=${seeded.episodes} teams=${seeded.teams}`);
+console.log(`[seed] events=${seeded.events} episodes=${seeded.episodes} teams=${seeded.teams}`);
 
 const app = new Hono<Env>();
 app.use(logger());
@@ -46,16 +49,26 @@ const api = new Hono<Env>();
 api.route('/auth', authRoutes);
 api.get('/health', (c) => c.json({ ok: true, time: new Date().toISOString() }));
 
+// 进比赛之前：比赛列表 / 加入、账号管理、系统级备份
 const secured = new Hono<Env>();
 secured.use('*', authRequired);
-secured.route('/', episodeRoutes);
-secured.route('/', teamRoutes);
-secured.route('/', assignmentRoutes);
-secured.route('/', progressRoutes);
-secured.route('/', ledgerRoutes);
-secured.route('/', announcementRoutes);
-secured.route('/', adminRoutes);
-secured.route('/', dashboardRoutes);
+secured.route('/', eventListRoutes);
+secured.route('/', userRoutes);
+secured.route('/', systemRoutes);
+secured.route('/', fileRoutes);
+// 比赛内：/api/events/:hash/...，所有数据接口都挂在比赛下
+const inEvent = new Hono<Env>();
+inEvent.use('*', eventContext);
+inEvent.route('/', eventInfoRoutes);
+inEvent.route('/', episodeRoutes);
+inEvent.route('/', teamRoutes);
+inEvent.route('/', assignmentRoutes);
+inEvent.route('/', progressRoutes);
+inEvent.route('/', ledgerRoutes);
+inEvent.route('/', announcementRoutes);
+inEvent.route('/', adminRoutes);
+inEvent.route('/', dashboardRoutes);
+secured.route('/events/:hash', inEvent);
 api.route('/', secured);
 app.route('/api', api);
 app.notFound((c) => (c.req.path.startsWith('/api/') ? c.json({ error: '接口不存在' }, 404) : c.text('Not found', 404)));

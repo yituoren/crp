@@ -70,10 +70,10 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
 </script>
 
 <template>
-  <div v-if="!leg || !ep" class="empty-state">环节不存在 <router-link to="/episodes">返回赛段列表</router-link></div>
+  <div v-if="!leg || !ep" class="empty-state">环节不存在 <router-link :to="{ name: 'episodes' }">返回赛段列表</router-link></div>
   <template v-else>
     <div class="flex-between mb-2">
-      <div><router-link to="/episodes" class="text-sm">← {{ ep.code }} 环节列表</router-link></div>
+      <div><router-link :to="{ name: 'episodes' }" class="text-sm">← {{ ep.code }} 环节列表</router-link></div>
     </div>
     <!-- 主办/管理员：页内编辑 -->
     <div v-if="auth.isHost" class="card leg-edit">

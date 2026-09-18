@@ -12,6 +12,16 @@ interface Options {
 }
 
 let onUnauthorized: (() => void) | null = null;
+/** 当前所在比赛的哈希。除全局接口（/auth /events /users /system /files /health）外，其余路径都自动加 /events/<hash> 前缀 */
+let eventHash = '';
+export function setEventHash(h: string) { eventHash = h; }
+export function getEventHash() { return eventHash; }
+const GLOBAL_PREFIXES = ['/auth', '/events', '/users', '/system', '/files', '/health'];
+export function apiPath(path: string): string {
+  if (GLOBAL_PREFIXES.some((p) => path === p || path.startsWith(p + '/') || path.startsWith(p + '?'))) return '/api' + path;
+  if (!eventHash) throw new ApiError('尚未进入比赛', 0);
+  return `/api/events/${eventHash}${path}`;
+}
 export function setUnauthorizedHandler(fn: () => void) {
   onUnauthorized = fn;
 }
@@ -24,7 +34,7 @@ export async function api<T = any>(path: string, opts: Options = {}): Promise<T>
   let lastErr: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const res = await fetch('/api' + path, {
+      const res = await fetch(apiPath(path), {
         method,
         credentials: 'same-origin',
         headers: body !== undefined ? { 'content-type': 'application/json' } : undefined,

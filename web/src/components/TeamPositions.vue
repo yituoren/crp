@@ -16,7 +16,7 @@ const liveEpisode = computed(() => {
   const eps = race.episodes;
   return eps.find((e) => e.status === 'running') ?? eps.find((e) => e.status === 'pending') ?? eps[eps.length - 1] ?? null;
 });
-const statusText = computed(() => (liveEpisode.value?.status === 'running' ? '进行中' : liveEpisode.value?.status === 'pending' ? '即将开始' : '已结束'));
+const statusText = computed(() => (!liveEpisode.value ? '暂无赛段' : liveEpisode.value.status === 'running' ? '进行中' : liveEpisode.value.status === 'pending' ? '即将开始' : '已结束'));
 async function load() {
   if (!liveEpisode.value) return;
   try { data.value = await api(`/dashboard/${liveEpisode.value.id}`); } catch { /* keep last */ }

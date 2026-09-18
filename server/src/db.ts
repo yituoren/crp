@@ -151,6 +151,29 @@ CREATE TABLE IF NOT EXISTS announcements (
   pinned_at TEXT,                             -- 置顶时间，空为未置顶
   audience TEXT NOT NULL DEFAULT 'all'        -- 通知对象（预留）
 );
+CREATE TABLE IF NOT EXISTS events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  hash TEXT NOT NULL UNIQUE,                  -- 路由用的短哈希
+  name TEXT NOT NULL,
+  invite_code TEXT NOT NULL DEFAULT '',       -- 邀请码，输入后加入比赛
+  hosts TEXT NOT NULL DEFAULT '',             -- 主办名单（逗号分隔的幕后ID）
+  team_size INTEGER NOT NULL DEFAULT 2,
+  currency_mode TEXT NOT NULL DEFAULT 'yuan', -- yuan | coin
+  rb_gap INTEGER NOT NULL DEFAULT 2,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS event_members (
+  event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  joined_at TEXT NOT NULL,
+  UNIQUE(event_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS ann_reads (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  last_read_id INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(user_id, event_id)
+);
 CREATE TABLE IF NOT EXISTS audit_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER,
@@ -195,6 +218,63 @@ ensureColumn('penalties', 'reverts_id', 'INTEGER');
 ensureColumn('penalties', 'leg_id', 'INTEGER');
 ensureColumn('currency_ledger', 'leg_id', 'INTEGER');
 ensureColumn('assignments', 'leg_ids', 'TEXT'); // 站点可驻守多个环节：JSON 数组，leg_id 保留为第一个
+
+// ---------- 多比赛：赛段、队伍、公告、日志都挂在比赛下 ----------
+ensureColumn('episodes', 'event_id', 'INTEGER NOT NULL DEFAULT 1');
+ensureColumn('teams', 'event_id', 'INTEGER NOT NULL DEFAULT 1');
+ensureColumn('announcements', 'event_id', 'INTEGER NOT NULL DEFAULT 1');
+ensureColumn('audit_logs', 'event_id', 'INTEGER');
+/** 重建表以改掉 UNIQUE(code)：不同比赛可以有同样的 EP1 / T1。只做一次。 */
+function rebuildForEvents() {
+  const flag = db.prepare("SELECT value FROM settings WHERE key = 'schema_events'").get() as { value: string } | undefined;
+  if (flag?.value === 'v1') return;
+  db.exec('PRAGMA foreign_keys = OFF');
+  db.exec('BEGIN');
+  try {
+    db.exec(`
+      CREATE TABLE episodes_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT NOT NULL,
+        name TEXT NOT NULL,
+        budget INTEGER NOT NULL DEFAULT 0,
+        sort INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'pending',
+        notes TEXT NOT NULL DEFAULT '',
+        started_at TEXT,
+        finished_at TEXT,
+        event_id INTEGER NOT NULL DEFAULT 1,
+        UNIQUE(event_id, code)
+      );
+      INSERT INTO episodes_new(id, code, name, budget, sort, status, notes, started_at, finished_at, event_id)
+        SELECT id, code, name, budget, sort, status, notes, started_at, finished_at, event_id FROM episodes;
+      DROP TABLE episodes;
+      ALTER TABLE episodes_new RENAME TO episodes;
+      CREATE TABLE teams_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT NOT NULL,
+        name TEXT NOT NULL,
+        members TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'alive',
+        currency INTEGER NOT NULL DEFAULT 0,
+        sort INTEGER NOT NULL DEFAULT 0,
+        event_id INTEGER NOT NULL DEFAULT 1,
+        UNIQUE(event_id, code)
+      );
+      INSERT INTO teams_new(id, code, name, members, status, currency, sort, event_id)
+        SELECT id, code, name, members, status, currency, sort, event_id FROM teams;
+      DROP TABLE teams;
+      ALTER TABLE teams_new RENAME TO teams;
+      INSERT OR REPLACE INTO settings(key, value) VALUES ('schema_events', 'v1');
+    `);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  } finally {
+    db.exec('PRAGMA foreign_keys = ON');
+  }
+}
+rebuildForEvents();
 
 type Param = string | number | null;
 export type Row = Record<string, any>;

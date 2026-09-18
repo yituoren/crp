@@ -4,15 +4,15 @@ import { api } from '@/api';
 import { useAuth } from './auth';
 import { legName, type Announcement, type Assignment, type Episode, type LedgerEntry, type Penalty, type PitstopRow, type Progress, type Team, type User } from '@/types';
 
-const EP_KEY = 'crp.currentEpisodeId';
 
 export const useRace = defineStore('race', () => {
   const auth = useAuth();
+  const epKey = () => `crp.currentEpisodeId.${auth.event.hash || 'none'}`;
   const episodes = ref<Episode[]>([]);
   const teams = ref<Team[]>([]);
   const users = ref<User[]>([]);
   const announcements = ref<Announcement[]>([]);
-  const currentEpisodeId = ref<number>(Number(localStorage.getItem(EP_KEY) ?? 0) || 0);
+  const currentEpisodeId = ref<number>(0);
   const assignments = ref<Assignment[]>([]);
   const progress = ref<Progress[]>([]);
   const penalties = ref<Penalty[]>([]);
@@ -149,7 +149,7 @@ export const useRace = defineStore('race', () => {
     }
   }
   async function loadTeams() { teams.value = (await api('/teams')).teams; }
-  async function loadUsers() { users.value = (await api('/auth/users')).users; }
+  async function loadUsers() { users.value = (await api('/members')).users; }
   // 未读公告：最后已读的公告 id 存在账号上，跨设备一致
   const lastReadId = ref<number>(0);
   async function loadAnnouncements() {
@@ -186,10 +186,18 @@ export const useRace = defineStore('race', () => {
     await loadEpisodeScoped();
     loaded.value = true;
   }
+  /** 切换比赛：清空上一场的数据 */
+  function reset() {
+    loaded.value = false;
+    episodes.value = []; teams.value = []; users.value = []; announcements.value = [];
+    assignments.value = []; progress.value = []; penalties.value = []; pitstop.value = []; ledger.value = [];
+    lastReadId.value = 0;
+    currentEpisodeId.value = Number(localStorage.getItem(epKey()) ?? 0) || 0;
+  }
 
   function selectEpisode(id: number) {
     currentEpisodeId.value = id;
-    localStorage.setItem(EP_KEY, String(id));
+    localStorage.setItem(epKey(), String(id));
   }
   watch(currentEpisodeId, () => { if (loaded.value) loadEpisodeScoped(); });
 
@@ -210,6 +218,6 @@ export const useRace = defineStore('race', () => {
   return {
     episodes, teams, users, announcements, unreadAnnouncements, markAnnouncementsRead, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
     aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
-    loadAll, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
+    loadAll, reset, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
   };
 });
