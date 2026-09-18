@@ -17,7 +17,7 @@ export const useAuth = defineStore('auth', () => {
   const serverOffsetMs = ref(0);
   const serverNow = () => new Date(Date.now() + serverOffsetMs.value);
   const isAdmin = computed(() => user.value?.role === 'admin');
-  /** 主办：按当前比赛判断（管理员在任何比赛里都是主办） */
+  /** 是否拥有主办权限：按当前比赛判断；管理员是全局角色，权限覆盖主办 */
   const isHost = computed(() => isAdmin.value || event.value.myRole === 'host');
 
   async function fetchMe() {

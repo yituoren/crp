@@ -27,7 +27,7 @@ async function saveSettings() {
   } catch (e) { ui.error(e); }
 }
 
-// 成员与主办：创建者和管理员固定为主办；其他成员由主办设置
+// 成员与主办：创建者固定为主办，其他成员由主办设置；管理员是全局角色，不在这里设置
 async function setRole(u: any, role: 'host' | 'crew') {
   const what = role === 'host' ? `把「${u.username}」设为本比赛主办？主办可以编辑赛段、排班、经费、罚时和设置。` : `取消「${u.username}」的主办身份？`;
   if (!(await ui.confirm(role === 'host' ? '设为主办' : '取消主办', what, { danger: role === 'crew' }))) return;
@@ -62,7 +62,7 @@ onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
   </div>
 
   <div v-if="tab === 'members'" class="card">
-    <div class="card-header"><span>成员与主办</span><span class="text-xs text-gray">凭邀请码加入的人默认是幕后；创建者和管理员固定为主办</span></div>
+    <div class="card-header"><span>成员与主办</span><span class="text-xs text-gray">凭邀请码加入的人默认是幕后；创建者固定为主办；管理员是全局角色，不在此设置</span></div>
     <div class="scroll-table">
       <table class="table">
         <thead><tr><th>幕后ID</th><th>本比赛身份</th><th>操作</th></tr></thead>

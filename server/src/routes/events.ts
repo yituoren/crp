@@ -92,7 +92,7 @@ eventInfoRoutes.put('/members/:userId', hostOnly, async (c) => {
   if (!role) throw bad('角色只能是 host 或 crew');
   const target = get<{ id: number; username: string; role: string }>('SELECT id, username, role FROM users WHERE id = ?', userId);
   if (!target) throw notFound('账号不存在');
-  if (target.role === 'admin') throw bad('管理员在所有比赛里都是主办，不需要设置');
+  if (target.role === 'admin') throw bad('管理员是全局角色，不在比赛里设置');
   if (ev.owner_id && ev.owner_id === userId) throw bad('创建者固定为主办');
   if (userId === me.id) throw bad('不能修改自己的主办身份');
   if (!get('SELECT 1 FROM event_members WHERE event_id = ? AND user_id = ?', ev.id, userId)) throw bad('该账号还没有加入本比赛');
