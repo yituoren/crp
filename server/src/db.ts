@@ -160,6 +160,7 @@ CREATE TABLE IF NOT EXISTS events (
   team_size INTEGER NOT NULL DEFAULT 2,
   currency_mode TEXT NOT NULL DEFAULT 'yuan', -- yuan | coin
   rb_gap INTEGER NOT NULL DEFAULT 2,
+  owner_id INTEGER,                           -- 创建者：与管理员一样无需邀请码
   created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS event_members (
@@ -224,6 +225,7 @@ ensureColumn('episodes', 'event_id', 'INTEGER NOT NULL DEFAULT 1');
 ensureColumn('teams', 'event_id', 'INTEGER NOT NULL DEFAULT 1');
 ensureColumn('announcements', 'event_id', 'INTEGER NOT NULL DEFAULT 1');
 ensureColumn('audit_logs', 'event_id', 'INTEGER');
+ensureColumn('events', 'owner_id', 'INTEGER');
 /** 重建表以改掉 UNIQUE(code)：不同比赛可以有同样的 EP1 / T1。只做一次。 */
 function rebuildForEvents() {
   const flag = db.prepare("SELECT value FROM settings WHERE key = 'schema_events'").get() as { value: string } | undefined;

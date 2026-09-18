@@ -73,12 +73,11 @@ eventInfoRoutes.put('/info', hostOnly, async (c) => {
   return c.json({ event: info(loadEvent(ev.hash)!, c.get('user')) });
 });
 
-/** 比赛成员（排班用）：已加入的幕后 + 主办名单 + 管理员 */
+/** 比赛成员（排班用）：已加入的人 + 创建者 + 管理员 */
 eventInfoRoutes.get('/members', (c) => {
   const ev = c.get('event');
-  const hosts = hostsOf(ev);
   const users = all<{ id: number; username: string; displayName: string; role: string; disabled: number }>('SELECT id, username, display_name AS displayName, role, disabled FROM users ORDER BY username')
-    .filter((u) => u.role === 'admin' || hosts.includes(u.username) || get('SELECT 1 FROM event_members WHERE event_id = ? AND user_id = ?', ev.id, u.id))
+    .filter((u) => u.role === 'admin' || (ev.owner_id && ev.owner_id === u.id) || get('SELECT 1 FROM event_members WHERE event_id = ? AND user_id = ?', ev.id, u.id))
     .map((u) => ({ ...u, role: roleIn(u, ev) }))
     .sort((a, b) => (a.role === b.role ? a.username.localeCompare(b.username) : a.role === 'admin' ? -1 : b.role === 'admin' ? 1 : a.role === 'host' ? -1 : 1));
   return c.json({ users });

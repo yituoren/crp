@@ -25,6 +25,7 @@ export interface EventRow {
   team_size: number;
   currency_mode: 'yuan' | 'coin';
   rb_gap: number;
+  owner_id: number | null;
   created_at: string;
 }
 export type Env = { Variables: { user: AuthUser; event: EventRow } };
@@ -34,14 +35,16 @@ export type Env = { Variables: { user: AuthUser; event: EventRow } };
 const eventStore = new AsyncLocalStorage<EventRow>();
 export const currentEvent = () => eventStore.getStore() ?? null;
 export const hostsOf = (ev: EventRow) => ev.hosts.split(/[,，]/).map((s) => s.trim()).filter(Boolean);
-/** 用户在某个比赛里的角色：管理员恒为 admin；主办名单内为 host；其余 crew */
-export function roleIn(user: { username: string; role: string }, ev: EventRow): 'admin' | 'host' | 'crew' {
+/** 用户在某个比赛里的角色：管理员恒为 admin；创建者和主办名单内为 host；其余 crew */
+export function roleIn(user: { id: number; username: string; role: string }, ev: EventRow): 'admin' | 'host' | 'crew' {
   if (user.role === 'admin') return 'admin';
+  if (ev.owner_id && ev.owner_id === user.id) return 'host';
   return hostsOf(ev).includes(user.username) ? 'host' : 'crew';
 }
-/** 是否已加入：管理员和主办名单成员默认在内 */
+/** 是否已加入：只有管理员和创建者默认在内，其他人（包括主办名单里的）都要凭邀请码加入 */
 export function isMember(user: { id: number; username: string; role: string }, ev: EventRow) {
-  if (roleIn(user, ev) !== 'crew') return true;
+  if (user.role === 'admin') return true;
+  if (ev.owner_id && ev.owner_id === user.id) return true;
   return !!get('SELECT 1 FROM event_members WHERE event_id = ? AND user_id = ?', ev.id, user.id);
 }
 export function joinEvent(userId: number, eventId: number) {
