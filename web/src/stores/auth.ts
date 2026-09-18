@@ -4,7 +4,7 @@ import { api, setEventHash } from '@/api';
 import type { EventInfo, User } from '@/types';
 import { setMoneyMode } from '@/utils/money';
 
-const EMPTY_EVENT: EventInfo = { id: 0, hash: '', name: '城市飞奔', hosts: [], teamSize: 2, currencyMode: 'yuan', rbGap: 2, myRole: 'crew' };
+const EMPTY_EVENT: EventInfo = { id: 0, hash: '', name: '城市飞奔', teamSize: 2, currencyMode: 'yuan', rbGap: 2, ownerId: null, myRole: 'crew' };
 
 export const useAuth = defineStore('auth', () => {
   const user = ref<User | null>(null);

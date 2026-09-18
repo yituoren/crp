@@ -34,21 +34,22 @@ export type Env = { Variables: { user: AuthUser; event: EventRow } };
 /** 当前请求所在的比赛，放在 AsyncLocalStorage 里，金额格式、审计日志等处不用层层传参 */
 const eventStore = new AsyncLocalStorage<EventRow>();
 export const currentEvent = () => eventStore.getStore() ?? null;
-export const hostsOf = (ev: EventRow) => ev.hosts.split(/[,，]/).map((s) => s.trim()).filter(Boolean);
-/** 用户在某个比赛里的角色：管理员恒为 admin；创建者和主办名单内为 host；其余 crew */
+/** 用户在某个比赛里的角色：管理员恒为 admin；创建者 host；成员表里标了 host 的为 host；其余 crew */
 export function roleIn(user: { id: number; username: string; role: string }, ev: EventRow): 'admin' | 'host' | 'crew' {
   if (user.role === 'admin') return 'admin';
   if (ev.owner_id && ev.owner_id === user.id) return 'host';
-  return hostsOf(ev).includes(user.username) ? 'host' : 'crew';
+  const m = get<{ role: string }>('SELECT role FROM event_members WHERE event_id = ? AND user_id = ?', ev.id, user.id);
+  return m?.role === 'host' ? 'host' : 'crew';
 }
-/** 是否已加入：只有管理员和创建者默认在内，其他人（包括主办名单里的）都要凭邀请码加入 */
+/** 是否已加入：只有管理员和创建者默认在内，其他人都要凭邀请码加入 */
 export function isMember(user: { id: number; username: string; role: string }, ev: EventRow) {
   if (user.role === 'admin') return true;
   if (ev.owner_id && ev.owner_id === user.id) return true;
   return !!get('SELECT 1 FROM event_members WHERE event_id = ? AND user_id = ?', ev.id, user.id);
 }
-export function joinEvent(userId: number, eventId: number) {
-  run('INSERT OR IGNORE INTO event_members(event_id, user_id, joined_at) VALUES (?,?,?)', eventId, userId, now());
+/** 凭邀请码加入：默认幕后 */
+export function joinEvent(userId: number, eventId: number, role: 'host' | 'crew' = 'crew') {
+  run('INSERT OR IGNORE INTO event_members(event_id, user_id, joined_at, role) VALUES (?,?,?,?)', eventId, userId, now(), role);
 }
 export const loadEvent = (hash: string) => get<EventRow>('SELECT * FROM events WHERE hash = ?', hash);
 /** /events/:hash 下的所有接口：解析比赛、校验成员、把用户角色换成该比赛内的角色 */
@@ -83,10 +84,10 @@ export function clearToken(c: Context) {
   deleteCookie(c, COOKIE, { path: '/' });
 }
 
-/** 用户是否是任一比赛的主办（决定能否看到账号管理） */
-export function hostAnywhere(username: string): boolean {
-  const evs = (get<{ n: number }>("SELECT COUNT(*) AS n FROM events WHERE ',' || REPLACE(hosts, '，', ',') || ',' LIKE ?", `%,${username},%`)?.n ?? 0);
-  return evs > 0;
+/** 用户是否是任一比赛的主办或创建者（决定能否看到账号管理） */
+export function hostAnywhere(userId: number): boolean {
+  if (get('SELECT 1 FROM events WHERE owner_id = ?', userId)) return true;
+  return !!get("SELECT 1 FROM event_members WHERE user_id = ? AND role = 'host'", userId);
 }
 
 export function loadUser(id: number): AuthUser | null {

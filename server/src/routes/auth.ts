@@ -47,7 +47,7 @@ authRoutes.post('/logout', (c) => {
 
 authRoutes.get('/me', authRequired, (c) => {
   const user = c.get('user');
-  return c.json({ user, hostAnywhere: user.role === 'admin' || hostAnywhere(user.username), serverTime: now() });
+  return c.json({ user, hostAnywhere: user.role === 'admin' || hostAnywhere(user.id), serverTime: now() });
 });
 
 authRoutes.post('/change-password', authRequired, async (c) => {

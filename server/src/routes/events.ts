@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { all, get, run } from '../db.js';
-import { hostOnly, adminOnly, hostsOf, isMember, joinEvent, loadEvent, roleIn, type Env, type EventRow } from '../auth.js';
-import { audit, body, str, int, bad, notify } from '../util.js';
+import { hostOnly, adminOnly, isMember, joinEvent, loadEvent, roleIn, type Env, type EventRow } from '../auth.js';
+import { audit, body, str, int, intParam, bad, notFound, notify } from '../util.js';
 
 /** 进比赛之前的接口：比赛列表、加入 */
 export const eventListRoutes = new Hono<Env>();
@@ -40,11 +40,11 @@ function info(ev: EventRow, user: { id: number; username: string; role: string }
     id: ev.id,
     hash: ev.hash,
     name: ev.name,
-    hosts: hostsOf(ev),
     teamSize: Math.max(1, ev.team_size || 1),
     currencyMode: ev.currency_mode === 'coin' ? 'coin' : 'yuan',
     rbGap: Math.max(0, ev.rb_gap ?? 2),
     inviteCode: role === 'crew' ? undefined : ev.invite_code, // 邀请码只给主办看
+    ownerId: ev.owner_id ?? null,
     myRole: role,
   };
 }
@@ -57,7 +57,6 @@ eventInfoRoutes.put('/info', hostOnly, async (c) => {
   const next = {
     name: b.name === undefined ? ev.name : str(b.name, 50) || ev.name,
     invite_code: b.inviteCode === undefined ? ev.invite_code : str(b.inviteCode, 50),
-    hosts: b.hosts === undefined ? ev.hosts : String(b.hosts).split(/[,，]/).map((s: string) => s.trim()).filter(Boolean).join(','),
     team_size: ev.team_size,
     currency_mode: ev.currency_mode,
     rb_gap: ev.rb_gap,
@@ -66,9 +65,9 @@ eventInfoRoutes.put('/info', hostOnly, async (c) => {
   if (b.teamSize !== undefined) { const n = int(b.teamSize, 0); if (n < 1 || n > 20) throw bad('每队人数必须是 1 到 20 的整数'); next.team_size = n; }
   if (b.rbGap !== undefined) { const n = int(b.rbGap, -1); if (n < 0 || n > 99) throw bad('路障次数差必须是 0 到 99 的整数'); next.rb_gap = n; }
   if (next.invite_code && get('SELECT 1 FROM events WHERE invite_code = ? AND id != ?', next.invite_code, ev.id)) throw bad('这个邀请码已被其他比赛使用');
-  run('UPDATE events SET name = ?, invite_code = ?, hosts = ?, team_size = ?, currency_mode = ?, rb_gap = ? WHERE id = ?',
-    next.name, next.invite_code, next.hosts, next.team_size, next.currency_mode, next.rb_gap, ev.id);
-  audit(c.get('user'), 'update', 'event', ev.id, { name: ev.name, hosts: ev.hosts, team_size: ev.team_size, currency_mode: ev.currency_mode, rb_gap: ev.rb_gap }, next);
+  run('UPDATE events SET name = ?, invite_code = ?, team_size = ?, currency_mode = ?, rb_gap = ? WHERE id = ?',
+    next.name, next.invite_code, next.team_size, next.currency_mode, next.rb_gap, ev.id);
+  audit(c.get('user'), 'update', 'event', ev.id, { name: ev.name, team_size: ev.team_size, currency_mode: ev.currency_mode, rb_gap: ev.rb_gap }, next);
   notify('admin');
   return c.json({ event: info(loadEvent(ev.hash)!, c.get('user')) });
 });
@@ -81,6 +80,26 @@ eventInfoRoutes.get('/members', (c) => {
     .map((u) => ({ ...u, role: roleIn(u, ev) }))
     .sort((a, b) => (a.role === b.role ? a.username.localeCompare(b.username) : a.role === 'admin' ? -1 : b.role === 'admin' ? 1 : a.role === 'host' ? -1 : 1));
   return c.json({ users });
+});
+
+/** 设置 / 取消主办：主办可操作；管理员和创建者的身份固定，不能改自己 */
+eventInfoRoutes.put('/members/:userId', hostOnly, async (c) => {
+  const ev = c.get('event');
+  const me = c.get('user');
+  const userId = intParam(c, 'userId');
+  const b = await body(c);
+  const role = b.role === 'host' ? 'host' : b.role === 'crew' ? 'crew' : null;
+  if (!role) throw bad('角色只能是 host 或 crew');
+  const target = get<{ id: number; username: string; role: string }>('SELECT id, username, role FROM users WHERE id = ?', userId);
+  if (!target) throw notFound('账号不存在');
+  if (target.role === 'admin') throw bad('管理员在所有比赛里都是主办，不需要设置');
+  if (ev.owner_id && ev.owner_id === userId) throw bad('创建者固定为主办');
+  if (userId === me.id) throw bad('不能修改自己的主办身份');
+  if (!get('SELECT 1 FROM event_members WHERE event_id = ? AND user_id = ?', ev.id, userId)) throw bad('该账号还没有加入本比赛');
+  run('UPDATE event_members SET role = ? WHERE event_id = ? AND user_id = ?', role, ev.id, userId);
+  audit(me, role === 'host' ? 'set_host' : 'unset_host', 'event_member', userId, undefined, { username: target.username, role });
+  notify('admin');
+  return c.json({ ok: true });
 });
 
 /** 本比赛的操作日志（管理员） */

@@ -9,7 +9,7 @@ import { seed } from '../seed.js';
 /** 账号管理：管理员，或任一比赛的主办 */
 const accountManager: MiddlewareHandler<Env> = async (c, next) => {
   const u = c.get('user');
-  if (u.role !== 'admin' && !hostAnywhere(u.username)) return c.json({ error: '仅管理员或主办可操作' }, 403);
+  if (u.role !== 'admin' && !hostAnywhere(u.id)) return c.json({ error: '仅管理员或主办可操作' }, 403);
   await next();
 };
 

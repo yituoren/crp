@@ -167,6 +167,7 @@ CREATE TABLE IF NOT EXISTS event_members (
   event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   joined_at TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'crew',          -- 比赛内角色：host | crew（创建者默认 host）
   UNIQUE(event_id, user_id)
 );
 CREATE TABLE IF NOT EXISTS ann_reads (
@@ -226,6 +227,7 @@ ensureColumn('teams', 'event_id', 'INTEGER NOT NULL DEFAULT 1');
 ensureColumn('announcements', 'event_id', 'INTEGER NOT NULL DEFAULT 1');
 ensureColumn('audit_logs', 'event_id', 'INTEGER');
 ensureColumn('events', 'owner_id', 'INTEGER');
+ensureColumn('event_members', 'role', "TEXT NOT NULL DEFAULT 'crew'");
 /** 重建表以改掉 UNIQUE(code)：不同比赛可以有同样的 EP1 / T1。只做一次。 */
 function rebuildForEvents() {
   const flag = db.prepare("SELECT value FROM settings WHERE key = 'schema_events'").get() as { value: string } | undefined;

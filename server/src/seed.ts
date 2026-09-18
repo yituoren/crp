@@ -22,8 +22,22 @@ export function seed() {
       for (const u of all('SELECT id FROM users')) run('INSERT OR IGNORE INTO event_members(event_id, user_id, joined_at) VALUES (1, ?, ?)', u.id, now());
     });
   }
-  // 旧的“主办即全局 host 角色”不再使用：主办由各比赛的主办名单决定
+  // 旧的“主办即全局 host 角色”不再使用：主办由各比赛的成员角色决定
   run("UPDATE users SET role = 'crew' WHERE role = 'host'");
+  // 一次性：把旧的主办名单转成成员角色（名单里的账号设为该比赛的主办成员），然后清空名单
+  if (getSetting('event_roles') !== 'v1') {
+    tx(() => {
+      for (const ev of all('SELECT id, hosts FROM events')) {
+        for (const name of String(ev.hosts ?? '').split(/[,，]/).map((s) => s.trim()).filter(Boolean)) {
+          const u = get('SELECT id FROM users WHERE username = ?', name);
+          if (!u) continue;
+          run("INSERT INTO event_members(event_id, user_id, joined_at, role) VALUES (?,?,?,'host') ON CONFLICT(event_id, user_id) DO UPDATE SET role = 'host'", ev.id, u.id, now());
+        }
+        run("UPDATE events SET hosts = '' WHERE id = ?", ev.id);
+      }
+    });
+    setSetting('event_roles', 'v1');
+  }
   // 旧的公告已读位置（users.ann_read_id）搬到按比赛存的 ann_reads（只对 1 号比赛）
   for (const u of all('SELECT id, ann_read_id FROM users WHERE ann_read_id > 0')) {
     run('INSERT OR IGNORE INTO ann_reads(user_id, event_id, last_read_id) VALUES (?,1,?)', u.id, u.ann_read_id);
