@@ -5,7 +5,7 @@ import { api } from '@/api';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
-import { LEG_TYPES, LEG_TYPE_LABEL, legTypeLabel, typeCode, type LegType, legName, isDestinationLeg } from '@/types';
+import { LEG_TYPES, LEG_TYPE_LABEL, legTypeLabel, type LegType, legName, isDestinationLeg } from '@/types';
 import { fmtDurMs } from '@/utils/time';
 import { moneyMode } from '@/utils/money';
 import { reactive } from 'vue';
@@ -104,7 +104,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
             <div class="edit-section-title">基本信息</div>
             <div class="field-row">
               <div class="form-group"><label>类型</label>
-                <input v-if="isFixed" :value="`${typeCode(form.type)} · ${legTypeLabel(form.type, race.isLastEpisode(episodeId))}（固定）`" disabled />
+                <MSelect v-if="isFixed" :model-value="form.type" disabled :options="[{ value: form.type, label: `${legTypeLabel(form.type, race.isLastEpisode(episodeId))}（固定）`, tag: form.type }]" />
                 <MSelect v-else v-model="form.type" outlined :disabled="!race.structureEditable" :options="selectableTypes.map((t) => ({ value: t, label: LEG_TYPE_LABEL[t], tag: t }))" />
               </div>
               <div class="form-group"><label>{{ isDestinationLeg(form.type) ? '目的地' : '名称' }}</label><input v-model="form.name" :placeholder="form.type === 'RI' ? '目的地名称，显示时自动加箭头' : form.type === 'PS' ? '中继站所在地' : ''" /></div>
