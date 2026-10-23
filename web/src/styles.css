@@ -99,7 +99,7 @@ p { margin: 0 0 8px; }
 /* 发公告：Gmail 式写信框。灰底圆角面板，左边无边框输入区，右边一列（对象胶囊下拉 + 蓝色发送按钮），输入区高度对齐右列 */
 .ann-compose { display: flex; gap: 12px; align-items: stretch; background: var(--surface-3); border-radius: 16px; padding: 10px 10px 10px 16px; }
 .ann-compose textarea { flex: 1 1 auto; min-height: 0; height: auto; resize: none; border: none; background: transparent; padding: 8px 0; font-size: 15px; line-height: 1.5; color: var(--gray-900); box-shadow: none; }
-.ann-compose textarea:focus { box-shadow: none; outline: none; }
+.ann-compose textarea:focus, .ann-compose textarea:hover { box-shadow: none; outline: none; background: transparent; border: none; }
 .ann-compose textarea::placeholder { color: var(--gray-500); }
 .ann-side { display: flex; flex-direction: column; gap: 8px; width: 132px; flex: none; }
 .ann-side .sel { width: 100%; }
