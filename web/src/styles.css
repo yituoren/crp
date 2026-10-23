@@ -717,7 +717,7 @@ html, body { overscroll-behavior: none; }
 .bag-tile.on .shop-step { background: rgba(255, 255, 255, .7); color: var(--primary-on-light); }
 .cl-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .cl-tiles { display: flex; gap: 8px; flex: 1 1 320px; min-width: 0; flex-wrap: wrap; }
-.cl-tile { flex: 1 1 0; min-width: 88px; height: 40px; padding: 0 14px; justify-content: space-between; border-radius: 999px; white-space: nowrap; }
+.cl-tile { flex: 1 1 0; min-width: 64px; height: 40px; padding: 0 12px; justify-content: center; border-radius: 999px; white-space: nowrap; }
 .cl-tile .bag-tile-count { white-space: nowrap; }
 .cl-tile .bag-tile-name { flex: none; }
 .cl-amount { width: 110px; flex: none; height: 38px; }
