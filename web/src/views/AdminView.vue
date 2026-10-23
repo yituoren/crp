@@ -65,12 +65,12 @@ onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
     <div class="card-header"><span>成员与主办</span><span class="text-xs text-gray">凭邀请码加入的人默认是幕后；创建者固定为主办；管理员是全局角色，不在此设置</span></div>
     <div class="scroll-table">
       <table class="table">
-        <thead><tr><th>幕后ID</th><th>本比赛身份</th><th>操作</th></tr></thead>
+        <thead><tr><th>幕后ID</th><th class="c">本比赛身份</th><th class="c">操作</th></tr></thead>
         <tbody>
           <tr v-for="u in race.users" :key="u.id">
             <td><strong>{{ u.username }}</strong><span v-if="u.id === auth.user?.id" class="text-xs text-gray">（我）</span></td>
-            <td><span class="badge" :class="u.role === 'crew' ? 'badge-crew' : 'badge-host'">{{ roleText(u.role) }}</span></td>
-            <td>
+            <td class="c"><span class="badge" :class="u.role === 'crew' ? 'badge-crew' : 'badge-host'">{{ roleText(u.role) }}</span></td>
+            <td class="c">
               <template v-if="u.role !== 'admin' && u.id !== auth.user?.id && u.id !== auth.event.ownerId">
                 <button v-if="u.role === 'crew'" class="btn btn-text btn-sm" @click="setRole(u, 'host')">设为主办</button>
                 <button v-else class="btn btn-text btn-sm" @click="setRole(u, 'crew')">取消主办</button>

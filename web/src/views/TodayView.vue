@@ -75,15 +75,15 @@ const stats = computed(() => ({
       <p><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.label }}</strong>，当前余额 <strong class="text-warning">{{ fmtMoney(myTeam.currency) }} {{ moneyUnit() }}</strong></p>
       <div class="scroll-table">
         <table class="table record-table">
-          <thead><tr><th class="col-first">环节</th><th class="col-status">状态</th><th class="col-time">开始</th><th class="col-time">结束</th><th class="col-extra">记录信息</th><th class="col-action">操作</th></tr></thead>
+          <thead><tr><th class="col-first">环节</th><th class="col-status">状态</th><th class="col-time">开始</th><th class="col-time">结束</th><th class="col-extra c">记录信息</th><th class="col-action c">操作</th></tr></thead>
           <tbody>
             <tr v-for="{ leg, p, label, block, state } in legRows" :key="leg.id">
               <td><LegTag :type="leg.type" /> <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: leg.id } }">{{ legName(leg) }}</router-link></td>
               <td>{{ state }}</td>
               <td><span class="record-time">{{ hasStart(leg.type) ? fmtTime(p?.arrived_at) : '-' }}</span></td>
               <td><span class="record-time">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td>
-              <td><LegExtraField :leg="leg" :team-id="myTeam!.id" :progress="p" :can="!!p?.arrived_at && !p?.completed_at && !race.episodeFinished" /></td>
-              <td>
+              <td class="c"><LegExtraField :leg="leg" :team-id="myTeam!.id" :progress="p" :can="!!p?.arrived_at && !p?.completed_at && !race.episodeFinished" /></td>
+              <td class="c">
                 <template v-if="race.episodeFinished">
                   <button v-if="race.canEdit(myTeam!.id)" class="btn btn-text btn-sm btn-slot" @click="editing = { leg, progress: p }">修改记录</button>
                   <span v-else class="text-gray text-sm">已锁定</span>

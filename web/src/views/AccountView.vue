@@ -90,14 +90,14 @@ onMounted(() => { loadUsers(); if (auth.isAdmin) loadAudit(); });
     <div class="card-header">账号管理</div>
     <div class="scroll-table">
       <table class="table">
-        <thead><tr><th>幕后ID</th><th>角色</th><th>状态</th><th>注册时间</th><th>操作</th></tr></thead>
+        <thead><tr><th>幕后ID</th><th class="c">角色</th><th class="c">状态</th><th>注册时间</th><th class="c">操作</th></tr></thead>
         <tbody>
           <tr v-for="u in users" :key="u.id">
             <td><strong>{{ u.username }}</strong><span v-if="u.id === auth.user?.id" class="text-xs text-gray">（我）</span></td>
-            <td><span class="badge" :class="u.role === 'admin' ? 'badge-host' : 'badge-crew'">{{ u.role === 'admin' ? '管理员' : '幕后' }}</span></td>
-            <td><span :class="u.disabled ? 'status-eliminated' : 'status-alive'">{{ u.disabled ? '已停用' : '正常' }}</span></td>
+            <td class="c"><span class="badge" :class="u.role === 'admin' ? 'badge-host' : 'badge-crew'">{{ u.role === 'admin' ? '管理员' : '幕后' }}</span></td>
+            <td class="c"><span :class="u.disabled ? 'status-eliminated' : 'status-alive'">{{ u.disabled ? '已停用' : '正常' }}</span></td>
             <td>{{ fmtDateTime(u.created_at) }}</td>
-            <td class="flex" style="gap: 6px">
+            <td class="flex c" style="gap: 6px">
               <template v-if="u.role !== 'admin' || auth.isAdmin">
                 <button class="btn btn-text btn-sm" @click="resetPassword(u)"><Icon name="key" size="16" />重置密码</button>
                 <button v-if="u.id !== auth.user?.id" class="btn btn-text btn-sm" @click="toggleDisabled(u)">{{ u.disabled ? '启用' : '停用' }}</button>

@@ -93,13 +93,13 @@ async function copyPrev() {
     <div v-if="!race.users.length" class="empty-state">暂无注册幕后</div>
     <div v-else class="scroll-table">
       <table class="table">
-        <thead><tr><th style="width: 22%">幕后</th><th style="width: 12%">角色</th><th style="width: 26%">分配详情</th><th v-if="auth.isHost" style="min-width: 290px">编辑</th></tr></thead>
+        <thead><tr><th style="width: 22%">幕后</th><th style="width: 12%" class="c">角色</th><th style="width: 26%">分配详情</th><th v-if="auth.isHost" style="min-width: 290px" class="c">编辑</th></tr></thead>
         <tbody>
           <tr v-for="r in form.rows" :key="r.userId">
             <td><strong>{{ userById.get(r.userId)?.displayName }}</strong></td>
-            <td><span class="badge" :class="displayRole(r.userId)[1]">{{ displayRole(r.userId)[0] }}</span></td>
+            <td class="c"><span class="badge" :class="displayRole(r.userId)[1]">{{ displayRole(r.userId)[0] }}</span></td>
             <td class="wrap">{{ assignText(r.userId) }}<template v-for="(l, i) in stationLegs(r.userId)" :key="l.id"><template v-if="i">、</template><LegTag :type="l.type" /> {{ legName(l) }}</template></td>
-            <td v-if="auth.isHost">
+            <td v-if="auth.isHost" class="c">
               <div class="flex" style="gap: 6px">
                 <MSelect v-model="r.role" sm style="width: 96px; flex: none" :options="[{ value: 'crew', label: '机动' }, { value: 'follow', label: '跟队' }, { value: 'station', label: '站点' }, { value: 'live', label: '直播员' }]" />
                 <MSelect v-if="r.role === 'follow'" v-model="r.teamId" sm style="width: 160px; max-width: 100%; flex: none" placeholder="选择队伍" :options="race.teams.map((t) => ({ value: t.id, label: `${t.label}${t.status !== 'alive' ? '（已淘汰）' : ''}` }))" />

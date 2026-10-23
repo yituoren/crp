@@ -40,11 +40,11 @@ function detourOptions(): string[] {
         <tr>
           <th class="col-first">队伍</th><th class="col-status">状态</th>
           <th v-if="withStart" class="col-time">开始</th><th class="col-time">{{ label }}</th>
-          <th v-if="showTarget" class="col-extra">施加对象</th>
-          <th v-if="leg.type === 'DT'" class="col-extra">绕道选择</th>
-          <th v-if="leg.type === 'RB'" class="col-extra">路障完成人</th>
-          <th v-if="leg.type === 'FF'" class="col-extra">快进结果</th>
-          <th class="col-action">操作</th>
+          <th v-if="showTarget" class="col-extra c">施加对象</th>
+          <th v-if="leg.type === 'DT'" class="col-extra c">绕道选择</th>
+          <th v-if="leg.type === 'RB'" class="col-extra c">路障完成人</th>
+          <th v-if="leg.type === 'FF'" class="col-extra c">快进结果</th>
+          <th class="col-action c">操作</th>
         </tr>
       </thead>
       <tbody>
@@ -53,23 +53,23 @@ function detourOptions(): string[] {
           <td>{{ stateOf(p) }}</td>
           <td v-if="withStart"><span class="record-time">{{ fmtTime(p?.arrived_at) }}</span></td>
           <td><span class="record-time">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td>
-          <td v-if="showTarget">
+          <td v-if="showTarget" class="c">
             <MSelect v-if="inline(can, p)" sm style="width: 130px" :model-value="p?.target_team_id ?? ''" :options="[{ value: '', label: '未使用' }, ...race.teams.filter((x) => x.id !== team.id).map((t) => ({ value: t.id, label: t.label }))]" @update:model-value="rec.setValue('target', team.id, leg.id, String($event))" />
             <span v-else>{{ p?.target_team_id ? race.teamById.get(p.target_team_id)?.label : '-' }}</span>
           </td>
-          <td v-if="leg.type === 'DT'">
+          <td v-if="leg.type === 'DT'" class="c">
             <MSelect v-if="inline(can, p)" sm style="width: 120px" :model-value="p?.detour_choice ?? ''" :options="[{ value: '', label: '未选' }, ...detourOptions().map((o) => ({ value: o, label: o }))]" @update:model-value="rec.setValue('detour', team.id, leg.id, String($event))" />
             <span v-else>{{ p?.detour_choice || '-' }}</span>
           </td>
-          <td v-if="leg.type === 'RB'">
+          <td v-if="leg.type === 'RB'" class="c">
             <MSelect v-if="inline(can, p)" sm style="width: 120px" :model-value="p?.roadblock_by ?? ''" :options="[{ value: '', label: '未选' }, ...race.memberOptions(team.id, p?.roadblock_by).map((m) => ({ value: m, label: m }))]" @update:model-value="rec.setValue('roadblock', team.id, leg.id, String($event))" />
             <span v-else>{{ p?.roadblock_by || '-' }}</span>
           </td>
-          <td v-if="leg.type === 'FF'">
+          <td v-if="leg.type === 'FF'" class="c">
             <MSelect v-if="inline(can, p)" sm style="width: 110px" :model-value="p?.ff_result ?? ''" :options="[{ value: '', label: '未尝试' }, { value: 'success', label: '成功' }, { value: 'fail', label: '失败' }]" @update:model-value="rec.setValue('ff', team.id, leg.id, String($event))" />
             <span v-else>{{ p?.ff_result === 'success' ? '成功' : p?.ff_result === 'fail' ? '失败' : '-' }}</span>
           </td>
-          <td>
+          <td class="c">
             <div class="flex" style="gap: 6px; flex-wrap: nowrap">
               <template v-if="race.episodeFinished">
                 <button v-if="edit" class="btn btn-text btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
