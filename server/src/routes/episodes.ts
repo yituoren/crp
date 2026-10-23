@@ -198,6 +198,7 @@ episodeRoutes.post('/episodes/:id/finish', hostOnly, (c) => {
 function legFields(b: any, before?: any) {
   const f = legFieldsRaw(b, before);
   if (f.can_eliminate && f.eliminate_count < 1) throw bad('勾选了可淘汰，请填写淘汰队数');
+  if (!f.can_eliminate) f.eliminate_count = 0;
   return f;
 }
 function legFieldsRaw(b: any, before?: any) {

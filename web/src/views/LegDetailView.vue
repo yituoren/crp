@@ -45,6 +45,8 @@ function fillForm() {
 watch(leg, () => { if (!dirty.value) fillForm(); }, { immediate: true });
 watch(form, () => { if (!filling) dirty.value = true; }, { deep: true });
 watch(cutoffs, () => { if (!filling) dirty.value = true; }, { deep: true });
+watch(() => form.can_eliminate, (on) => { if (!on) form.eliminate_count = ''; });
+watch(() => form.eliminate_count, (n) => { if (n !== '' && !(Number(n) >= 1)) form.eliminate_count = ''; });
 async function saveLeg() {
   if (!leg.value) return;
   if (form.can_eliminate && !(Number(form.eliminate_count) >= 1)) { ui.toast('勾选了可淘汰，请填写淘汰队数', 'error'); return; }
