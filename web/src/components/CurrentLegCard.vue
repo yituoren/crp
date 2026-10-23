@@ -88,7 +88,6 @@ async function confirmTransport() {
           <div class="cl-tiles">
             <button v-for="t in TRANSPORT" :key="t" type="button" class="bag-tile cl-tile" :class="{ on: transport === t, off: transportDisabled(t) }" :disabled="transportDisabled(t)" :title="needsCard(t) && !cardFor(t) ? '背包里没有对应卡片' : ''" @click="transport = t">
               <span class="bag-tile-name">{{ t }}</span>
-              <span v-if="needsCard(t)" class="bag-tile-count">{{ cardFor(t) ? '卡' : '无卡' }}</span>
             </button>
           </div>
           <input v-model="fare" type="number" :inputmode="isCoin ? 'numeric' : 'decimal'" min="0" step="1" class="cl-amount" :placeholder="fareOff && transport ? '用卡片' : `消费（${moneyUnit()}）`" :disabled="fareOff" />
