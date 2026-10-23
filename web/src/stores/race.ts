@@ -146,6 +146,8 @@ export const useRace = defineStore('race', () => {
     if (last !== undefined) ready = Math.max(ready, last + cf.interval_min * 60000);
     return ready;
   }
+  /** 赛段开始后环节结构（增删、顺序、类型、淘汰、熔断设置）只有管理员能改 */
+  const structureEditable = computed(() => auth.isAdmin || currentEpisode.value?.status === 'pending');
   /** 支线紧跟在主线之后：主线 = 前一个环节；支线 = 后一个环节（若是支线） */
   function parentOf(legId: number) {
     const ep = currentEpisode.value; if (!ep) return null;
@@ -290,7 +292,7 @@ export const useRace = defineStore('race', () => {
 
   return {
     episodes, teams, users, announcements, shopItems, loadShopItems, unreadAnnouncements, markAnnouncementsRead, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
-    aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, isLocked, teamLocked, lockReason, cutoffUses, cutoffUseCount, cutoffReadyAt, parentOf, branchOf, branchLocked, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, currencyLegIds, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
+    aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, isLocked, teamLocked, lockReason, structureEditable, cutoffUses, cutoffUseCount, cutoffReadyAt, parentOf, branchOf, branchLocked, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, currencyLegIds, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
     loadAll, reset, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
   };
 });

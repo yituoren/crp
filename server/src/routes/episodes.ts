@@ -3,7 +3,7 @@ import { recomputeEliminations } from '../elimination.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { all, get, run, tx, now, UPLOAD_DIR, fromCents } from '../db.js';
-import { hostOnly, canUploadToLeg, type Env, type EventRow } from '../auth.js';
+import { hostOnly, canUploadToLeg, isAdminRole, type Env, type EventRow } from '../auth.js';
 import { audit, body, str, int, intParam, notify, bad, notFound, forbidden, money } from '../util.js';
 import { teamLabelMap } from './teams.js';
 
@@ -70,6 +70,14 @@ export function episodeInEvent(c: Context, id: number) {
   if (!ep || ep.event_id !== (c.get('event') as EventRow).id) throw notFound('赛段不存在');
   return ep;
 }
+/** 赛段开始后（进行中或已结束），环节的增删、顺序、类型、淘汰与熔断设置只有管理员能改 */
+function assertStructureEditable(c: Context, episodeId: number) {
+  const user = c.get('user');
+  if (isAdminRole(user.role)) return;
+  const ep = get<{ status: string; code: string }>('SELECT status, code FROM episodes WHERE id = ?', episodeId);
+  if (ep && ep.status !== 'pending') throw forbidden(`${ep.code} 已开始，环节结构只有管理员可以修改`);
+}
+
 export function legInEvent(c: Context, id: number) {
   const leg = get('SELECT l.*, e.event_id FROM legs l JOIN episodes e ON e.id = l.episode_id WHERE l.id = ?', id);
   if (!leg || leg.event_id !== (c.get('event') as EventRow).id) throw notFound('环节不存在');
@@ -206,6 +214,7 @@ episodeRoutes.post('/episodes/:id/legs', hostOnly, async (c) => {
   episodeInEvent(c, episodeId);
   const b = await body(c);
   if (b.type === 'SL' || b.type === 'PS') throw bad('Starting Line 与中继站由系统固定生成，不能手动添加');
+  assertStructureEditable(c, episodeId);
   const f = legFields(b);
   if (!f.name) f.name = '新环节';
   // 新环节默认插在中继站之前
@@ -234,6 +243,7 @@ episodeRoutes.put('/legs/:id', hostOnly, async (c) => {
   const fixed = before.type === 'SL' || before.type === 'PS';
   if (b.type !== undefined && b.type !== before.type && (fixed || b.type === 'SL' || b.type === 'PS')) throw bad('Starting Line 与中继站的类型固定，不能改成或改自其他类型');
   const f = legFields(b, before);
+  if (f.type !== before.type || !!f.can_eliminate !== !!before.can_eliminate || f.eliminate_count !== before.eliminate_count) assertStructureEditable(c, before.episode_id);
   tx(() => {
   run(
     `UPDATE legs SET type=?, name=?, description=?, address=?, map_url=?, clue_text=?, judge_criteria=?, open_time=?, close_time=?, detour_a=?, detour_b=?, needs_staff=?, record_mode=?, cutoff_start=?, cutoff_interval=?, shop_open=?, can_eliminate=?, eliminate_count=? WHERE id=?`,
@@ -256,6 +266,8 @@ episodeRoutes.put('/legs/:id/cutoffs', hostOnly, async (c) => {
   const items = b.items.map((it: any, i: number) => ({ id: int(it.id, 0) || 0, name: str(it.name, 50), start_min: Math.max(0, int(it.start_min, 0)), interval_min: Math.max(0, int(it.interval_min, 0)), cost: it.cost ? money(it.cost, '消耗') : 0, sort: i }));
   for (const it of items) { if (!it.name) throw bad('熔断种类名称不能为空'); if (it.cost < 0) throw bad('消耗不能为负数'); }
   const before = all('SELECT * FROM leg_cutoffs WHERE leg_id = ? ORDER BY sort, id', id);
+  const same = before.length === items.length && before.every((o, i) => { const n = items[i]; return n.id === o.id && n.name === o.name && n.start_min === o.start_min && n.interval_min === o.interval_min && n.cost === o.cost; });
+  if (!same) assertStructureEditable(c, leg.episode_id);
   tx(() => {
     const keep = new Set<number>();
     for (const it of items) {
@@ -277,6 +289,7 @@ episodeRoutes.put('/legs/:id/cutoffs', hostOnly, async (c) => {
 episodeRoutes.delete('/legs/:id', hostOnly, (c) => {
   const id = intParam(c, 'id');
   const before = legInEvent(c, id);
+  assertStructureEditable(c, before.episode_id);
   if (before.type === 'SL' || before.type === 'PS') throw bad('Starting Line 与中继站不能删除');
   removeAttachmentFiles(all('SELECT path FROM attachments WHERE leg_id = ?', id));
   run('DELETE FROM legs WHERE id = ?', id);
@@ -287,6 +300,8 @@ episodeRoutes.delete('/legs/:id', hostOnly, (c) => {
 
 episodeRoutes.put('/episodes/:id/legs/order', hostOnly, async (c) => {
   const episodeId = intParam(c, 'id');
+  episodeInEvent(c, episodeId);
+  assertStructureEditable(c, episodeId);
   const { ids } = await body(c);
   if (!Array.isArray(ids)) throw bad('ids 必须是数组');
   const types = new Map(all('SELECT id, type FROM legs WHERE episode_id = ?', episodeId).map((l) => [l.id, l.type]));

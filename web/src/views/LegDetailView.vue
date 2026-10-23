@@ -52,7 +52,7 @@ async function saveLeg() {
   const items = cutoffs.value.map((c) => ({ id: c.id || undefined, name: c.name.trim(), start_min: mins(c.sh, c.sm), interval_min: mins(c.ih, c.im), cost: c.cost || 0 }));
   try {
     await api(`/legs/${leg.value.id}`, { method: 'PUT', body });
-    await api(`/legs/${leg.value.id}/cutoffs`, { method: 'PUT', body: { items } });
+    if (race.structureEditable) await api(`/legs/${leg.value.id}/cutoffs`, { method: 'PUT', body: { items } });
     await race.loadEpisodes(); fillForm(); ui.toast('环节已保存');
   } catch (e) { ui.error(e); }
 }
@@ -103,7 +103,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
             <div class="field-row">
               <div class="form-group"><label>类型</label>
                 <input v-if="isFixed" :value="`${typeCode(form.type)} · ${legTypeLabel(form.type, race.isLastEpisode(episodeId))}（固定）`" disabled />
-                <MSelect v-else v-model="form.type" outlined :options="selectableTypes.map((t) => ({ value: t, label: `${typeCode(t)} · ${LEG_TYPE_LABEL[t]}` }))" />
+                <MSelect v-else v-model="form.type" outlined :disabled="!race.structureEditable" :options="selectableTypes.map((t) => ({ value: t, label: `${typeCode(t)} · ${LEG_TYPE_LABEL[t]}` }))" />
               </div>
               <div class="form-group"><label>{{ isDestinationLeg(form.type) ? '目的地' : '名称' }}</label><input v-model="form.name" :placeholder="form.type === 'RI' ? '目的地名称，显示时自动加箭头' : form.type === 'PS' ? '中继站所在地' : ''" /></div>
             </div>
@@ -111,17 +111,17 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
           </div>
           <div v-if="form.type !== 'BR'" class="edit-section">
             <div class="edit-section-title">淘汰</div>
-            <label class="check-row"><input v-model="form.can_eliminate" type="checkbox" :disabled="form.type === 'PS'" /> 本环节可淘汰<span class="text-gray text-sm">（{{ form.type === 'PS' ? '中继站一定可淘汰' : '所有队伍到达后，最后到的几队自动淘汰' }}）</span></label>
-            <div class="form-group" style="max-width: 200px"><label>淘汰队数</label><input v-model.number="form.eliminate_count" type="number" min="1" step="1" inputmode="numeric" :disabled="!form.can_eliminate && form.type !== 'PS'" /></div>
+            <label class="check-row"><input v-model="form.can_eliminate" type="checkbox" :disabled="form.type === 'PS' || !race.structureEditable" /> 本环节可淘汰<span class="text-gray text-sm">（{{ form.type === 'PS' ? '中继站一定可淘汰' : '所有队伍到达后，最后到的几队自动淘汰' }}）</span></label>
+            <div class="form-group" style="max-width: 200px"><label>淘汰队数</label><input v-model.number="form.eliminate_count" type="number" min="1" step="1" inputmode="numeric" :disabled="(!form.can_eliminate && form.type !== 'PS') || !race.structureEditable" /></div>
           </div>
           <div class="edit-section">
-            <div class="flex-between" style="margin-bottom: 8px"><span class="edit-section-title" style="margin: 0">熔断</span><button class="btn btn-text btn-sm" @click="addCutoff"><Icon name="add" size="16" />添加熔断</button></div>
+            <div class="flex-between" style="margin-bottom: 8px"><span class="edit-section-title" style="margin: 0">熔断</span><button v-if="race.structureEditable" class="btn btn-text btn-sm" @click="addCutoff"><Icon name="add" size="16" />添加熔断</button></div>
             <div v-for="(c, i) in cutoffs" :key="i" class="cutoff-edit">
-              <input v-model="c.name" placeholder="种类名称" class="cutoff-name" />
-              <div class="hm-row" title="起始时间"><input v-model.number="c.sh" type="number" min="0" step="1" inputmode="numeric" /><span>h</span><input v-model.number="c.sm" type="number" min="0" max="59" step="1" inputmode="numeric" /><span>m 起</span></div>
-              <div class="hm-row" title="间隔时间"><input v-model.number="c.ih" type="number" min="0" step="1" inputmode="numeric" /><span>h</span><input v-model.number="c.im" type="number" min="0" max="59" step="1" inputmode="numeric" /><span>m 隔</span></div>
-              <input v-if="moneyMode() === 'coin'" v-model="c.cost" type="number" min="0" step="1" inputmode="numeric" placeholder="消耗（币）" class="cutoff-cost" />
-              <button class="icon-btn icon-btn-sm icon-btn-danger" title="删除" @click="removeCutoff(i)"><Icon name="delete" size="18" /></button>
+              <input v-model="c.name" placeholder="种类名称" class="cutoff-name" :disabled="!race.structureEditable" />
+              <div class="hm-row" title="起始时间"><input v-model.number="c.sh" type="number" min="0" step="1" inputmode="numeric" :disabled="!race.structureEditable" /><span>h</span><input v-model.number="c.sm" type="number" min="0" max="59" step="1" inputmode="numeric" :disabled="!race.structureEditable" /><span>m 起</span></div>
+              <div class="hm-row" title="间隔时间"><input v-model.number="c.ih" type="number" min="0" step="1" inputmode="numeric" :disabled="!race.structureEditable" /><span>h</span><input v-model.number="c.im" type="number" min="0" max="59" step="1" inputmode="numeric" :disabled="!race.structureEditable" /><span>m 隔</span></div>
+              <input v-if="moneyMode() === 'coin'" v-model="c.cost" type="number" min="0" step="1" inputmode="numeric" placeholder="消耗（币）" class="cutoff-cost" :disabled="!race.structureEditable" />
+              <button v-if="race.structureEditable" class="icon-btn icon-btn-sm icon-btn-danger" title="删除" @click="removeCutoff(i)"><Icon name="delete" size="18" /></button><span v-else></span>
             </div>
             <div v-if="!cutoffs.length" class="text-sm text-gray">没有熔断</div>
           </div>
