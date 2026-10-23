@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { api, setUnauthorizedHandler } from '@/api';
 import { useAuth } from '@/stores/auth';
@@ -20,9 +20,17 @@ async function load() {
   try { const d = await api('/events'); events.value = d.all; } catch (e) { ui.error(e); } finally { loading.value = false; }
 }
 
-// 左侧栏：相当于预置的筛选条件（我的比赛 = 只看已加入）
+// 左侧栏：相当于预置的筛选条件（我的比赛 = 只看已加入）；手机上是抽屉
 const tab = ref<'mine' | 'all'>('mine');
+const drawer = ref(false);
+function pickTab(t: 'mine' | 'all') { tab.value = t; drawer.value = false; }
 const mineCount = computed(() => events.value.filter((e) => e.joined).length);
+
+// 展示形式：卡片 / 条目，记住上次选择
+const VIEW_KEY = 'crp.home.view';
+const view = ref<'cards' | 'list'>('cards');
+try { if (localStorage.getItem(VIEW_KEY) === 'list') view.value = 'list'; } catch { /* ignore */ }
+watch(view, (v) => { try { localStorage.setItem(VIEW_KEY, v); } catch { /* ignore */ } });
 
 // 顶部搜索：名字 / 主办 关键词 + 三个条件筛选
 const q = ref('');
@@ -65,14 +73,14 @@ async function join() {
   } catch (e) { ui.error(e); }
 }
 
-// 创建比赛
+// 创建比赛：先只填名称和邀请码，其余在赛事设置里改
 const creating = ref(false);
-const form = reactive({ name: '', inviteCode: '', teamSize: 2, currencyMode: 'yuan' as 'yuan' | 'coin' });
-function openCreate() { Object.assign(form, { name: '', inviteCode: '', teamSize: 2, currencyMode: 'yuan' }); creating.value = true; }
+const form = reactive({ name: '', inviteCode: '' });
+function openCreate() { Object.assign(form, { name: '', inviteCode: '' }); creating.value = true; drawer.value = false; }
 async function create() {
   if (!form.name.trim()) { ui.toast('请填写赛事名称', 'error'); return; }
   try {
-    const d = await api('/events', { method: 'POST', body: { ...form, name: form.name.trim(), inviteCode: form.inviteCode.trim() } });
+    const d = await api('/events', { method: 'POST', body: { name: form.name.trim(), inviteCode: form.inviteCode.trim() } });
     creating.value = false;
     ui.toast(`已创建「${d.event.name}」`);
     await auth.fetchMe();
@@ -80,37 +88,47 @@ async function create() {
   } catch (e) { ui.error(e); }
 }
 
+// 账号菜单：点用户名展开（账号管理 / 修改密码 / 退出）
+const menuOpen = ref(false);
+const accountEl = ref<HTMLElement | null>(null);
+function onDocClick(e: MouseEvent) { if (accountEl.value && !accountEl.value.contains(e.target as Node)) menuOpen.value = false; }
 async function logout() { await auth.logout(); router.replace('/login'); }
 onMounted(() => {
   auth.leaveEvent();
   setUnauthorizedHandler(() => { auth.user = null; router.replace('/login'); });
+  document.addEventListener('click', onDocClick);
   load();
 });
+onUnmounted(() => document.removeEventListener('click', onDocClick));
 </script>
 
 <template>
-  <div class="home">
+  <div class="home" :class="{ 'drawer-open': drawer }">
+    <div class="home-scrim" @click="drawer = false"></div>
     <aside class="home-side">
       <div class="home-brand">CRP</div>
       <button class="home-compose" @click="openCreate"><Icon name="edit" size="22" />创建比赛</button>
       <nav class="home-nav">
-        <a href="#" :class="{ active: tab === 'mine' }" @click.prevent="tab = 'mine'"><Icon name="inbox" size="20" /><span>我的比赛</span><em>{{ mineCount }}</em></a>
-        <a href="#" :class="{ active: tab === 'all' }" @click.prevent="tab = 'all'"><Icon name="public" size="20" /><span>全部比赛</span><em>{{ events.length }}</em></a>
+        <a href="#" :class="{ active: tab === 'mine' }" @click.prevent="pickTab('mine')"><Icon name="inbox" size="20" /><span>我的比赛</span><em>{{ mineCount }}</em></a>
+        <a href="#" :class="{ active: tab === 'all' }" @click.prevent="pickTab('all')"><Icon name="public" size="20" /><span>全部比赛</span><em>{{ events.length }}</em></a>
       </nav>
     </aside>
 
     <main class="home-main">
       <div class="home-top">
+        <button class="icon-btn home-menu-btn" title="菜单" aria-label="菜单" @click="drawer = true"><Icon name="menu" size="24" /></button>
         <label class="home-search">
           <Icon name="search" size="22" />
           <input v-model="q" placeholder="搜索比赛名称或主办" />
           <button v-if="q" class="icon-btn" title="清除" aria-label="清除" @click="q = ''"><Icon name="close" size="20" /></button>
         </label>
-        <div class="user-bar">
-          <span class="user-name">{{ auth.user?.displayName }}</span>
-          <router-link v-if="auth.isAdmin || auth.hostAnywhere" to="/account" class="btn btn-text btn-sm"><Icon name="group" size="18" />账号管理</router-link>
-          <router-link to="/password" class="icon-btn" title="修改密码" aria-label="修改密码"><Icon name="key" /></router-link>
-          <button class="icon-btn" title="退出登录" aria-label="退出登录" @click="logout"><Icon name="logout" /></button>
+        <div ref="accountEl" class="home-account">
+          <button class="home-account-btn" :class="{ open: menuOpen }" @click="menuOpen = !menuOpen"><Icon name="account_circle" size="26" /><span class="home-account-name">{{ auth.user?.displayName }}</span></button>
+          <div v-if="menuOpen" class="sel-menu home-menu">
+            <router-link v-if="auth.isAdmin || auth.hostAnywhere" to="/account" class="sel-item"><Icon name="group" size="20" />账号管理</router-link>
+            <router-link to="/password" class="sel-item"><Icon name="key" size="20" />修改密码</router-link>
+            <button class="sel-item" @click="logout"><Icon name="logout" size="20" />退出登录</button>
+          </div>
         </div>
       </div>
 
@@ -119,6 +137,10 @@ onMounted(() => {
           <MSelect v-model="filter.time" chip :options="TIME_OPTIONS" />
           <MSelect v-model="filter.role" chip :options="ROLE_OPTIONS" />
           <MSelect v-model="filter.status" chip :options="STATUS_OPTIONS" />
+          <div class="home-view">
+            <button class="icon-btn" :class="{ active: view === 'cards' }" title="卡片" aria-label="卡片" @click="view = 'cards'"><Icon name="grid_view" size="20" /></button>
+            <button class="icon-btn" :class="{ active: view === 'list' }" title="条目" aria-label="条目" @click="view = 'list'"><Icon name="view_list" size="20" /></button>
+          </div>
         </div>
         <div class="home-toolbar">
           <button class="icon-btn" title="刷新" aria-label="刷新" @click="load"><Icon name="refresh" size="20" /></button>
@@ -126,11 +148,18 @@ onMounted(() => {
         </div>
         <div v-if="loading" class="loading"><span class="spinner"></span></div>
         <div v-else-if="!rows.length" class="empty-state">{{ tab === 'mine' && !events.some((e) => e.joined) ? '还没有加入任何比赛，到「全部比赛」里凭邀请码加入，或创建一场新比赛' : '没有符合条件的比赛' }}</div>
-        <div v-else class="home-list">
+        <div v-else-if="view === 'list'" class="home-list">
           <div v-for="e in rows" :key="e.id" class="home-row" :class="{ 'home-row-out': !e.joined }" @click="openRow(e)">
             <span class="home-role" :class="'role-' + (e.joined ? e.role : 'none')">{{ roleText(e) }}</span>
             <span class="home-row-text"><span class="home-row-name">{{ e.name }}</span><span class="home-row-snippet"> - {{ snippet(e) }}</span></span>
             <span class="home-row-meta"><span class="home-status" :class="'status-' + e.status">{{ STATUS_TEXT[e.status] }}</span><span class="home-date">{{ fmtDate(e.createdAt) }}</span></span>
+          </div>
+        </div>
+        <div v-else class="home-cards">
+          <div v-for="e in rows" :key="e.id" class="home-card" :class="{ 'home-row-out': !e.joined }" @click="openRow(e)">
+            <div class="home-card-head"><span class="home-row-name">{{ e.name }}</span><span class="home-role" :class="'role-' + (e.joined ? e.role : 'none')">{{ roleText(e) }}</span></div>
+            <div class="home-card-snippet">{{ snippet(e) }}</div>
+            <div class="home-row-meta"><span class="home-status" :class="'status-' + e.status">{{ STATUS_TEXT[e.status] }}</span><span class="home-date">{{ fmtDate(e.createdAt) }}</span></div>
           </div>
         </div>
       </section>
@@ -143,12 +172,8 @@ onMounted(() => {
   </Modal>
 
   <Modal v-if="creating" title="创建比赛" small @close="creating = false">
-    <div class="form-group"><label>赛事名称</label><input v-model="form.name" placeholder="如 BJ20 全明星赛" autofocus /></div>
-    <div class="form-group"><label>邀请码<span class="text-gray text-sm">（留空自动生成）</span></label><input v-model="form.inviteCode" placeholder="如 bj20" /></div>
-    <div class="field-2">
-      <div class="form-group"><label>每队人数</label><input v-model.number="form.teamSize" type="number" min="1" max="20" step="1" inputmode="numeric" /></div>
-      <div class="form-group"><label>经费类型</label><MSelect v-model="form.currencyMode" outlined :options="[{ value: 'yuan', label: '经费（元）' }, { value: 'coin', label: '货币（币）' }]" /></div>
-    </div>
+    <div class="form-group"><label>赛事名称</label><input v-model="form.name" placeholder="如 BJ20 全明星赛" autofocus @keyup.enter="create" /></div>
+    <div class="form-group"><label>邀请码<span class="text-gray text-sm">（留空自动生成）</span></label><input v-model="form.inviteCode" placeholder="如 bj20" @keyup.enter="create" /></div>
     <div class="modal-actions"><button class="btn btn-text" @click="creating = false">取消</button><button class="btn" @click="create">创建</button></div>
   </Modal>
 </template>
