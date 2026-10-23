@@ -118,6 +118,12 @@ progressRoutes.post('/progress', async (c) => {
         if (leg.type === 'DT' && !cur.detour_choice) throw bad('请先填写绕道选择');
         if (leg.type === 'RB' && !cur.roadblock_by) throw bad('请先填写路障完成人');
         if (leg.type === 'FF' && !cur.ff_result) throw bad('请先填写快进结果');
+        if (leg.type === 'Union') {
+          // 联合：双方互选之后才能完成；任一方记录，另一方同时记录
+          if (!cur.target_team_id) throw bad('请先选择合作队伍');
+          const mate = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, cur.target_team_id, legId);
+          if (!mate || mate.target_team_id !== teamId) throw bad('合作队伍尚未选择本队，双方互选后才能记录完成');
+        }
         // 开始时间自动 = 上一个已完成环节的结束时间（首个环节留空）
         if (!next.arrived_at) next.arrived_at = prevEndTime(episodeId, teamId, leg.sort);
         if (next.arrived_at && t < next.arrived_at) throw bad(`完成时间不能早于开始时间（${next.arrived_at}）`);
@@ -156,6 +162,16 @@ progressRoutes.post('/progress', async (c) => {
     tx(() => {
       upsertProgress(episodeId, teamId, legId, next, user.id);
       if (action === 'complete') chainAfterComplete(episodeId, teamId, leg.sort, next.completed_at, user.id);
+      if (action === 'complete' && leg.type === 'Union' && next.target_team_id) {
+        // 合作队伍同步记录完成（同一时间），之后两队各自继续
+        const mate = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, next.target_team_id, legId);
+        if (mate && !mate.completed_at) {
+          const mateNext = { ...mate, arrived_at: mate.arrived_at ?? prevEndTime(episodeId, mate.team_id, leg.sort), completed_at: next.completed_at };
+          upsertProgress(episodeId, mate.team_id, legId, mateNext, user.id);
+          chainAfterComplete(episodeId, mate.team_id, leg.sort, next.completed_at, user.id);
+          audit(user, 'progress:complete', 'progress', `${episodeId}/${mate.team_id}/${legId}`, mate, mateNext);
+        }
+      }
       if (action === 'undo_complete' && cur.completed_at) unchainAfterUndo(episodeId, teamId, leg.sort, cur.completed_at, user.id);
     });
     audit(user, `progress:${action}`, 'progress', `${episodeId}/${teamId}/${legId}`, before, next);

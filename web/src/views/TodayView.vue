@@ -30,7 +30,7 @@ const legRows = computed(() => {
   if (!ep.value || !myTeam.value) return [];
   return ep.value.legs.map((leg) => {
     const p = race.progressOf(myTeam.value!.id, leg.id);
-    const block = race.blockReason(myTeam.value!.id, leg.id) ?? race.extraMissing(leg, p);
+    const block = race.blockReason(myTeam.value!.id, leg.id) ?? race.extraMissing(leg, p, myTeam.value!.id);
     const locked = race.isLocked(myTeam.value!.id, leg.id) && !auth.isAdmin;
     return { leg, p, label: endLabel(leg.type), block, locked, state: locked ? '-' : p?.completed_at ? `已${endLabel(leg.type)}` : hasStart(leg.type) ? (p?.arrived_at ? '进行中' : '未开始') : '未出发' };
   });

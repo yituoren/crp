@@ -117,10 +117,15 @@ export const useRace = defineStore('race', () => {
     return ok;
   }
   /** 记录完成前必须填好的附加信息：返回缺什么，null 表示齐了 */
-  function extraMissing(leg: { type: string }, p: { detour_choice?: string | null; roadblock_by?: string | null; ff_result?: string | null } | null): string | null {
+  function extraMissing(leg: { id?: number; type: string }, p: { detour_choice?: string | null; roadblock_by?: string | null; ff_result?: string | null; target_team_id?: number | null } | null, teamId?: number): string | null {
     if (leg.type === 'DT' && !p?.detour_choice) return '先填写绕道选择';
     if (leg.type === 'RB' && !p?.roadblock_by) return '先填写路障完成人';
     if (leg.type === 'FF' && !p?.ff_result) return '先填写快进结果';
+    if (leg.type === 'Union') {
+      // 联合：双方互选后才能记录完成
+      if (!p?.target_team_id) return '先选择合作队伍';
+      if (leg.id !== undefined && teamId !== undefined && progressOf(p.target_team_id, leg.id)?.target_team_id !== teamId) return '等待合作队伍选择本队';
+    }
     return null;
   }
   /** 与服务端一致的打卡顺序检查：返回不能打卡的原因，null 表示可以 */

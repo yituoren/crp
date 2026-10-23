@@ -13,7 +13,7 @@ const kind = computed(() => {
   if (t === 'DT') return 'detour';
   if (t === 'RB') return 'roadblock';
   if (t === 'FF') return 'ff';
-  if (t === 'UT' || t === 'YD') return 'target';
+  if (t === 'UT' || t === 'YD' || t === 'Union') return 'target';
   return null;
 });
 const detourOptions = computed(() => [props.leg.detour_a || 'A', props.leg.detour_b || 'B']);
@@ -36,5 +36,5 @@ const text = computed(() => {
   <MSelect v-else-if="kind === 'detour'" sm class="extra-ctl" :model-value="progress?.detour_choice ?? ''" :options="[{ value: '', label: '绕道未选' }, ...detourOptions.map((o) => ({ value: o, label: o }))]" @update:model-value="rec.setValue('detour', teamId, leg.id, String($event))" />
   <MSelect v-else-if="kind === 'roadblock'" sm class="extra-ctl" :model-value="progress?.roadblock_by ?? ''" placeholder="路障完成人" :options="race.memberOptions(teamId, progress?.roadblock_by).map((m) => ({ value: m, label: m }))" @update:model-value="rec.setValue('roadblock', teamId, leg.id, String($event))" />
   <MSelect v-else-if="kind === 'ff'" sm class="extra-ctl" :model-value="progress?.ff_result ?? ''" :options="[{ value: '', label: '快进未尝试' }, { value: 'success', label: '快进成功' }, { value: 'fail', label: '快进失败' }]" @update:model-value="rec.setValue('ff', teamId, leg.id, String($event))" />
-  <MSelect v-else sm class="extra-ctl" :model-value="progress?.target_team_id ?? ''" :options="[{ value: '', label: '未使用' }, ...others.map((t) => ({ value: t.id, label: t.label }))]" @update:model-value="rec.setValue('target', teamId, leg.id, String($event))" />
+  <MSelect v-else sm class="extra-ctl" :model-value="progress?.target_team_id ?? ''" :options="[{ value: '', label: leg.type === 'Union' ? '合作队伍' : '未使用' }, ...others.map((t) => ({ value: t.id, label: t.label }))]" @update:model-value="rec.setValue('target', teamId, leg.id, String($event))" />
 </template>

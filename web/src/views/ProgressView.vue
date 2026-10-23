@@ -35,6 +35,7 @@ function extraCols(l: { type: string }): string[] {
   if (l.type === 'RB') return ['完成人'];
   if (l.type === 'FF') return ['快进结果'];
   if (l.type === 'UT' || l.type === 'YD') return ['施加对象'];
+  if (l.type === 'Union') return ['合作队伍'];
   if (l.type === 'PS') return ['罚时', '结算'];
   return [];
 }
@@ -50,7 +51,7 @@ function extraVal(teamId: number, l: { id: number; type: string }, i = 0): strin
   if (l.type === 'DT') return p.detour_choice || '-';
   if (l.type === 'RB') return p.roadblock_by || '-';
   if (l.type === 'FF') return p.ff_result === 'success' ? '成功' : p.ff_result === 'fail' ? '失败' : '-';
-  if (l.type === 'UT' || l.type === 'YD') return p.target_team_id ? race.teamById.get(p.target_team_id)?.label ?? '-' : '-';
+  if (l.type === 'UT' || l.type === 'YD' || l.type === 'Union') return p.target_team_id ? race.teamById.get(p.target_team_id)?.label ?? '-' : '-';
   return '-';
 }
 /** 起跑线只有“出发”一列；其余环节：开始 / 结束 / 用时 */

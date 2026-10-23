@@ -23,12 +23,13 @@ const rows = computed(() => {
 });
 /** 附加信息原地编辑：上一环节完成（本环节开始）后、本环节完成前允许；完成后只能通过“修改记录”弹窗改 */
 const inline = (can: boolean, p: Progress | null) => can && !!p?.arrived_at && !p?.completed_at;
-const showTarget = computed(() => props.leg.type === 'UT' || props.leg.type === 'YD');
+const showTarget = computed(() => props.leg.type === 'UT' || props.leg.type === 'YD' || props.leg.type === 'Union');
+const targetLabel = computed(() => (props.leg.type === 'Union' ? '合作队伍' : '施加对象'));
 const label = computed(() => endLabel(props.leg.type));
 const withStart = computed(() => hasStart(props.leg.type));
 const stateOf = (p: Progress | null) => (p?.completed_at ? `已${label.value}` : withStart.value && p?.arrived_at ? '进行中' : withStart.value ? '未开始' : `未${label.value}`);
 /** 记录按钮不可用的原因：顺序未到 / 附加信息没填 */
-const disabledReason = (p: Progress | null, block: string | null) => block ?? race.extraMissing(props.leg, p);
+const disabledReason = (p: Progress | null, block: string | null, teamId: number) => block ?? race.extraMissing(props.leg, p, teamId);
 
 function detourOptions(): string[] {
   const l = props.leg;
@@ -43,7 +44,7 @@ function detourOptions(): string[] {
         <tr>
           <th class="col-first">队伍</th><th class="col-status">状态</th>
           <th v-if="withStart" class="col-time">开始</th><th class="col-time">{{ label }}</th>
-          <th v-if="showTarget" class="col-extra c">施加对象</th>
+          <th v-if="showTarget" class="col-extra c">{{ targetLabel }}</th>
           <th v-if="leg.type === 'DT'" class="col-extra c">绕道选择</th>
           <th v-if="leg.type === 'RB'" class="col-extra c">路障完成人</th>
           <th v-if="leg.type === 'FF'" class="col-extra c">快进结果</th>
@@ -57,7 +58,7 @@ function detourOptions(): string[] {
           <td v-if="withStart"><span class="record-time">{{ fmtTime(p?.arrived_at) }}</span></td>
           <td><span class="record-time">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td>
           <td v-if="showTarget" class="c">
-            <MSelect v-if="inline(can, p)" sm style="width: 130px" :model-value="p?.target_team_id ?? ''" :options="[{ value: '', label: '未使用' }, ...race.teams.filter((x) => x.id !== team.id).map((t) => ({ value: t.id, label: t.label }))]" @update:model-value="rec.setValue('target', team.id, leg.id, String($event))" />
+            <MSelect v-if="inline(can, p)" sm style="width: 130px" :model-value="p?.target_team_id ?? ''" :options="[{ value: '', label: leg.type === 'Union' ? '未选择' : '未使用' }, ...race.teams.filter((x) => x.id !== team.id).map((t) => ({ value: t.id, label: t.label }))]" @update:model-value="rec.setValue('target', team.id, leg.id, String($event))" />
             <span v-else>{{ p?.target_team_id ? race.teamById.get(p.target_team_id)?.label : '-' }}</span>
           </td>
           <td v-if="leg.type === 'DT'" class="c">
@@ -80,7 +81,7 @@ function detourOptions(): string[] {
                 <span v-else class="text-gray text-sm">已锁定</span>
               </template>
               <template v-else-if="can">
-                <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!disabledReason(p, block)" :title="disabledReason(p, block) ?? ''" @click="rec.complete(team.id, leg.id)">记录{{ label }}</button>
+                <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!disabledReason(p, block, team.id)" :title="disabledReason(p, block, team.id) ?? ''" @click="rec.complete(team.id, leg.id)">记录{{ label }}</button>
                 <button v-else class="btn btn-text btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
               </template>
               <template v-else-if="edit && p?.completed_at">

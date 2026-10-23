@@ -104,9 +104,19 @@ teamRoutes.put('/teams/:id', hostOnly, async (c) => {
 teamRoutes.delete('/teams/:id', hostOnly, (c) => {
   const id = intParam(c, 'id');
   const before = teamInEvent(c, id);
-  run('DELETE FROM teams WHERE id = ?', id);
+  tx(() => {
+    // 该队的全部记录一起删除：进度、罚时、结算、经费流水、作为施加/合作对象的引用、排班里的跟队
+    run('DELETE FROM progress WHERE team_id = ?', id);
+    run('UPDATE progress SET target_team_id = NULL WHERE target_team_id = ?', id);
+    run('DELETE FROM penalties WHERE team_id = ?', id);
+    run('DELETE FROM pitstop_results WHERE team_id = ?', id);
+    run('DELETE FROM currency_ledger WHERE team_id = ?', id);
+    run('UPDATE assignments SET team_id = NULL WHERE team_id = ?', id);
+    run('DELETE FROM teams WHERE id = ?', id);
+  });
   audit(c.get('user'), 'delete', 'team', id, before);
-  notify('teams');
+  recomputeEliminations(c.get('event').id);
+  notify('teams'); notify('progress'); notify('ledger'); notify('assignments');
   return c.json({ ok: true });
 });
 
