@@ -150,11 +150,12 @@ p { margin: 0 0 8px; }
 .form-group:has(> label + input:not([type="checkbox"]):not([type="file"]), > label + textarea, > label + .sel) > label { position: absolute; top: 7px; left: 16px; margin: 0; font-size: 11px; line-height: 14px; font-weight: 500; color: var(--gray-600); pointer-events: none; z-index: 1; white-space: nowrap; }
 .form-group:has(> label + input:not([type="checkbox"]):not([type="file"]), > label + textarea, > label + .sel):focus-within > label { color: var(--primary); }
 .form-group > label + input:not([type="checkbox"]):not([type="file"]) { background: transparent; border: none; border-radius: 26px; height: 50px; padding: 18px 16px 0; box-shadow: none; }
-.form-group > label + textarea { background: transparent; border: none; border-radius: 20px; padding: 24px 16px 10px; min-height: 96px; box-shadow: none; }
+/* 多行文本：标签占住上方区域，文本域从标签下面开始，滚动时内容不会钻到标签底下 */
+.form-group > label + textarea { background: transparent; border: none; border-radius: 0 0 20px 20px; padding: 2px 16px 10px; min-height: 72px; box-shadow: none; display: block; }
 .form-group > label + input:hover, .form-group > label + textarea:hover, .form-group > label + input:focus, .form-group > label + textarea:focus { background: transparent; border: none; box-shadow: none; }
 .form-group > label + input:disabled, .form-group > label + textarea:disabled { background: transparent; }
 .form-group:has(> label + input:disabled, > label + textarea:disabled) { background: var(--surface-2); }
-.form-group:has(> label + textarea) { border-radius: 20px; }
+.form-group:has(> label + textarea) { border-radius: 20px; padding-top: 24px; }
 .form-group > label + .sel { display: block; width: 100%; }
 .form-group > label + .sel .sel-btn { background: transparent; border: none; border-radius: 26px; height: 50px; padding: 18px 12px 0 16px; font-weight: 400; }
 .form-group > label + .sel .sel-btn:hover, .form-group > label + .sel.sel-open .sel-btn { background: transparent; box-shadow: none; }

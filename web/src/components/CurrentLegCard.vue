@@ -43,8 +43,12 @@ const fare = ref('');
 function cardFor(t: Transport) { return isCoin.value && (t === '单车' || t === '打车') ? (team.value?.inventory ?? []).find((i) => i.name.includes(t)) ?? null : null; }
 const needsCard = (t: Transport) => isCoin.value && (t === '单车' || t === '打车');
 const transportDisabled = (t: Transport) => !canUse.value || (needsCard(t) && !cardFor(t));
-/** 选了用卡片的方式时金额框置灰（框一直在，布局不跳） */
-const fareOff = computed(() => transport.value === '' || needsCard(transport.value));
+/** 货币比赛：地铁固定 3 币、公交固定 2 币，不能改；单车、打车用卡片。经费比赛：都填实际消费 */
+const FIXED_FARE: Partial<Record<Transport, number>> = { 地铁: 3, 公交: 2 };
+const fixedFare = computed(() => (isCoin.value && transport.value ? FIXED_FARE[transport.value] ?? null : null));
+/** 金额框一直在（布局不跳）：用卡片或固定票价时置灰 */
+const fareOff = computed(() => transport.value === '' || needsCard(transport.value) || fixedFare.value !== null);
+watch(fixedFare, (v) => { if (v !== null) fare.value = String(v); else if (transport.value && needsCard(transport.value)) fare.value = ''; });
 const shopOpen = ref(false);
 watch(currentLeg, () => { transport.value = ''; fare.value = ''; shopOpen.value = false; });
 async function confirmTransport() {
@@ -61,7 +65,7 @@ async function confirmTransport() {
     } catch (e) { ui.error(e); }
     return;
   }
-  const amount = parseMoney(fare.value);
+  const amount = fixedFare.value ?? parseMoney(fare.value);
   if (amount === null) { ui.toast(isCoin.value ? '消费必须是正整数' : '消费必须是正数，最多两位小数', 'error'); return; }
   if (!(await ui.confirm('交通消费', `「${tm.label}」${t}，扣除 ${fmtMoney(amount)} ${moneyUnit()}\n当前余额 ${fmtMoney(tm.currency)} → ${fmtMoney(tm.currency - amount)}`))) return;
   try {
@@ -90,7 +94,7 @@ async function confirmTransport() {
               <span class="bag-tile-name">{{ t }}</span>
             </button>
           </div>
-          <input v-model="fare" type="number" :inputmode="isCoin ? 'numeric' : 'decimal'" min="0" step="1" class="cl-amount" :placeholder="fareOff && transport ? '用卡片' : `消费（${moneyUnit()}）`" :disabled="fareOff" />
+          <input v-model="fare" type="number" :inputmode="isCoin ? 'numeric' : 'decimal'" min="0" step="1" class="cl-amount" :placeholder="transport && needsCard(transport) ? '用卡片' : `消费（${moneyUnit()}）`" :disabled="fareOff" />
           <button class="btn btn-sm cl-confirm" :disabled="!transport || !canUse" @click="confirmTransport">确认</button>
         </div>
       </div>
