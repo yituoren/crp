@@ -31,6 +31,8 @@ async function enterEvent() {
 // 不依赖浏览器的横向滚动，用 JS 识别手势/触控板横滑后整屏平移，手机和电脑缩窄窗口都可用。
 const narrowQuery = window.matchMedia('(max-width: 1000px)');
 const narrow = ref(narrowQuery.matches);
+// 手机端左右滑动 / 触控板横向滚动切屏暂时关闭，只用底部按钮切换；需要时改回 true
+const SWIPE_ENABLED = false;
 const page = ref(1); // 0 = 实时大屏，1 = 常规页面
 const dragX = ref(0); // 手指跟随时的临时偏移
 const dragging = ref(false);
@@ -91,10 +93,12 @@ onMounted(async () => {
   setUnauthorizedHandler(() => { auth.user = null; router.replace('/login'); });
   narrowQuery.addEventListener('change', onLayoutChange);
   window.addEventListener('resize', onLayoutChange);
-  window.addEventListener('touchstart', onTouchStart, { passive: true });
-  window.addEventListener('touchmove', onTouchMove, { passive: true });
-  window.addEventListener('touchend', onTouchEnd, { passive: true });
-  window.addEventListener('wheel', onWheel, { passive: true });
+  if (SWIPE_ENABLED) {
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+    window.addEventListener('wheel', onWheel, { passive: true });
+  }
   await enterEvent();
   connectRealtime();
 });
@@ -103,10 +107,12 @@ onUnmounted(() => {
   disconnectRealtime();
   narrowQuery.removeEventListener('change', onLayoutChange);
   window.removeEventListener('resize', onLayoutChange);
-  window.removeEventListener('touchstart', onTouchStart);
-  window.removeEventListener('touchmove', onTouchMove);
-  window.removeEventListener('touchend', onTouchEnd);
-  window.removeEventListener('wheel', onWheel);
+  if (SWIPE_ENABLED) {
+    window.removeEventListener('touchstart', onTouchStart);
+    window.removeEventListener('touchmove', onTouchMove);
+    window.removeEventListener('touchend', onTouchEnd);
+    window.removeEventListener('wheel', onWheel);
+  }
 });
 
 async function logout() {
