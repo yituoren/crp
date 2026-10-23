@@ -93,7 +93,9 @@ export const useRace = defineStore('race', () => {
     return !!authorId && authorId === auth.user?.id;
   }
   /** 经费：主办任意；跟队仅所跟队伍（赛段结束后仅主办）；站点无 */
-  const canAdjustCurrency = computed(() => auth.isAdmin || (!episodeFinished.value && (auth.isHost || myAssignment.value?.role === 'follow')));
+  const canAdjustCurrency = computed(() => auth.isAdmin || (!episodeFinished.value && (auth.isHost || myAssignment.value?.role === 'follow' || (myAssignment.value?.role === 'station' && (myAssignment.value.leg_ids?.length ?? 0) > 0))));
+  /** 经费操作可选的环节：站点只能选自己驻守的环节，且没有“其他”；其他角色可选全部环节 + 其他 */
+  const currencyLegIds = computed<number[] | null>(() => (!auth.isHost && myAssignment.value?.role === 'station' ? (myAssignment.value.leg_ids ?? []) : null));
   /** 淘汰权限：主办，或本赛段站在中继站的站点人员；不受赛段开始/结束限制 */
   const canEliminate = computed(() => {
     if (auth.isHost) return true;
@@ -106,6 +108,7 @@ export const useRace = defineStore('race', () => {
     if (episodeFinished.value || teamLocked(teamId)) return false;
     if (auth.isHost) return true;
     const a = myAssignment.value;
+    if (a?.role === 'station') return (a.leg_ids?.length ?? 0) > 0; // 站点：任意队伍，环节受限
     return a?.role === 'follow' && a.team_id === teamId;
   }
 
@@ -274,7 +277,7 @@ export const useRace = defineStore('race', () => {
 
   return {
     episodes, teams, users, announcements, shopItems, loadShopItems, unreadAnnouncements, markAnnouncementsRead, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
-    aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, isLocked, teamLocked, lockReason, parentOf, branchOf, branchLocked, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
+    aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, isLocked, teamLocked, lockReason, parentOf, branchOf, branchLocked, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, currencyLegIds, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
     loadAll, reset, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
   };
 });

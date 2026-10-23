@@ -10,6 +10,7 @@ import RecordTable from '@/components/RecordTable.vue';
 import PenaltyPanel from '@/components/PenaltyPanel.vue';
 import LegExtraField from '@/components/LegExtraField.vue';
 import TeamCurrencyPanel from '@/components/TeamCurrencyPanel.vue';
+import CurrencyOps from '@/components/CurrencyOps.vue';
 import ProgressEditModal from '@/components/ProgressEditModal.vue';
 import { type Leg, type Progress, legName } from '@/types';
 import { endLabel, hasStart } from '@/types';
@@ -125,6 +126,7 @@ const stats = computed(() => ({
         <div v-if="l.judge_criteria" class="alert alert-info pre">判定标准：{{ l.judge_criteria }}</div>
         <RecordTable :leg="l" />
         <div class="mt-2"><PenaltyPanel :leg-id="l.id" /></div>
+        <div class="mt-2"><CurrencyOps :leg-id="l.id" /></div>
       </div>
     </template>
 

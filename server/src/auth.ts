@@ -143,10 +143,14 @@ export function canRecordProgress(user: AuthUser, episodeId: number, teamId: num
 }
 
 /** 经费：主办任意；跟队仅本赛段所跟的队伍（排班按赛段生效，换队伍自动跟着变）；站点无经费权限 */
-export function canAdjustCurrency(user: AuthUser, episodeId: number, teamId?: number) {
+export function canAdjustCurrency(user: AuthUser, episodeId: number, teamId?: number, legId?: number | null) {
   if (isHostRole(user.role)) return true;
   const a = getAssignment(episodeId, user.id);
-  return !!a && a.role === 'follow' && teamId !== undefined && a.team_id === teamId;
+  if (!a) return false;
+  if (a.role === 'follow') return teamId !== undefined && a.team_id === teamId;
+  // 站点：本赛段任意队伍，但只能记在自己驻守的环节上（不能选“其他”）
+  if (a.role === 'station') return legId !== undefined && legId !== null && a.legIds.includes(legId);
+  return false;
 }
 /** 罚时/补时：主办任意；站点本赛段任意队伍；跟队仅本赛段所跟的队伍 */
 export function canManagePenalty(user: AuthUser, episodeId: number, teamId?: number) {

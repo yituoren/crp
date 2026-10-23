@@ -32,9 +32,14 @@ ledgerRoutes.post('/ledger', async (c) => {
   const b = await body(c);
   const episodeId = int(b.episodeId, 0) || null;
   const teamId = int(b.teamId, 0);
-  const kind: 'shop' | 'other' = b.kind === 'shop' ? 'shop' : 'other';
+  const kind: 'shop' | 'cutoff' | 'other' = b.kind === 'shop' ? 'shop' : b.kind === 'cutoff' ? 'cutoff' : 'other';
   let delta = kind === 'shop' ? 0 : money(b.delta);
   let reason = str(b.reason, 200) || '手动调整';
+  if (kind === 'cutoff') {
+    // 熔断：只能扣除
+    if (delta >= 0) throw bad('熔断只能扣除');
+    reason = `熔断${str(b.reason, 200) ? '：' + str(b.reason, 200) : ''}`;
+  }
   let item: { id: number; name: string; price: number } | null = null;
   if (!teamId) throw bad('缺少队伍');
   if (kind === 'shop') {
@@ -46,7 +51,7 @@ ledgerRoutes.post('/ledger', async (c) => {
     reason = `购买：${item.name}`;
   }
   if (!delta) throw bad('金额不能为 0');
-  if (!canAdjustCurrency(user, episodeId ?? 0, teamId)) throw forbidden('只有主办或该队伍的跟队可以操作经费');
+  if (!canAdjustCurrency(user, episodeId ?? 0, teamId, int(b.legId, 0) || null)) throw forbidden('主办可操作所有队伍；跟队只能操作所跟队伍；站点只能记在自己驻守的环节上');
   const team = get('SELECT * FROM teams WHERE id = ?', teamId);
   if (!team || team.event_id !== c.get('event').id) throw notFound('队伍不存在');
   const epRow = episodeId ? get<{ status: string; code: string }>('SELECT status, code FROM episodes WHERE id = ?', episodeId) : null;
