@@ -1,3 +1,4 @@
+import { recomputeEliminations, lockFromAfterLastRecord } from '../elimination.js';
 import { Hono, type Context } from 'hono';
 import { all, get, run, tx, fromCents } from '../db.js';
 import { hostOnly, type Env, type EventRow } from '../auth.js';
@@ -46,7 +47,7 @@ function inventoryByTeam(eventId: number) {
 export const listTeams = (eventId: number) => {
   const rb = rbCountsByTeam();
   const inv = inventoryByTeam(eventId);
-  return all('SELECT id, code, name, members, status, currency, sort FROM teams WHERE event_id = ? ORDER BY sort, id', eventId).map((t) => {
+  return all('SELECT id, code, name, members, status, currency, sort, eliminated_leg_id, locked_from_leg_id FROM teams WHERE event_id = ? ORDER BY sort, id', eventId).map((t) => {
     const members = parseMembers(t.members);
     return { ...t, members, label: teamLabel(t.name, members), currency: fromCents(t.currency), rbCounts: rb.get(t.id) ?? {}, inventory: inv.get(t.id) ?? [] };
   });
@@ -85,10 +86,17 @@ teamRoutes.put('/teams/:id', hostOnly, async (c) => {
   const b = await body(c);
   const name = b.name === undefined ? before.name : str(b.name, 50) || before.name;
   const members = b.members === undefined ? before.members : JSON.stringify(parseMembers(b.members).slice(0, 20));
-  const status = ['alive', 'eliminated', 'withdrawn'].includes(b.status) ? b.status : before.status;
+  // 状态只能手动改为“退赛”或从退赛“恢复”；淘汰由环节规则自动计算，没有手动入口
+  if (b.status !== undefined && !['alive', 'withdrawn'].includes(b.status)) throw bad('淘汰由环节的淘汰规则自动判定，不能手动设置');
+  if (b.status === 'alive' && before.status === 'eliminated') throw bad('淘汰状态由记录自动计算，修改记录后会自动恢复');
+  const status = b.status === undefined ? before.status : b.status;
   const sort = b.sort === undefined ? before.sort : int(b.sort, before.sort);
-  run('UPDATE teams SET name = ?, members = ?, status = ?, sort = ? WHERE id = ?', name, members, status, sort, id);
-  audit(c.get('user'), 'update', 'team', id, before, { name, members, status, sort });
+  let locked: number | null = before.locked_from_leg_id ?? null;
+  if (status === 'withdrawn' && before.status !== 'withdrawn') locked = lockFromAfterLastRecord(c.get('event').id, id); // 退赛：保留之前记录，之后环节锁定
+  if (status === 'alive' && before.status === 'withdrawn') locked = null;
+  run('UPDATE teams SET name = ?, members = ?, status = ?, sort = ?, locked_from_leg_id = ?, eliminated_leg_id = CASE WHEN ? = \'withdrawn\' THEN NULL ELSE eliminated_leg_id END WHERE id = ?', name, members, status, sort, locked, status, id);
+  audit(c.get('user'), 'update', 'team', id, before, { name, members, status, sort, locked_from_leg_id: locked });
+  recomputeEliminations(c.get('event').id); // 退赛/恢复会改变参与计算的队伍
   notify('teams');
   return c.json({ ok: true });
 });
@@ -105,7 +113,7 @@ teamRoutes.delete('/teams/:id', hostOnly, (c) => {
 /** 重置全部队伍：状态恢复存活、货币清零（不改队名） */
 teamRoutes.post('/teams/reset', hostOnly, (c) => {
   tx(() => {
-    run('UPDATE teams SET status = ?, currency = 0 WHERE event_id = ?', 'alive', c.get('event').id);
+    run('UPDATE teams SET status = ?, currency = 0, eliminated_leg_id = NULL, locked_from_leg_id = NULL WHERE event_id = ?', 'alive', c.get('event').id);
   });
   audit(c.get('user'), 'reset', 'team', 'all');
   notify('teams');

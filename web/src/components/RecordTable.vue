@@ -16,7 +16,10 @@ const editing = ref<{ team: Team; progress: Progress | null } | null>(null);
 
 const rows = computed(() => {
   const list = props.onlyTeamId ? race.teams.filter((t) => t.id === props.onlyTeamId) : race.teams;
-  return list.map((team) => ({ team, p: race.progressOf(team.id, props.leg.id), can: race.canRecord(team.id, props.leg.id) && (team.status === 'alive' || auth.isHost), edit: race.canEdit(team.id), block: race.blockReason(team.id, props.leg.id) }));
+  return list.map((team) => {
+    const locked = race.isLocked(team.id, props.leg.id) && !auth.isAdmin; // 淘汰/退赛之后的环节：只读留空
+    return { team, p: race.progressOf(team.id, props.leg.id), locked, can: !locked && race.canRecord(team.id, props.leg.id), edit: !locked && race.canEdit(team.id), block: race.blockReason(team.id, props.leg.id) };
+  });
 });
 /** 附加信息原地编辑：上一环节完成（本环节开始）后、本环节完成前允许；完成后只能通过“修改记录”弹窗改 */
 const inline = (can: boolean, p: Progress | null) => can && !!p?.arrived_at && !p?.completed_at;
@@ -48,9 +51,9 @@ function detourOptions(): string[] {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="{ team, p, can, edit, block } in rows" :key="team.id" :style="team.status !== 'alive' ? 'opacity:.55' : ''">
+        <tr v-for="{ team, p, can, edit, block, locked } in rows" :key="team.id" :style="team.status !== 'alive' ? 'opacity:.55' : ''">
           <td><strong>{{ team.label }}</strong> <TeamStatus v-if="team.status !== 'alive'" :status="team.status" /></td>
-          <td>{{ stateOf(p) }}</td>
+          <td>{{ locked ? '-' : stateOf(p) }}</td>
           <td v-if="withStart"><span class="record-time">{{ fmtTime(p?.arrived_at) }}</span></td>
           <td><span class="record-time">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td>
           <td v-if="showTarget" class="c">
@@ -71,7 +74,8 @@ function detourOptions(): string[] {
           </td>
           <td class="c">
             <div class="flex" style="gap: 6px; flex-wrap: nowrap">
-              <template v-if="race.episodeFinished">
+              <template v-if="locked"><span class="text-gray text-sm">-</span></template>
+              <template v-else-if="race.episodeFinished">
                 <button v-if="edit" class="btn btn-text btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
                 <span v-else class="text-gray text-sm">已锁定</span>
               </template>

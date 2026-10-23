@@ -1,4 +1,5 @@
 import { Hono, type Context } from 'hono';
+import { recomputeEliminations } from '../elimination.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { all, get, run, tx, now, UPLOAD_DIR, fromCents } from '../db.js';
@@ -41,7 +42,8 @@ export function loadEpisodes(eventId: number) {
   const legsByEp = new Map<number, any[]>();
   for (const l of legs) {
     if (!legsByEp.has(l.episode_id)) legsByEp.set(l.episode_id, []);
-    legsByEp.get(l.episode_id)!.push({ ...l, attachments: attByLeg.get(l.id) ?? [] });
+    const norm = l.type === 'PS' ? { can_eliminate: 1, eliminate_count: l.eliminate_count > 0 ? l.eliminate_count : 2 } : {};
+    legsByEp.get(l.episode_id)!.push({ ...l, ...norm, attachments: attByLeg.get(l.id) ?? [] });
   }
   return episodes.map((e) => ({ ...e, budget: fromCents(e.budget), legs: legsByEp.get(e.id) ?? [] }));
 }
@@ -74,7 +76,7 @@ episodeRoutes.post('/episodes', hostOnly, async (c) => {
     const id = Number(r.lastInsertRowid);
     // 固定结构：第一个赛段以 Starting Line 开头；每个赛段以中继站结尾
     if (count === 0) run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', id, 1, 'SL', '起跑线', 'full');
-    run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', id, 99, 'PS', '中继站', 'full');
+    run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode, can_eliminate, eliminate_count) VALUES (?,?,?,?,1,?,1,2)', id, 99, 'PS', '中继站', 'full');
     return id;
   });
   const r = { lastInsertRowid: epId };
@@ -167,6 +169,9 @@ function legFields(b: any, before?: any) {
     cutoff_start: minutes('cutoff_start'),
     cutoff_interval: minutes('cutoff_interval'),
     shop_open: b.shop_open === undefined ? (before?.shop_open ?? 0) : (b.shop_open ? 1 : 0),
+    // 中继站一定可淘汰（默认 2 人）；其他环节可选
+    can_eliminate: type === 'PS' ? 1 : (b.can_eliminate === undefined ? (before?.can_eliminate ?? 0) : (b.can_eliminate ? 1 : 0)),
+    eliminate_count: Math.max(1, b.eliminate_count === undefined ? (before?.eliminate_count ?? (type === 'PS' ? 2 : 1)) : int(b.eliminate_count, 1)),
     name: b.name === undefined ? (before?.name ?? '') : str(b.name, 50) || (before?.name ?? '新环节'),
     description: pick('description'),
     address: pick('address', 300),
@@ -194,9 +199,9 @@ episodeRoutes.post('/episodes/:id/legs', hostOnly, async (c) => {
   const r = tx(() => {
     if (ps) run('UPDATE legs SET sort = sort + 1 WHERE episode_id = ? AND sort >= ?', episodeId, ps.sort);
     return run(
-      `INSERT INTO legs(episode_id, sort, type, name, description, address, map_url, clue_text, judge_criteria, open_time, close_time, detour_a, detour_b, needs_staff, record_mode, cutoff_start, cutoff_interval, shop_open)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      episodeId, sort, f.type, f.name, f.description, f.address, f.map_url, f.clue_text, f.judge_criteria, f.open_time, f.close_time, f.detour_a, f.detour_b, f.needs_staff, f.record_mode, f.cutoff_start, f.cutoff_interval, f.shop_open,
+      `INSERT INTO legs(episode_id, sort, type, name, description, address, map_url, clue_text, judge_criteria, open_time, close_time, detour_a, detour_b, needs_staff, record_mode, cutoff_start, cutoff_interval, shop_open, can_eliminate, eliminate_count)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      episodeId, sort, f.type, f.name, f.description, f.address, f.map_url, f.clue_text, f.judge_criteria, f.open_time, f.close_time, f.detour_a, f.detour_b, f.needs_staff, f.record_mode, f.cutoff_start, f.cutoff_interval, f.shop_open, f.can_eliminate, f.eliminate_count,
     );
   });
   audit(c.get('user'), 'create', 'leg', Number(r.lastInsertRowid), undefined, f);
@@ -212,10 +217,11 @@ episodeRoutes.put('/legs/:id', hostOnly, async (c) => {
   if (b.type !== undefined && b.type !== before.type && (fixed || b.type === 'SL' || b.type === 'PS')) throw bad('Starting Line 与中继站的类型固定，不能改成或改自其他类型');
   const f = legFields(b, before);
   run(
-    `UPDATE legs SET type=?, name=?, description=?, address=?, map_url=?, clue_text=?, judge_criteria=?, open_time=?, close_time=?, detour_a=?, detour_b=?, needs_staff=?, record_mode=?, cutoff_start=?, cutoff_interval=?, shop_open=? WHERE id=?`,
-    f.type, f.name, f.description, f.address, f.map_url, f.clue_text, f.judge_criteria, f.open_time, f.close_time, f.detour_a, f.detour_b, f.needs_staff, f.record_mode, f.cutoff_start, f.cutoff_interval, f.shop_open, id,
+    `UPDATE legs SET type=?, name=?, description=?, address=?, map_url=?, clue_text=?, judge_criteria=?, open_time=?, close_time=?, detour_a=?, detour_b=?, needs_staff=?, record_mode=?, cutoff_start=?, cutoff_interval=?, shop_open=?, can_eliminate=?, eliminate_count=? WHERE id=?`,
+    f.type, f.name, f.description, f.address, f.map_url, f.clue_text, f.judge_criteria, f.open_time, f.close_time, f.detour_a, f.detour_b, f.needs_staff, f.record_mode, f.cutoff_start, f.cutoff_interval, f.shop_open, f.can_eliminate, f.eliminate_count, id,
   );
   audit(c.get('user'), 'update', 'leg', id, before, f);
+  if (recomputeEliminations(c.get('event').id)) notify('teams');
   notify('episodes', before.episode_id);
   return c.json({ ok: true });
 });

@@ -4,10 +4,9 @@ import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
-import type { Team } from '@/types';
+import { type Team, legName } from '@/types';
 import Modal from '@/components/Modal.vue';
 import TeamStatus from '@/components/TeamStatus.vue';
-import { fmtMoney, moneyUnit } from '@/utils/money';
 
 const auth = useAuth();
 const race = useRace();
@@ -33,7 +32,8 @@ async function save() {
 }
 async function setStatus(t: Team, status: Team['status']) {
   const label = { alive: '恢复', eliminated: '淘汰', withdrawn: '退赛' }[status];
-  if (!(await ui.confirm(`${label}队伍`, `确定将「${t.label}」标记为${label}？`, { danger: status !== 'alive' }))) return;
+  const msg = status === 'withdrawn' ? `确定将「${t.label}」标记为退赛？之前的记录保留，之后的环节不能再记录。` : `取消「${t.label}」的退赛状态？`;
+  if (!(await ui.confirm(`${label}队伍`, msg, { danger: status !== 'alive' }))) return;
   try { await api(`/teams/${t.id}`, { method: 'PUT', body: { status } }); await race.loadTeams(); ui.toast(`已${label}`); } catch (e) { ui.error(e); }
 }
 async function remove(t: Team) {
@@ -60,14 +60,15 @@ async function resetAll() {
         <span style="font-weight: 500; font-size: 16px">{{ t.label }}</span>
         <TeamStatus :status="t.status" />
       </div>
-      <div class="currency-box mt-1">{{ fmtMoney(t.currency) }} <span class="text-sm text-gray">{{ moneyUnit() }}</span></div>
+      <div class="text-sm text-gray mt-1">
+        <template v-if="t.status === 'eliminated' && t.eliminated_leg_id">在「{{ race.legById.get(t.eliminated_leg_id) ? legName(race.legById.get(t.eliminated_leg_id)!) : '-' }}」被淘汰</template>
+        <template v-else-if="t.status === 'withdrawn'">已退赛，之后的环节不再记录</template>
+        <template v-else>{{ t.members.length ? t.members.join('、') : '未登记成员' }}</template>
+      </div>
       <div v-if="auth.isHost" class="flex mt-2" style="gap: 2px 4px">
         <button class="btn btn-text btn-sm" @click="open(t)"><Icon name="edit" size="16" />编辑</button>
-        <button v-if="t.status !== 'alive'" class="btn btn-tonal btn-sm" @click="setStatus(t, 'alive')">恢复</button>
-        <template v-else>
-          <button class="btn btn-text btn-text-danger btn-sm" @click="setStatus(t, 'eliminated')">淘汰</button>
-          <button class="btn btn-text btn-sm" @click="setStatus(t, 'withdrawn')">退赛</button>
-        </template>
+        <button v-if="t.status === 'withdrawn'" class="btn btn-tonal btn-sm" @click="setStatus(t, 'alive')">恢复</button>
+        <button v-else-if="t.status === 'alive'" class="btn btn-text btn-text-danger btn-sm" @click="setStatus(t, 'withdrawn')">退赛</button>
         <button class="btn btn-text btn-text-danger btn-sm" @click="remove(t)"><Icon name="delete" size="16" />删除</button>
       </div>
     </div>

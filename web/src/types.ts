@@ -32,10 +32,10 @@ export const RECORD_MODE_LABEL: Record<RecordMode, string> = { none: '不记录�
 export interface Attachment { id: number; leg_id: number; filename: string; mime: string; size: number; url: string; created_at: string }
 export interface Leg {
   id: number; episode_id: number; sort: number; type: LegType; name: string; description: string; address: string; map_url: string;
-  clue_text: string; judge_criteria: string; open_time: string; close_time: string; detour_a: string; detour_b: string; needs_staff: number; record_mode: RecordMode; cutoff_start: number; cutoff_interval: number; shop_open: number; attachments: Attachment[];
+  clue_text: string; judge_criteria: string; open_time: string; close_time: string; detour_a: string; detour_b: string; needs_staff: number; record_mode: RecordMode; cutoff_start: number; cutoff_interval: number; shop_open: number; can_eliminate: number; eliminate_count: number; attachments: Attachment[];
 }
 export interface Episode { id: number; code: string; name: string; budget: number; sort: number; status: 'pending' | 'running' | 'finished'; notes: string; started_at: string | null; finished_at: string | null; legs: Leg[] }
-export interface Team { id: number; code: string; name: string; members: string[]; label: string; status: 'alive' | 'eliminated' | 'withdrawn'; currency: number; sort: number; rbCounts: Record<string, number>; inventory: { name: string; count: number }[] }
+export interface Team { id: number; code: string; name: string; members: string[]; label: string; status: 'alive' | 'eliminated' | 'withdrawn'; currency: number; sort: number; rbCounts: Record<string, number>; inventory: { name: string; count: number }[]; eliminated_leg_id: number | null; locked_from_leg_id: number | null }
 export interface Assignment { id: number; episode_id: number; user_id: number; role: 'follow' | 'station' | 'live'; team_id: number | null; leg_id: number | null; leg_ids: number[]; leg_names: string[]; username: string; display_name: string; team_name: string | null }
 export interface Progress {
   id: number; episode_id: number; team_id: number; leg_id: number; arrived_at: string | null; completed_at: string | null;

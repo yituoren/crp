@@ -232,6 +232,14 @@ ensureColumn('currency_ledger', 'kind', "TEXT NOT NULL DEFAULT 'other'");
 ensureColumn('currency_ledger', 'item_id', 'INTEGER');
 ensureColumn('currency_ledger', 'item_name', 'TEXT');
 ensureColumn('legs', 'shop_open', 'INTEGER NOT NULL DEFAULT 0');
+// 自动淘汰：环节可淘汰 + 淘汰人数；队伍记录在哪个环节被淘汰、从哪个环节起锁定（淘汰/退赛后不可再记录）
+const addedCanElim = ensureColumn('legs', 'can_eliminate', 'INTEGER NOT NULL DEFAULT 0');
+const addedElimCount = ensureColumn('legs', 'eliminate_count', 'INTEGER NOT NULL DEFAULT 1');
+if (addedCanElim || addedElimCount) {
+  db.exec("UPDATE legs SET can_eliminate = 1, eliminate_count = 2 WHERE type = 'PS'");
+}
+ensureColumn('teams', 'eliminated_leg_id', 'INTEGER');
+ensureColumn('teams', 'locked_from_leg_id', 'INTEGER');
 ensureColumn('assignments', 'leg_ids', 'TEXT'); // 站点可驻守多个环节：JSON 数组，leg_id 保留为第一个
 
 // ---------- 多比赛：赛段、队伍、公告、日志都挂在比赛下 ----------

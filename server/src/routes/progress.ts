@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { all, get, run, tx, now } from '../db.js';
-import { hostOnly, canRecordProgress, canManagePenalty, isHostRole, isPitstopStation, type Env, isAdminRole } from '../auth.js';
+import { hostOnly, canRecordProgress, canManagePenalty, isHostRole, type Env, isAdminRole } from '../auth.js';
+import { recomputeEliminations, isLegLocked } from '../elimination.js';
 import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forbidden } from '../util.js';
 import { teamLabelMap } from './teams.js';
 import { episodeInEvent } from './episodes.js';
@@ -85,10 +86,11 @@ progressRoutes.post('/progress', async (c) => {
     );
     if (later.length) throw bad(`后面的环节已有记录（${later.map((r) => r.name).join('、')}），请先撤销后面的`);
   }
-  const team = get('SELECT * FROM teams WHERE id = ?', teamId);
+  const team = get<{ id: number; status: string; locked_from_leg_id: number | null }>('SELECT * FROM teams WHERE id = ?', teamId);
   if (!team) throw notFound('队伍不存在');
   if (!canRecordProgress(user, episodeId, teamId, legId)) throw forbidden('你没有该队伍/站点的记录权限');
-  if (team.status !== 'alive' && !isHostRole(user.role)) throw forbidden('该队伍已淘汰，只有主办可以修改记录');
+  // 淘汰 / 退赛之后的环节锁定：所有人都不能再记录（管理员除外）；之前的记录照常
+  if (!isAdminRole(user.role) && isLegLocked(c.get('event').id, team, legId)) throw forbidden(`该队伍已${team.status === 'withdrawn' ? '退赛' : '淘汰'}，此后的环节不能再记录`);
   if (['undo_arrive', 'undo_complete'].includes(action) && !isHostRole(user.role)) throw forbidden('撤销记录仅主办可操作');
 
   const before = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, legId);
@@ -158,6 +160,7 @@ progressRoutes.post('/progress', async (c) => {
     });
     audit(user, `progress:${action}`, 'progress', `${episodeId}/${teamId}/${legId}`, before, next);
     notify('progress', episodeId);
+    if (recomputeEliminations(c.get('event').id)) notify('teams');
   }
   const progress = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, legId);
   return c.json({ progress, already });
@@ -247,6 +250,9 @@ progressRoutes.put('/progress/:episodeId/:teamId/:legId', async (c) => {
   };
   const episodeRow = get('SELECT status, code FROM episodes WHERE id = ?', episodeId)!;
   if (episodeRow.status === 'pending' && !isAdminRole(user.role)) throw bad(`${episodeRow.code} 尚未开始，开始赛段后才能操作`);
+  const teamRow = get<{ id: number; status: string; locked_from_leg_id: number | null }>('SELECT * FROM teams WHERE id = ?', teamId);
+  if (!teamRow) throw notFound('队伍不存在');
+  if (!isAdminRole(user.role) && isLegLocked(c.get('event').id, teamRow, legId)) throw forbidden(`该队伍已${teamRow.status === 'withdrawn' ? '退赛' : '淘汰'}，此后的环节不能再修改`);
   if (!isHostRole(user.role)) {
     if (episodeRow.status === 'finished') throw forbidden(`${episodeRow.code} 已结束，只有主办可以修改记录`);
     if (!canRecordProgress(user, episodeId, teamId, legId)) throw forbidden('只能修改所跟队伍的记录');
@@ -263,6 +269,7 @@ progressRoutes.put('/progress/:episodeId/:teamId/:legId', async (c) => {
   });
   audit(user, 'progress:edit', 'progress', `${episodeId}/${teamId}/${legId}`, before, next);
   notify('progress', episodeId);
+  if (recomputeEliminations(c.get('event').id)) notify('teams');
   return c.json({ ok: true });
 });
 
@@ -290,6 +297,7 @@ progressRoutes.post('/episodes/:id/penalties', async (c) => {
   );
   audit(user, 'create', 'penalty', Number(r.lastInsertRowid), undefined, { episodeId, teamId, minutes, reason: b.reason });
   notify('progress', episodeId);
+  if (recomputeEliminations(c.get('event').id)) notify('teams');
   return c.json({ id: Number(r.lastInsertRowid) });
 });
 
@@ -315,6 +323,7 @@ progressRoutes.post('/penalties/:id/revert', (c) => {
   });
   audit(user, 'penalty_revert', 'penalty', id, { minutes: orig.minutes }, { revertId: newId });
   notify('progress', orig.episode_id);
+  if (recomputeEliminations(c.get('event').id)) notify('teams');
   return c.json({ id: newId });
 });
 
@@ -322,7 +331,7 @@ progressRoutes.post('/penalties/:id/revert', (c) => {
 export function pitstopRows(episodeId: number) {
   const psLeg = get('SELECT id FROM legs WHERE episode_id = ? AND type = ? ORDER BY sort DESC LIMIT 1', episodeId, 'PS');
   const labels = teamLabelMap();
-  const teams = all<any>('SELECT id, code, name, status FROM teams WHERE event_id = (SELECT event_id FROM episodes WHERE id = ?) ORDER BY sort, id', episodeId).map((t): any => ({ ...t, name: labels.get(t.id) ?? t.name }));
+  const teams = all<any>('SELECT id, code, name, status, eliminated_leg_id FROM teams WHERE event_id = (SELECT event_id FROM episodes WHERE id = ?) ORDER BY sort, id', episodeId).map((t): any => ({ ...t, name: labels.get(t.id) ?? t.name }));
   const results = new Map(all('SELECT * FROM pitstop_results WHERE episode_id = ?', episodeId).map((r) => [r.team_id, r]));
   const penalties = new Map<number, number>();
   for (const p of all('SELECT team_id, SUM(minutes) AS m FROM penalties WHERE episode_id = ? GROUP BY team_id', episodeId)) penalties.set(p.team_id, p.m);
@@ -337,7 +346,7 @@ export function pitstopRows(episodeId: number) {
       team_id: t.id, team_code: t.code, team_name: t.name, team_status: t.status,
       checkin_at: checkin, checkin_source: r?.checkin_at ? 'manual' : psProgress.get(t.id) ? 'progress' : null,
       penalty_minutes: pen, final_time: finalMs ? new Date(finalMs).toISOString() : null,
-      rank: null as number | null, eliminated: !!r?.eliminated, note: r?.note ?? '',
+      rank: null as number | null, eliminated: !!psLeg && t.eliminated_leg_id === psLeg.id, note: r?.note ?? '',
     };
   });
   // 名次实时计算：有最终成绩且未退赛的队伍按最终成绩排序；签到、罚时、补时一变名次就变
@@ -350,33 +359,22 @@ export function pitstopRows(episodeId: number) {
 
 progressRoutes.get('/episodes/:id/pitstop', (c) => { episodeInEvent(c, intParam(c, 'id')); return c.json({ pitstop: pitstopRows(intParam(c, 'id')) }); });
 
-progressRoutes.put('/episodes/:id/pitstop/:teamId', async (c) => {
+progressRoutes.put('/episodes/:id/pitstop/:teamId', hostOnly, async (c) => {
   const episodeId = intParam(c, 'id'), teamId = intParam(c, 'teamId');
   episodeInEvent(c, episodeId);
   const user = c.get('user');
-  let b = await body(c);
-  if (!isHostRole(user.role)) {
-    // 中继站的站点人员只能操作“本段淘汰”，其他字段忽略
-    if (!isPitstopStation(user, episodeId)) throw forbidden('只有主办或本赛段中继站的站点人员可以标记淘汰');
-    if (b.eliminated === undefined) throw bad('中继站站点只能修改淘汰状态');
-    b = { eliminated: !!b.eliminated };
-  }
+  const b = await body(c);
   const before = get('SELECT * FROM pitstop_results WHERE episode_id = ? AND team_id = ?', episodeId, teamId);
   const checkin = b.checkinAt === undefined ? (before?.checkin_at ?? null) : isoOrNull(b.checkinAt);
-  const rank = before?.rank ?? null; // 名次自动计算，不再手工设置
-  const eliminated = b.eliminated === undefined ? !!before?.eliminated : !!b.eliminated;
   const note = b.note === undefined ? (before?.note ?? '') : str(b.note, 300);
-  tx(() => {
-    run(
-      `INSERT INTO pitstop_results(episode_id, team_id, checkin_at, rank, eliminated, note) VALUES (?,?,?,?,?,?)
-       ON CONFLICT(episode_id, team_id) DO UPDATE SET checkin_at = excluded.checkin_at, rank = excluded.rank, eliminated = excluded.eliminated, note = excluded.note`,
-      episodeId, teamId, checkin, rank, eliminated ? 1 : 0, note,
-    );
-    if (b.eliminated !== undefined) run('UPDATE teams SET status = ? WHERE id = ?', eliminated ? 'eliminated' : 'alive', teamId);
-  });
-  audit(user, 'update', 'pitstop', `${episodeId}/${teamId}`, before, { checkin, rank, eliminated, note });
+  run(
+    `INSERT INTO pitstop_results(episode_id, team_id, checkin_at, rank, eliminated, note) VALUES (?,?,?,NULL,0,?)
+     ON CONFLICT(episode_id, team_id) DO UPDATE SET checkin_at = excluded.checkin_at, note = excluded.note`,
+    episodeId, teamId, checkin, note,
+  );
+  audit(user, 'update', 'pitstop', `${episodeId}/${teamId}`, before, { checkin, note });
   notify('pitstop', episodeId);
   notify('progress', episodeId);
-  if (b.eliminated !== undefined) notify('teams');
+  if (recomputeEliminations(c.get('event').id)) notify('teams');
   return c.json({ pitstop: pitstopRows(episodeId) });
 });

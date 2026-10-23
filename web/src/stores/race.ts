@@ -26,6 +26,15 @@ export const useRace = defineStore('race', () => {
   const myAssignment = computed(() => assignments.value.find((a) => a.user_id === auth.user?.id) ?? null);
   const teamById = computed(() => new Map(teams.value.map((t) => [t.id, t])));
   const legById = computed(() => new Map(episodes.value.flatMap((e) => e.legs).map((l) => [l.id, l])));
+  /** 全比赛环节顺序（赛段顺序 × 环节顺序），用于判断“淘汰/退赛之后的环节” */
+  const legOrderIndex = computed(() => new Map(episodes.value.flatMap((e) => e.legs).map((l, i) => [l.id, i])));
+  /** 某队在某环节是否已锁定：淘汰或退赛之后的环节不能再记录、不显示操作 */
+  function isLocked(teamId: number, legId: number) {
+    const t = teamById.value.get(teamId);
+    if (!t?.locked_from_leg_id) return false;
+    const from = legOrderIndex.value.get(t.locked_from_leg_id), cur = legOrderIndex.value.get(legId);
+    return from !== undefined && cur !== undefined && cur >= from;
+  }
   /** 最后一个赛段：它的中继站显示为“终点” */
   const lastEpisodeId = computed(() => episodes.value[episodes.value.length - 1]?.id ?? 0);
   const isLastEpisode = (episodeId?: number | null) => (episodeId ?? currentEpisode.value?.id) === lastEpisodeId.value;
@@ -219,7 +228,7 @@ export const useRace = defineStore('race', () => {
 
   return {
     episodes, teams, users, announcements, shopItems, loadShopItems, unreadAnnouncements, markAnnouncementsRead, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
-    aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
+    aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, isLocked, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
     loadAll, reset, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
   };
 });

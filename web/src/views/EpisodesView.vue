@@ -136,6 +136,7 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
           {{ doneCount(leg.id) }} 已{{ endLabel(leg.type) }}<template v-if="leg.type !== 'SL'"> · {{ arrivedCount(leg.id) }} 进行中</template>
           · {{ leg.attachments.length }} 附件
           <template v-if="leg.shop_open"> · 开放商店</template>
+          <template v-if="leg.can_eliminate"> · 淘汰 {{ leg.eliminate_count }} 队</template>
           <template v-if="leg.cutoff_start || leg.cutoff_interval"> · 熔断 {{ fmtDurMs(leg.cutoff_start * 60000) }} 起，每 {{ fmtDurMs(leg.cutoff_interval * 60000) }}</template>
         </div>
         <div v-if="auth.isHost" class="flex mt-2" @click.stop>
