@@ -18,22 +18,20 @@ const shop = reactive<{ items: { id: number; name: string; price: string }[] }>(
 function fillShop() { shop.items = race.shopItems.map((i) => ({ id: i.id, name: i.name, price: String(i.price) })); }
 function addItem() { shop.items.push({ id: 0, name: '', price: '' }); }
 function removeItem(i: number) { shop.items.splice(i, 1); }
-async function saveShop() {
-  try {
-    await api('/shop/items', { method: 'PUT', body: { items: shop.items.map((i) => ({ id: i.id || undefined, name: i.name.trim(), price: i.price })) } });
-    await race.loadShopItems(); fillShop();
-    ui.toast('商品已保存');
-  } catch (e) { ui.error(e); }
-}
 function fill() {
   const e = auth.event;
   Object.assign(settings, { name: e.name, inviteCode: e.inviteCode ?? '', teamSize: e.teamSize, currencyMode: e.currencyMode, rbGap: e.rbGap });
   fillShop();
 }
-async function saveSettings() {
+/** 保存全部：先保存赛事设置，再保存商品（货币模式） */
+async function saveAll() {
   try {
     await api('/info', { method: 'PUT', body: settings });
     await auth.loadEvent(auth.event.hash);
+    if (settings.currencyMode === 'coin') {
+      await api('/shop/items', { method: 'PUT', body: { items: shop.items.map((i) => ({ id: i.id || undefined, name: i.name.trim(), price: i.price })) } });
+      await race.loadShopItems();
+    }
     fill();
     await Promise.all([race.loadTeams(), race.loadEpisodes(), race.loadLedger(), race.loadUsers()]);
     ui.toast('设置已保存');
@@ -64,27 +62,44 @@ onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
     <a v-if="auth.isAdmin" href="#" :class="{ 'router-link-active': tab === 'audit' }" @click.prevent="tab = 'audit'; loadAudit()">操作日志</a>
   </div>
 
-  <div v-if="tab === 'settings'" class="card" style="max-width: 520px">
-    <div class="card-header">赛事设置</div>
-    <div class="form-group"><label>赛事名称</label><input v-model="settings.name" /></div>
-    <div class="form-group"><label>邀请码（所有人在主页输入后加入本比赛，管理员和创建者除外；留空则无法加入）</label><input v-model="settings.inviteCode" placeholder="如 bj20" /></div>
-    <div class="form-group"><label>经费类型</label><MSelect v-model="settings.currencyMode" outlined :options="[{ value: 'yuan', label: '经费（以元计，精确到小数点后两位）' }, { value: 'coin', label: '货币（以币计，精确到个位）' }]" /></div>
-    <div class="form-group"><label>每队人数（大于等于 1 的整数；决定队伍编辑页有几个成员栏）</label><input v-model.number="settings.teamSize" type="number" min="1" max="20" step="1" inputmode="numeric" /></div>
-    <div class="form-group"><label>路障限制（同队成员完成路障次数之差不能超过的整数，默认 2）</label><input v-model.number="settings.rbGap" type="number" min="0" max="99" step="1" inputmode="numeric" /></div>
-    <button class="btn" @click="saveSettings">保存设置</button>
-  </div>
+  <div v-if="tab === 'settings'" class="settings">
+    <div class="settings-grid">
+      <section class="card settings-section">
+        <div class="settings-title">基本信息</div>
+        <div class="settings-desc">赛事名称显示在页面顶部；邀请码发给所有幕后，在主页输入即可加入。</div>
+        <div class="form-group"><label>赛事名称</label><input v-model="settings.name" /></div>
+        <div class="form-group"><label>邀请码</label><input v-model="settings.inviteCode" placeholder="如 bj20" /><div class="info-text">管理员和创建者无需邀请码；留空则无法加入</div></div>
+      </section>
 
-  <div v-if="tab === 'settings' && settings.currencyMode === 'coin'" class="card" style="max-width: 520px">
-    <div class="card-header"><span>商店商品</span><span class="text-xs text-gray">队伍在开放商店的环节用货币购买；价格为整币</span></div>
-    <div v-for="(it, i) in shop.items" :key="i" class="flex mb-2" style="flex-wrap: nowrap">
-      <input v-model="it.name" placeholder="商品名称" style="flex: 1; min-width: 0" />
-      <input v-model="it.price" type="number" min="1" step="1" inputmode="numeric" placeholder="价格" style="width: 100px" />
-      <button class="icon-btn icon-btn-sm" title="删除" @click="removeItem(i)"><Icon name="delete" size="18" /></button>
+      <section class="card settings-section">
+        <div class="settings-title">队伍与规则</div>
+        <div class="settings-desc">影响队伍编辑页的成员栏数量，以及路障人选的限制。</div>
+        <div class="field-2">
+          <div class="form-group"><label>每队人数</label><input v-model.number="settings.teamSize" type="number" min="1" max="20" step="1" inputmode="numeric" /><div class="info-text">1 到 20 的整数</div></div>
+          <div class="form-group"><label>路障次数差上限</label><input v-model.number="settings.rbGap" type="number" min="0" max="99" step="1" inputmode="numeric" /><div class="info-text">同队成员完成路障次数之差，默认 2</div></div>
+        </div>
+      </section>
+
+      <section class="card settings-section settings-wide">
+        <div class="settings-title">经费与商店</div>
+        <div class="settings-desc">经费以元计、精确到分；货币以币计、只取整数。货币模式可以配置商店，队伍在开放商店的环节用货币购买物品。</div>
+        <div class="settings-split">
+          <div class="form-group"><label>经费类型</label><MSelect v-model="settings.currencyMode" outlined :options="[{ value: 'yuan', label: '经费（元）' }, { value: 'coin', label: '货币（币）' }]" /><div class="info-text">切换类型只改变显示与校验方式，不换算已有金额</div></div>
+          <div v-if="settings.currencyMode === 'coin'" class="shop-editor">
+            <div class="flex-between mb-2"><span class="settings-subtitle">商店商品</span><button class="btn btn-text btn-sm" @click="addItem"><Icon name="add" size="16" />添加商品</button></div>
+            <div v-for="(it, i) in shop.items" :key="i" class="shop-row">
+              <input v-model="it.name" placeholder="商品名称" />
+              <input v-model="it.price" type="number" min="1" step="1" inputmode="numeric" placeholder="价格（币）" />
+              <button class="icon-btn icon-btn-sm" title="删除" @click="removeItem(i)"><Icon name="delete" size="18" /></button>
+            </div>
+            <div v-if="!shop.items.length" class="text-sm text-gray">还没有商品，点「添加商品」开始。</div>
+          </div>
+          <div v-else class="text-sm text-gray shop-editor">选择「货币」后可以在这里配置商店商品。</div>
+        </div>
+      </section>
     </div>
-    <div v-if="!shop.items.length" class="text-sm text-gray mb-2">还没有商品</div>
-    <div class="flex">
-      <button class="btn btn-text" @click="addItem"><Icon name="add" size="18" />添加商品</button>
-      <button class="btn" @click="saveShop">保存商品</button>
+    <div class="settings-actions">
+      <button class="btn" @click="saveAll">保存设置</button>
     </div>
   </div>
 

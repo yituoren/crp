@@ -68,20 +68,21 @@ async function apply(sign: 1 | -1) {
   <div v-if="race.episodePending" class="alert alert-warning">赛段尚未开始，开始赛段后才能操作{{ moneyLabel() }}。</div>
   <div v-else-if="race.episodeFinished && !auth.isHost" class="alert alert-info">赛段已结束，{{ moneyLabel() }}记录已锁定，只有主办可以修改。</div>
   <div v-else-if="!canOperate" class="text-sm text-gray">主办可操作所有队伍，跟队只能操作所跟队伍</div>
-  <div v-else class="flex ops-row">
-    <MSelect v-if="props.teamId === undefined" v-model="form.teamId" outlined style="width: 170px" placeholder="选择队伍" :options="teamOptions" />
-    <MSelect v-if="isCoin && race.shopItems.length" v-model="form.kind" outlined style="width: 130px" :options="[{ value: 'other', label: '其他' }, { value: 'shop', label: '商店购买' }]" />
-    <MSelect v-model="form.legId" outlined style="width: 170px" :placeholder="form.kind === 'shop' ? '开放商店的环节' : '环节：其他'" :options="legOptions" />
-    <template v-if="form.kind === 'shop'">
-      <MSelect v-model="form.itemId" outlined style="flex: 1; min-width: 180px" placeholder="选择商品" :options="itemOptions" />
-      <input :value="item ? fmtMoney(item.price) : ''" class="input-inline" :placeholder="moneyUnit() === '币' ? '数量' : '金额'" style="width: 100px" disabled />
-      <button class="btn btn-tonal btn-tonal-danger" :disabled="!item" @click="apply(-1)">扣除</button>
-    </template>
-    <template v-else>
-      <input v-model="form.amount" type="number" :inputmode="isCoin ? 'numeric' : 'decimal'" min="0" step="1" class="input-inline" :placeholder="moneyUnit() === '币' ? '数量' : '金额'" style="width: 100px" />
-      <input v-model="form.reason" class="input-inline" placeholder="原因（如：任务奖励、买线索）" style="flex: 1; min-width: 160px" />
-      <button class="btn btn-tonal" @click="apply(1)"><Icon name="add" size="18" />增加</button>
-      <button class="btn btn-tonal btn-tonal-danger" @click="apply(-1)">扣除</button>
-    </template>
+  <div v-else class="ops">
+    <!-- 第一组：选择项。队伍 / 类型 / 环节 固定宽度 -->
+    <div class="ops-selects">
+      <MSelect v-if="props.teamId === undefined" v-model="form.teamId" outlined class="ops-team" placeholder="选择队伍" :options="teamOptions" />
+      <MSelect v-if="isCoin" v-model="form.kind" outlined class="ops-kind" :options="[{ value: 'other', label: '其他' }, { value: 'shop', label: '商店购买' }]" />
+      <MSelect v-model="form.legId" outlined class="ops-leg" :placeholder="form.kind === 'shop' ? '开放商店的环节' : '环节：其他'" :options="legOptions" />
+    </div>
+    <!-- 第二组：金额 / 原因（或商品）/ 按钮，槽位不随类型变化 -->
+    <div class="ops-main">
+      <input v-if="form.kind === 'shop'" :value="item ? fmtMoney(item.price) : ''" class="ops-amount" :placeholder="moneyUnit() === '币' ? '数量' : '金额'" disabled />
+      <input v-else v-model="form.amount" type="number" :inputmode="isCoin ? 'numeric' : 'decimal'" min="0" step="1" class="ops-amount" :placeholder="moneyUnit() === '币' ? '数量' : '金额'" />
+      <MSelect v-if="form.kind === 'shop'" v-model="form.itemId" outlined class="ops-reason" placeholder="选择商品" :options="itemOptions" />
+      <input v-else v-model="form.reason" class="ops-reason" placeholder="原因（如：任务奖励、买线索）" />
+      <button class="btn btn-tonal" :disabled="form.kind === 'shop'" :title="form.kind === 'shop' ? '商店购买只能扣除' : ''" @click="apply(1)"><Icon name="add" size="18" />增加</button>
+      <button class="btn btn-tonal btn-tonal-danger" :disabled="form.kind === 'shop' && !item" @click="apply(-1)">扣除</button>
+    </div>
   </div>
 </template>
