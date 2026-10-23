@@ -29,8 +29,9 @@ const legs = computed(() => ep.value?.legs ?? []);
 const legOptions = computed(() => {
   let list = form.kind === 'shop' ? legs.value.filter((l) => l.shop_open) : legs.value;
   if (race.currencyLegIds) list = list.filter((l) => race.currencyLegIds!.includes(l.id));
-  const opts = list.map((l) => ({ value: l.id, label: `环节：${legName(l)}` }));
-  return form.kind === 'shop' || stationOnly.value ? opts : [{ value: '' as const, label: '环节：其他' }, ...opts];
+  const opts = list.map((l) => ({ value: l.id, label: legName(l) }));
+  // “其他”只有主办能选；商店购买必须选具体环节
+  return form.kind !== 'shop' && auth.isHost ? [...opts, { value: 0, label: '其他' }] : opts;
 });
 const kindOptions = computed(() => [
   { value: 'other', label: '其他' },
@@ -47,7 +48,7 @@ async function apply(sign: 1 | -1) {
   if (!t) { ui.toast('请选择队伍', 'error'); return; }
   if (form.kind === 'shop') {
     if (!item.value) { ui.toast('请选择商品', 'error'); return; }
-    if (form.legId === '') { ui.toast('请选择开放商店的环节', 'error'); return; }
+    if (form.legId === '' || form.legId === 0) { ui.toast('请选择开放商店的环节', 'error'); return; }
     const price = item.value.price;
     if (!(await ui.confirm('商店购买', `「${t.label}」购买「${item.value.name}」，扣除 ${fmtMoney(price)} ${moneyUnit()}\n当前余额 ${fmtMoney(t.currency)} → ${fmtMoney(t.currency - price)}`))) return;
     try {
@@ -58,14 +59,14 @@ async function apply(sign: 1 | -1) {
     } catch (e) { ui.error(e); }
     return;
   }
-  if (stationOnly.value && form.legId === '') { ui.toast('请选择你驻守的环节', 'error'); return; }
+  if (form.legId === '') { ui.toast(stationOnly.value ? '请选择你驻守的环节' : '请选择环节', 'error'); return; }
   const amount = parseMoney(form.amount);
   if (amount === null) { ui.toast(isCoin.value ? '数量必须是正整数；扣除请用「扣除」按钮' : '金额必须是正数，最多两位小数；扣除请用「扣除」按钮', 'error'); return; }
   const delta = amount * sign;
   const reason = form.reason.trim() || (form.kind === 'cutoff' ? '熔断' : sign > 0 ? '任务奖励' : '手动扣除');
   if (!(await ui.confirm(sign > 0 ? `增加${moneyLabel()}` : `扣除${moneyLabel()}`, `「${t.label}」${sign > 0 ? '增加' : '扣除'} ${fmtMoney(amount)} ${moneyUnit()}，原因：${reason}\n当前余额 ${fmtMoney(t.currency)} → ${fmtMoney(t.currency + delta)}`))) return;
   try {
-    await api('/ledger', { method: 'POST', body: { episodeId: ep.value?.id, teamId: t.id, delta, reason: form.kind === 'cutoff' ? form.reason.trim() : reason, kind: form.kind, legId: form.legId === '' ? null : form.legId } });
+    await api('/ledger', { method: 'POST', body: { episodeId: ep.value?.id, teamId: t.id, delta, reason: form.kind === 'cutoff' ? form.reason.trim() : reason, kind: form.kind, legId: form.legId === 0 ? null : form.legId } });
     form.amount = ''; form.reason = '';
     await Promise.all([race.loadTeams(), race.loadLedger()]);
     ui.toast(`已${sign > 0 ? '增加' : '扣除'} ${fmtMoney(amount)} ${moneyUnit()}`);
@@ -91,7 +92,7 @@ async function apply(sign: 1 | -1) {
       <!-- 选择项：类型（货币模式）/ 环节，固定宽度 -->
       <div class="ops-selects">
         <MSelect v-model="form.kind" outlined class="ops-kind" :options="kindOptions" />
-        <MSelect v-if="props.legId === undefined" v-model="form.legId" outlined class="ops-leg" :placeholder="form.kind === 'shop' ? '开放商店的环节' : stationOnly ? '选择环节' : '环节：其他'" :options="legOptions" />
+        <MSelect v-if="props.legId === undefined" v-model="form.legId" outlined class="ops-leg" :placeholder="form.kind === 'shop' ? '开放商店的环节' : '选择环节'" :options="legOptions" />
       </div>
       <!-- 金额 / 原因（或商品）/ 按钮，槽位不随类型变化 -->
       <div class="ops-main">

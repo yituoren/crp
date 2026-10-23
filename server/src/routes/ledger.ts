@@ -57,7 +57,8 @@ ledgerRoutes.post('/ledger', async (c) => {
   const epRow = episodeId ? get<{ status: string; code: string }>('SELECT status, code FROM episodes WHERE id = ?', episodeId) : null;
   if (epRow?.status === 'pending' && !isAdminRole(user.role)) throw bad(`${epRow.code} 尚未开始，开始赛段后才能操作经费`);
   { const r = editLockReason(user, epRow, team as { status: string }); if (r) throw forbidden(r); }
-  const legId = int(b.legId, 0) || null; // 环节可空 = 其他，不做权限校验
+  const legId = int(b.legId, 0) || null; // 环节为空 = “其他”，只有主办能选（与罚时一致）
+  if (!legId && !isHostRole(user.role)) throw forbidden('“其他”环节只能由主办选择，请选择具体环节');
   const legRow = legId ? get('SELECT id, shop_open FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId ?? 0) : null;
   if (legId && !legRow) throw notFound('环节不存在');
   if (kind === 'shop') {
