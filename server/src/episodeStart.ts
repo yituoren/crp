@@ -6,14 +6,15 @@ import { chainAfterComplete, emptyProgress, finalRanking, upsertProgress } from 
 
 export const SYSTEM_USER: AuthUser = { id: 0, username: 'system', displayName: '系统', role: 'admin' };
 
-export type EpisodeRow = { id: number; event_id: number; code: string; sort: number; status: string; budget: number; started_at: string | null; start_at: string | null; inherit_rank: number; start_gap_min: number };
+export type EpisodeRow = { id: number; event_id: number; code: string; sort: number; status: string; budget: number; started_at: string | null; start_at: string | null; depart_base: string | null; inherit_rank: number; start_gap_min: number };
 
 /** 开始赛段：状态改为进行中，记录开始时间，并给每支存活队伍发放本赛段经费（只发一次）。返回发了经费的队伍名 */
 export function startEpisodeNow(ep: EpisodeRow, user: AuthUser, t: string): string[] {
   const issued: string[] = [];
   const labels = teamLabelMap();
   tx(() => {
-    run("UPDATE episodes SET status = 'running', started_at = COALESCE(started_at, ?) WHERE id = ?", t, ep.id);
+    // 发车基准 = 本次开始的时刻（自动开始时就是设定时间）；之后各队按计划自动记录出发
+    run("UPDATE episodes SET status = 'running', started_at = COALESCE(started_at, ?), depart_base = COALESCE(depart_base, ?) WHERE id = ?", t, t, ep.id);
     if (!ep.started_at && ep.budget > 0) {
       for (const team of all("SELECT id, name, currency FROM teams WHERE status = 'alive' AND event_id = ? ORDER BY sort, id", ep.event_id)) {
         const balance = team.currency + ep.budget;
@@ -37,16 +38,17 @@ export function previousEpisode(ep: EpisodeRow) {
 }
 
 /**
- * 发车计划：每支存活队伍的出发时间。
- *  - 继承上一赛段名次且设了发车间隔：按名次先后，第 k 名在开始时间 + (k-1)×间隔 出发
- *  - 否则所有队伍在开始时间一起出发
+ * 发车计划：每支存活队伍的出发时间，基准 = 赛段实际开始时刻（自动开始 = 设定时间；手动开始 = 点击时刻；未开始 = 设定时间）。
+ *  - 继承上一赛段名次且设了发车间隔：按名次先后，第 1 名在基准时间出发，之后每队晚一个间隔
+ *  - 否则所有队伍在基准时间一起出发
  */
 export function departurePlan(ep: EpisodeRow): { teamId: number; at: string }[] {
-  if (!ep.start_at) return [];
+  const baseIso = ep.depart_base ?? ep.start_at;
+  if (!baseIso) return [];
   const alive = all<{ id: number }>("SELECT id FROM teams WHERE event_id = ? AND status = 'alive' ORDER BY sort, id", ep.event_id).map((t) => t.id);
-  const base = new Date(ep.start_at).getTime();
+  const base = new Date(baseIso).getTime();
   const prev = ep.inherit_rank ? previousEpisode(ep) : null;
-  if (!prev || ep.start_gap_min <= 0) return alive.map((teamId) => ({ teamId, at: ep.start_at! }));
+  if (!prev || ep.start_gap_min <= 0) return alive.map((teamId) => ({ teamId, at: baseIso }));
   const order = finalRanking(prev.id).filter((id) => alive.includes(id));
   for (const id of alive) if (!order.includes(id)) order.push(id);
   return order.map((teamId, i) => ({ teamId, at: new Date(base + i * ep.start_gap_min * 60000).toISOString() }));

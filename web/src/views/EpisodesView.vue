@@ -50,7 +50,7 @@ async function startEpisode() {
     : ep.value.budget > 0
       ? `将 ${ep.value.code} 标记为进行中，并给 ${alive} 支存活队伍各补充 ${fmtMoney(ep.value.budget)} ${moneyUnit()}（加到现有余额上，写入流水）。确定？`
       : `${ep.value.code} 未设置补充${moneyLabel()}，只把状态标记为进行中。确定？`;
-  if (!(await ui.confirm('开始赛段（仅供测试）', `手动开始只供测试使用，正式比赛请在「编辑赛段」里设置自动开始时间，到点后系统会自动开始并记录各队出发。\n\n${msg}`))) return;
+  if (!(await ui.confirm('开始赛段（仅供测试）', `手动开始只供测试使用，正式比赛请在「编辑赛段」里设置自动开始时间。手动开始后同样按发车规则自动记录各队出发（以点击时刻为基准）。\n\n${msg}`))) return;
   try {
     const d = await api(`/episodes/${ep.value.id}/start`, { method: 'POST' });
     await Promise.all([race.loadEpisodes(), race.loadTeams(), race.loadLedger()]);

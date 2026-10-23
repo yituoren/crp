@@ -12,7 +12,7 @@ function tick() {
     if (get("SELECT 1 FROM episodes WHERE event_id = ? AND status = 'running' AND id != ?", ep.event_id, ep.id)) continue; // 上一赛段还没结束：等主办结束后再开始
     withEvent(ev, () => startEpisodeNow(ep, SYSTEM_USER, ep.start_at!));
   }
-  for (const ep of all<EpisodeRow>("SELECT * FROM episodes WHERE start_at IS NOT NULL AND status = 'running'")) {
+  for (const ep of all<EpisodeRow>("SELECT * FROM episodes WHERE depart_base IS NOT NULL AND status = 'running'")) {
     const ev = get<EventRow>('SELECT * FROM events WHERE id = ?', ep.event_id);
     if (!ev) continue;
     let changed = false;

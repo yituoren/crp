@@ -243,6 +243,7 @@ ensureColumn('episodes', 'started_at', 'TEXT');
 ensureColumn('episodes', 'start_at', 'TEXT');            // 自动开始时间（为空 = 不自动开始）
 ensureColumn('episodes', 'inherit_rank', 'INTEGER NOT NULL DEFAULT 0'); // 按上一赛段名次先后发车
 ensureColumn('episodes', 'start_gap_min', 'INTEGER NOT NULL DEFAULT 0'); // 发车间隔（分钟）
+ensureColumn('episodes', 'depart_base', 'TEXT');        // 发车基准时间：自动开始 = 设定时间，手动开始 = 点击时刻；为空 = 不自动记录出发
 ensureColumn('episodes', 'finished_at', 'TEXT');
 ensureColumn('users', 'ann_read_id', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('announcements', 'pinned_at', 'TEXT');

@@ -171,7 +171,7 @@ episodeRoutes.post('/episodes/:id/reset', hostOnly, (c) => {
   tx(() => {
     for (const e of ids) {
       for (const table of ['progress', 'penalties', 'pitstop_results', 'cutoff_uses', 'currency_ledger']) run(`DELETE FROM ${table} WHERE episode_id = ?`, e.id);
-      run("UPDATE episodes SET status = 'pending', started_at = NULL, finished_at = NULL WHERE id = ?", e.id);
+      run("UPDATE episodes SET status = 'pending', started_at = NULL, finished_at = NULL, depart_base = NULL WHERE id = ?", e.id);
     }
     // 余额按剩余流水重算（经费发放、购买、熔断都在流水里）
     for (const t of all<{ id: number }>('SELECT id FROM teams WHERE event_id = ?', eventId)) {
