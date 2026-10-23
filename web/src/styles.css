@@ -149,6 +149,10 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .table tbody tr:hover { background: var(--surface-3); }
 .table tr:last-child td { border-bottom: none; }
 .table .wrap { white-space: normal; }
+/* 列多的记录表：收紧内边距，原因/备注列允许折行，让表格尽量不出横向滚动 */
+.table-dense th, .table-dense td { padding: 8px 6px; font-size: 12.5px; }
+.table-dense .btn-sm { padding: 0 8px; min-height: 28px; }
+.table .wrap.mono { word-break: break-all; max-width: 240px; }
 
 /* 标签：Material 色块风格 */
 .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 8px; font-size: 11px; font-weight: 500; line-height: 1.6; letter-spacing: .02em; }
@@ -290,7 +294,7 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .pager { height: 100vh; height: 100dvh; overflow: hidden; }
 .pager-track { display: flex; align-items: stretch; height: 100%; transform: none !important; }
 /* 左栏：大屏幕 600px，窄一些的桌面按比例收窄，给右侧主区域留够宽度 */
-.pane-live { flex: none; width: clamp(440px, 42vw, 600px); height: 100%; overflow: auto; padding: 16px 0 16px 16px; display: flex; flex-direction: column; overscroll-behavior: contain; }
+.pane-live { flex: none; width: clamp(400px, 38vw, 600px); height: 100%; overflow: auto; padding: 16px 0 16px 16px; display: flex; flex-direction: column; overscroll-behavior: contain; }
 .pane-main { flex: 1; min-width: 0; height: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; } /* 主区域永不横向滚动，宽表格在各自的 .scroll-table 里滚 */
 html, body { overscroll-behavior: none; }
 .pager-dots { display: none; }
@@ -328,6 +332,12 @@ html, body { overscroll-behavior: none; }
   .pager-dots button.active { color: var(--primary-on-light); background: var(--primary-light); }
 }
 
+/* 窄桌面（两栏仍并排）：左栏大屏表格列再收紧，保证不出横向滚动 */
+@media (min-width: 1001px) and (max-width: 1200px) {
+  .live-row { grid-template-columns: minmax(78px, 1.2fr) minmax(98px, 1.5fr) minmax(82px, 1.4fr) 70px; gap: 8px; font-size: 12px; }
+  .live-team { font-size: 13px; }
+}
+
 /* 进度页矩阵：队伍列固定在左，其余横向滚动；每个环节用实线分组 */
 .matrix-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .mx2 { min-width: max-content; border-collapse: separate; border-spacing: 0; border-top: 2px solid var(--gray-300); border-bottom: 2px solid var(--gray-300); border-right: 2px solid var(--gray-300); border-radius: 0; }
@@ -348,7 +358,7 @@ html, body { overscroll-behavior: none; }
 .card .card { box-shadow: none; margin-bottom: 0; background: var(--surface-2); }
 
 /* 记录表：固定表格布局，各列按比例分配（内容变化不改变列宽），列数不同也均匀铺满 */
-.record-table { table-layout: fixed; width: 100%; min-width: 640px; }
+.record-table { table-layout: fixed; width: 100%; min-width: 600px; }
 .record-table th, .record-table td { overflow: hidden; text-overflow: ellipsis; }
 .record-table .col-first { width: 24%; }
 .record-table .col-status { width: 12%; }

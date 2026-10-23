@@ -73,7 +73,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
     </div>
     <div v-if="!visible.length" class="text-gray text-sm">本赛段暂无罚时或补时记录</div>
     <div v-else class="scroll-table">
-      <table class="table">
+      <table class="table table-dense">
         <thead><tr><th>时间</th><th>队伍</th><th v-if="!props.legId">环节</th><th>类型</th><th>分钟</th><th>净罚时</th><th>操作人</th><th>原因</th><th>其他</th></tr></thead>
         <tbody>
           <tr v-for="p in visible" :key="p.id" :class="{ 'row-reverted': p.reverted }">
@@ -84,7 +84,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
             <td :class="p.minutes > 0 ? 'log-negative' : 'log-positive'">{{ p.minutes > 0 ? '+' : '' }}{{ p.minutes }}</td>
             <td>{{ totals.get(p.team_id) ?? 0 }}</td>
             <td>{{ p.applied_by_name ?? '-' }}</td>
-            <td>{{ p.reason || '-' }}</td>
+            <td class="wrap">{{ p.reason || '-' }}</td>
             <td><span v-if="p.reverted" class="text-gray text-sm">{{ revertedBy(p.id) }}撤销</span><button v-else-if="race.canRevert(p.applied_by)" class="btn btn-text btn-sm" @click="revert(p)"><Icon name="undo" size="16" />撤销</button></td>
           </tr>
         </tbody>

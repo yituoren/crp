@@ -161,7 +161,7 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
     </div>
     <div v-if="!hasPsLeg" class="alert alert-warning">本赛段没有中继站环节，只能手工填写签到时间。</div>
     <div class="scroll-table">
-      <table class="table">
+      <table class="table table-dense">
         <thead><tr><th>名次</th><th>队伍</th><th>状态</th><th>签到时间</th><th>净罚时</th><th>最终成绩</th><th>本段淘汰</th><th>备注</th><th v-if="race.canEliminate"></th></tr></thead>
         <tbody>
           <tr v-for="r in sorted" :key="r.team_id">
@@ -169,14 +169,14 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
             <td><strong>{{ r.team_name }}</strong></td>
             <td><TeamStatus :status="r.team_status" /></td>
             <td><span class="record-time">{{ fmtTimeSec(r.checkin_at) }}</span></td>
-            <td>{{ r.penalty_minutes > 0 ? `+${r.penalty_minutes} 分` : r.penalty_minutes < 0 ? `${r.penalty_minutes} 分（补时）` : '-' }}</td>
+            <td>{{ r.penalty_minutes > 0 ? `+${r.penalty_minutes} 分` : r.penalty_minutes < 0 ? `${r.penalty_minutes} 分` : '-' }}</td>
             <td><span class="record-time">{{ fmtTimeSec(r.final_time) }}</span></td>
             <td>{{ r.eliminated ? '淘汰' : '' }}</td>
             <td class="wrap">{{ r.note }}</td>
             <td v-if="race.canEliminate">
-              <div class="flex" style="gap: 6px; flex-wrap: nowrap">
+              <div class="flex" style="gap: 4px; flex-wrap: nowrap">
                 <button class="btn btn-sm btn-slot" :class="r.eliminated ? 'btn-tonal' : 'btn-tonal btn-tonal-danger'" @click="toggleEliminate(r)">{{ r.eliminated ? '取消淘汰' : '淘汰' }}</button>
-                <button v-if="auth.isHost" class="btn btn-text btn-sm" @click="open(r)"><Icon name="edit" size="16" />编辑</button>
+                <button v-if="auth.isHost" class="icon-btn icon-btn-sm" title="编辑结算" @click="open(r)"><Icon name="edit" size="18" /></button>
               </div>
             </td>
           </tr>
