@@ -92,7 +92,6 @@ const stats = computed(() => ({
                   <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.complete(myTeam!.id, leg.id)">记录{{ label }}</button>
                   <button v-else class="btn btn-text btn-sm btn-slot" @click="editing = { leg, progress: p }">修改记录</button>
                 </template>
-                <div v-if="block && !p?.completed_at" class="block-hint" :title="block">{{ block }}</div>
               </td>
             </tr>
           </tbody>
