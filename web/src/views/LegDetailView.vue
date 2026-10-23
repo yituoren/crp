@@ -107,7 +107,6 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
               </div>
               <div class="form-group"><label>{{ isDestinationLeg(form.type) ? '目的地' : '名称' }}</label><input v-model="form.name" :placeholder="form.type === 'RI' ? '目的地名称，显示时自动加箭头' : form.type === 'PS' ? '中继站所在地' : ''" /></div>
             </div>
-            <p class="text-sm text-gray" style="margin: 0 0 10px">{{ form.type === 'BR' ? '支线必须紧跟在一个主线环节之后；主线进行中可随时进入支线，支线计时期间主线暂停，支线结束后主线恢复，支线不是必须完成的。' : (form.type === 'RI' ? '路线信息不需要站点人员' : '需要安排站点人员') + '；每个环节记录开始与结束两个时间，开始时间自动接上一环节的结束时间。' }}</p>
             <label v-if="moneyMode() === 'coin'" class="check-row"><input v-model="form.shop_open" type="checkbox" /> 本环节开放商店<span class="text-gray text-sm">（队伍可在此用货币购买商品）</span></label>
           </div>
           <div v-if="form.type !== 'BR'" class="edit-section">
@@ -117,7 +116,6 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
           </div>
           <div class="edit-section">
             <div class="flex-between" style="margin-bottom: 8px"><span class="edit-section-title" style="margin: 0">熔断</span><button class="btn btn-text btn-sm" @click="addCutoff"><Icon name="add" size="16" />添加熔断</button></div>
-            <p class="text-sm text-gray" style="margin: 0 0 10px">队伍进入本环节后，过了起始时间第一次可用；每次使用后再过间隔时间可再次使用。{{ moneyMode() === 'coin' ? '货币模式下每次使用按消耗扣币。' : '' }}</p>
             <div v-for="(c, i) in cutoffs" :key="i" class="cutoff-edit">
               <input v-model="c.name" placeholder="种类名称" class="cutoff-name" />
               <div class="hm-row" title="起始时间"><input v-model.number="c.sh" type="number" min="0" step="1" inputmode="numeric" /><span>h</span><input v-model.number="c.sm" type="number" min="0" max="59" step="1" inputmode="numeric" /><span>m 起</span></div>

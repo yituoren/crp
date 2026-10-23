@@ -84,9 +84,7 @@ async function resetAll() {
   </div>
 
   <Modal v-if="editing" :title="editing === 'new' ? '新增队伍' : '编辑队伍'" small @close="editing = null">
-    <div class="info-text mb-2">编号按队伍顺序自动生成（{{ editing === 'new' ? String(race.teams.length + 1).padStart(2, '0') : editing.name }}），在列表里拖动卡片即可换序。</div>
     <div v-for="i in form.members.length" :key="i" class="form-group"><label>成员 {{ i }}</label><input v-model="form.members[i - 1]" :placeholder="`成员 ${i} 姓名`" /></div>
-    <div class="info-text">填了成员后，各处显示为「编号 成员1&成员2」；每队人数在「后台 → 赛事设置」里改。</div>
     <div class="modal-actions"><button class="btn btn-text" @click="editing = null">取消</button><button class="btn" @click="save">保存</button></div>
   </Modal>
 </template>

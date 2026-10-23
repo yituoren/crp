@@ -117,7 +117,7 @@ const stats = computed(() => ({
     </template>
 
     <template v-else-if="my?.role === 'station' && myLegs.length">
-      <p><span class="badge badge-station">站点</span> 你本赛段驻守 {{ myLegs.length }} 个环节：{{ myLegs.map((l) => legName(l)).join('、') }}。开始和完成时间由各队跟队记录，站点这里只看；本站点的罚时、补时在各环节下方操作。</p>
+      <p><span class="badge badge-station">站点</span> 你本赛段驻守 {{ myLegs.length }} 个环节：{{ myLegs.map((l) => legName(l)).join('、') }}</p>
       <div v-for="(l, i) in myLegs" :key="l.id" class="station-leg" :class="{ 'mt-3': i > 0 }">
         <div class="flex-between mb-1">
           <span class="section-title"><LegTag :type="l.type" full /> {{ legName(l) }}</span>
@@ -133,7 +133,7 @@ const stats = computed(() => ({
     </template>
 
     <template v-else-if="my?.role === 'live'">
-      <p><span class="badge badge-live">直播员</span> 你本赛段负责直播跟进，可以查看所有队伍、环节、经费与罚时数据，但不做记录。</p>
+      <p><span class="badge badge-live">直播员</span> 本赛段只读</p>
       <div class="flex">
         <router-link :to="{ name: 'progress' }" class="btn">查看进度</router-link>
         <router-link :to="{ name: 'episodes' }" class="btn btn-tonal">赛段与环节</router-link>

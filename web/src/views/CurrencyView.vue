@@ -33,7 +33,7 @@ async function revert(l: LedgerEntry) {
 
   <!-- 背包：普通模式只看经费余额；货币模式看余额 + 持有物品 -->
   <div class="card">
-    <div class="card-header"><span>背包</span><span class="text-xs text-gray">{{ moneyMode() === 'coin' ? '各队当前持有的货币与物品' : '各队当前经费余额' }}</span></div>
+    <div class="card-header"><span>背包</span></div>
     <div class="grid grid-4">
       <div v-for="t in race.teams" :key="t.id" class="team-card bag-card" :class="'team-' + t.status">
         <div class="flex-between"><strong>{{ t.label }}</strong><span v-if="t.status !== 'alive'" class="status-eliminated">{{ t.status === 'eliminated' ? '已淘汰' : '已退赛' }}</span></div>
@@ -48,7 +48,6 @@ async function revert(l: LedgerEntry) {
 
   <!-- 操作：与跟队「我的」页相同的表单，主办多一个队伍选择 -->
   <CurrencyOps :team-id="fixedTeam">
-    <template #header><span v-if="moneyMode() === 'coin' && !race.shopItems.length && auth.isHost" class="text-xs text-gray">在「后台 → 赛事设置」添加商品后可记录商店购买</span></template>
   </CurrencyOps>
 
   <div class="card">

@@ -36,7 +36,7 @@ async function removeUse(id: number) {
 
 <template>
   <div v-if="leg.cutoffs.length" class="card">
-    <div class="card-header"><span>熔断使用情况</span><span class="text-xs text-gray">次数与下次可用倒计时；倒计时只在队伍处于本环节时计算</span></div>
+    <div class="card-header"><span>熔断使用情况</span></div>
     <div class="scroll-table">
       <table class="table table-dense">
         <thead><tr><th>队伍</th><th v-for="cf in leg.cutoffs" :key="cf.id" class="c">{{ cf.name }}</th><th v-if="auth.isHost" class="c">操作</th></tr></thead>

@@ -52,7 +52,6 @@ async function submit() {
         <a v-if="mode === 'login'" href="#" @click.prevent="mode = 'register'; msg = ''">还没有账号？立即注册</a>
         <a v-else href="#" @click.prevent="mode = 'login'; msg = ''">已有账号？去登录</a>
       </div>
-      <p class="info-text mt-2" style="text-align: center">注册后在主页输入主办给的邀请码加入比赛。忘记密码请联系主办或管理员重置。</p>
     </div>
   </div>
 </template>

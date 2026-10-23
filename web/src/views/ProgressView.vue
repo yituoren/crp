@@ -100,7 +100,7 @@ const orderedTeams = computed(() => {
 
   <!-- 进度矩阵 -->
   <div class="card">
-    <div class="card-header"><span>进度结算</span><span class="text-xs text-gray">按实时名次排列：名次 = 签到时间 + 净罚时；绿 = 已完成，黄 = 进行中</span></div>
+    <div class="card-header"><span>进度结算</span></div>
     <div v-if="!legs.length" class="empty-state">本赛段没有需要记录的环节</div>
     <div v-else class="matrix-scroll">
       <table class="table mx2">

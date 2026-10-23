@@ -66,25 +66,22 @@ onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
     <div class="settings-grid">
       <section class="card settings-section">
         <div class="settings-title">基本信息</div>
-        <div class="settings-desc">赛事名称显示在页面顶部；邀请码发给所有幕后，在主页输入即可加入。</div>
         <div class="form-group"><label>赛事名称</label><input v-model="settings.name" /></div>
-        <div class="form-group"><label>邀请码</label><input v-model="settings.inviteCode" placeholder="如 bj20" /><div class="info-text">管理员和创建者无需邀请码；留空则无法加入</div></div>
+        <div class="form-group"><label>邀请码</label><input v-model="settings.inviteCode" placeholder="如 bj20" /></div>
       </section>
 
       <section class="card settings-section">
         <div class="settings-title">队伍与规则</div>
-        <div class="settings-desc">影响队伍编辑页的成员栏数量，以及路障人选的限制。</div>
         <div class="field-2">
-          <div class="form-group"><label>每队人数</label><input v-model.number="settings.teamSize" type="number" min="1" max="20" step="1" inputmode="numeric" /><div class="info-text">1 到 20 的整数</div></div>
-          <div class="form-group"><label>路障次数差上限</label><input v-model.number="settings.rbGap" type="number" min="0" max="99" step="1" inputmode="numeric" /><div class="info-text">同队成员完成路障次数之差，默认 2</div></div>
+          <div class="form-group"><label>每队人数</label><input v-model.number="settings.teamSize" type="number" min="1" max="20" step="1" inputmode="numeric" /></div>
+          <div class="form-group"><label>路障次数差上限</label><input v-model.number="settings.rbGap" type="number" min="0" max="99" step="1" inputmode="numeric" /></div>
         </div>
       </section>
 
       <section class="card settings-section settings-wide">
         <div class="settings-title">经费与商店</div>
-        <div class="settings-desc">经费以元计、精确到分；货币以币计、只取整数。货币模式可以配置商店，队伍在开放商店的环节用货币购买物品。</div>
         <div class="settings-split">
-          <div class="form-group"><label>经费类型</label><MSelect v-model="settings.currencyMode" outlined :options="[{ value: 'yuan', label: '经费（元）' }, { value: 'coin', label: '货币（币）' }]" /><div class="info-text">切换类型只改变显示与校验方式，不换算已有金额</div></div>
+          <div class="form-group"><label>经费类型</label><MSelect v-model="settings.currencyMode" outlined :options="[{ value: 'yuan', label: '经费（元）' }, { value: 'coin', label: '货币（币）' }]" /></div>
           <div v-if="settings.currencyMode === 'coin'" class="shop-editor">
             <div class="flex-between mb-2"><span class="settings-subtitle">商店商品</span><button class="btn btn-text btn-sm" @click="addItem"><Icon name="add" size="16" />添加商品</button></div>
             <div v-for="(it, i) in shop.items" :key="i" class="shop-row">
@@ -104,7 +101,7 @@ onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
   </div>
 
   <div v-if="tab === 'members'" class="card">
-    <div class="card-header"><span>成员与主办</span><span class="text-xs text-gray">凭邀请码加入的人默认是幕后；创建者固定为主办；管理员是全局角色，不在此设置</span></div>
+    <div class="card-header"><span>成员与主办</span></div>
     <div class="scroll-table">
       <table class="table">
         <thead><tr><th>幕后ID</th><th class="c">本比赛身份</th><th class="c">操作</th></tr></thead>

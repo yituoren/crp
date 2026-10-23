@@ -109,7 +109,6 @@ onMounted(() => { loadUsers(); if (auth.isAdmin) loadAudit(); });
         </tbody>
       </table>
     </div>
-    <p class="info-text">任何人都可以注册账号，加入比赛靠邀请码；主办由各比赛的「赛事设置」里的主办名单决定。密码经过加密存储，无法查看；忘记密码只能重置。管理员账号只能在服务器上用 create-admin 命令创建或撤销。</p>
   </div>
 
   <div v-if="tab === 'audit'" class="card">
