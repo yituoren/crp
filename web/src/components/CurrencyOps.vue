@@ -29,7 +29,7 @@ const legs = computed(() => ep.value?.legs ?? []);
 const legOptions = computed(() => {
   let list = form.kind === 'shop' ? legs.value.filter((l) => l.shop_open) : legs.value;
   if (race.currencyLegIds) list = list.filter((l) => race.currencyLegIds!.includes(l.id));
-  const opts = list.map((l) => ({ value: l.id, label: legName(l) }));
+  const opts = list.map((l) => ({ value: l.id, label: legName(l), tag: l.type }));
   // “其他”只有主办能选；商店购买必须选具体环节
   return form.kind !== 'shop' && auth.isHost ? [...opts, { value: 0, label: '其他' }] : opts;
 });

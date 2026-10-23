@@ -210,6 +210,7 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .ep-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--success); margin-left: 6px; vertical-align: 1px; }
 
 /* 环节 / 队伍卡片 */
+.leg-list-head { min-height: 32px; } /* 添加环节按钮隐藏后行高不变 */
 .leg-item { background: var(--surface); border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 16px; cursor: pointer; transition: background-color .15s, box-shadow .15s; }
 .leg-item-body { min-width: 0; }
 /* 卡片头：左侧类型标签，右侧删除图标（固定环节没有）；高度固定，让有无按钮的卡片对齐 */
@@ -486,8 +487,12 @@ html, body { overscroll-behavior: none; }
 .sel-item-check { width: 20px; display: inline-flex; justify-content: center; color: var(--gray-800); flex: none; }
 .ms-item { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 20px 0 12px; font-size: 14px; cursor: pointer; white-space: nowrap; border-radius: 12px; }
 .ms-item:hover { background: rgba(60, 64, 67, .08); }
-.ms-item input { margin: 0; }
-.ms-item .tag { margin-right: 2px; }
+.ms-item { background: transparent; border: none; width: 100%; text-align: left; font-family: inherit; color: var(--gray-800); }
+.ms-item.on { font-weight: 500; }
+.ms-check { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--gray-400); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.ms-item.on .ms-check { background: var(--primary); border-color: var(--primary); color: #fff; }
+.ms-item .tag, .sel-item .tag, .sel-text .tag { margin-right: 2px; }
+.sel-text { display: inline-flex; align-items: center; gap: 2px; }
 .sched-leg { white-space: nowrap; line-height: 22px; } /* 排班表：站点的每个环节占一行 */
 .station-leg + .station-leg { border-top: 1px solid var(--gray-200); padding-top: 16px; margin-top: 4px; }
 /* 「我的」页不套外层卡片：状态行 + 无边框大表格，其余区块是灰底卡片 */

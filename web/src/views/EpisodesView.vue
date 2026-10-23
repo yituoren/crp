@@ -134,9 +134,9 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
       <div v-if="ep.notes" class="pre mt-1">{{ ep.notes }}</div>
     </div>
 
-    <div class="flex-between mb-2">
+    <div class="flex-between mb-2 leg-list-head">
       <div class="section-title">环节列表（{{ ep.legs.length }}）</div>
-      <button v-if="auth.isHost && race.structureEditable" class="btn" @click="addLeg"><Icon name="add" size="18" />添加环节</button>
+      <button v-if="auth.isHost && race.structureEditable" class="btn btn-sm" @click="addLeg"><Icon name="add" size="16" />添加环节</button>
     </div>
     <div v-if="!ep.legs.length" class="empty-state">暂无环节，{{ auth.isHost ? '请点击右上角添加' : '请等待主办添加' }}</div>
     <div class="grid grid-3">

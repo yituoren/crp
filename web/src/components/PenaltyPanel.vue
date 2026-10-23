@@ -67,7 +67,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
     <div v-if="race.episodePending" class="alert alert-warning">赛段尚未开始，开始赛段后才能操作罚时。</div>
     <div v-else-if="race.episodeFinished" class="alert alert-info">赛段已结束，罚时记录已锁定，只有管理员可以修改。</div>
     <div v-else-if="canAdd" class="flex mb-2">
-      <MSelect v-if="!props.legId" v-model="form.legId" outlined style="width: 160px" placeholder="选择环节" :options="[...legOptions.map((l) => ({ value: l.id, label: legName(l) })), ...(auth.isHost ? [{ value: 0, label: '其他' }] : [])]" />
+      <MSelect v-if="!props.legId" v-model="form.legId" outlined style="width: 160px" placeholder="选择环节" :options="[...legOptions.map((l) => ({ value: l.id, label: legName(l), tag: l.type })), ...(auth.isHost ? [{ value: 0, label: '其他' }] : [])]" />
       <input v-model="form.minutes" type="number" inputmode="numeric" min="1" step="1" class="input-inline" placeholder="分钟" style="width: 90px" />
       <input v-model="form.reason" class="input-inline" placeholder="原因（如：打车超预算 / 站点失误耽误）" style="flex: 1; min-width: 160px" />
       <button class="btn btn-tonal btn-tonal-danger" @click="apply(1)">增加罚时</button>

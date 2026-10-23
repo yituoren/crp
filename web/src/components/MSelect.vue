@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
+import LegTag from './LegTag.vue';
+import type { LegType } from '@/types';
 
 // Material 风格下拉：按钮 + 浮动菜单，菜单 fixed 定位不受滚动容器裁剪；空间不够时向上弹
 type Val = string | number | null | undefined;
 const props = withDefaults(defineProps<{
   modelValue: Val;
-  options: { value: string | number; label: string; disabled?: boolean }[];
+  options: { value: string | number; label: string; disabled?: boolean; tag?: string }[];
   placeholder?: string;
   disabled?: boolean;
   sm?: boolean;
@@ -31,6 +33,8 @@ function place() {
   const below = window.innerHeight - r.bottom;
   const top = below >= menuH + 8 || r.top < menuH ? r.bottom + 4 : r.top - menuH - 4;
   menuStyle.value = { position: 'fixed', top: `${top}px`, left: `${r.left}px`, minWidth: `${Math.max(r.width, 120)}px` };
+  // 菜单渲染后再量一次宽度，超出右边缘就往左挪
+  nextTick(() => { const w = menu.value?.offsetWidth ?? 0; const left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)); if (left !== r.left) menuStyle.value = { ...menuStyle.value, left: `${left}px` }; });
 }
 function toggleOpen() { if (props.disabled) return; open.value = !open.value; if (open.value) place(); }
 function pick(o: { value: string | number; disabled?: boolean }) {
@@ -51,11 +55,11 @@ onUnmounted(() => { document.removeEventListener('click', onDocClick); document.
 <template>
   <div ref="root" class="sel" :class="{ 'sel-sm': sm, 'sel-open': open, 'sel-disabled': disabled, 'sel-outlined': outlined, 'sel-chip': chip, 'sel-chip-on': chip && String(modelValue ?? '') !== '' }" :title="title">
     <button type="button" class="sel-btn" :class="{ 'sel-empty': isEmpty }" :disabled="disabled" @click="toggleOpen">
-      <span class="sel-text">{{ label }}</span><Icon name="expand_more" :size="sm ? 18 : 20" class="sel-caret" />
+      <span class="sel-text"><LegTag v-if="selected?.tag" :type="selected.tag as LegType" /> {{ label }}</span><Icon name="expand_more" :size="sm ? 18 : 20" class="sel-caret" />
     </button>
     <Teleport to="body"><div v-if="open" ref="menu" class="sel-menu" :style="menuStyle" role="listbox">
       <button v-for="o in options" :key="String(o.value)" type="button" class="sel-item" :class="{ active: String(o.value) === String(modelValue ?? ''), disabled: o.disabled }" role="option" :aria-selected="String(o.value) === String(modelValue ?? '')" @click="pick(o)">
-        <span class="sel-item-check"><Icon v-if="String(o.value) === String(modelValue ?? '')" name="check" size="18" /></span>{{ o.label }}
+        <span class="sel-item-check"><Icon v-if="String(o.value) === String(modelValue ?? '')" name="check" size="18" /></span><LegTag v-if="o.tag" :type="o.tag as LegType" /> {{ o.label }}
       </button>
       <div v-if="!options.length" class="text-xs text-gray" style="padding: 8px 12px">无可选项</div>
     </div></Teleport>

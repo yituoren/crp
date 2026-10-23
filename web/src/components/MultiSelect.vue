@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import LegTag from './LegTag.vue';
 import type { LegType } from '@/types';
 
@@ -18,6 +18,7 @@ function place() {
   const below = window.innerHeight - r.bottom;
   const top = below >= menuH + 8 || r.top < menuH ? r.bottom + 4 : r.top - menuH - 4;
   menuStyle.value = { position: 'fixed', top: `${top}px`, left: `${r.left}px`, minWidth: `${r.width}px` };
+  nextTick(() => { const w = menu.value?.offsetWidth ?? 0; const left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)); if (left !== r.left) menuStyle.value = { ...menuStyle.value, left: `${left}px` }; });
 }
 function toggleOpen() { open.value = !open.value; if (open.value) place(); }
 const summary = computed(() => {
@@ -42,9 +43,9 @@ onUnmounted(() => { document.removeEventListener('click', onDocClick); window.re
       <span class="ms-text">{{ summary }}</span><span class="ms-caret"><Icon name="expand_more" size="18" /></span>
     </button>
     <Teleport to="body"><div v-if="open" ref="menu" class="ms-menu" :style="menuStyle">
-      <label v-for="o in options" :key="o.value" class="ms-item">
-        <input type="checkbox" :checked="modelValue.includes(o.value)" @change="toggle(o.value)" /><LegTag v-if="o.tag" :type="o.tag as LegType" /> {{ o.label }}
-      </label>
+      <button v-for="o in options" :key="o.value" type="button" class="ms-item" :class="{ on: modelValue.includes(o.value) }" @click="toggle(o.value)">
+        <span class="ms-check"><Icon v-if="modelValue.includes(o.value)" name="check" size="14" /></span><LegTag v-if="o.tag" :type="o.tag as LegType" /> {{ o.label }}
+      </button>
       <div v-if="!options.length" class="text-xs text-gray" style="padding: 6px 10px">本赛段没有需要站点的环节</div>
     </div></Teleport>
   </div>
