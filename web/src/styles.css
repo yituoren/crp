@@ -9,7 +9,7 @@
   --danger: #b3261e; --danger-light: #f9dedc; --danger-on-light: #410e0b;
   --success: #1e8e3e; --success-light: #c4eed0; --success-on-light: #0d652d;
   --warning: #b06000; --warning-light: #feefc3; --warning-on-light: #5c3a00;
-  --paper: #f8f9fa; --surface: #ffffff; --surface-2: #f8f9fa; --surface-3: #f1f3f4; --chip: #e8edf3; --chip-hover: #dde3ea; --row-hover: #f3f4f6;
+  --paper: #f8f9fa; --surface: #ffffff; --surface-2: #f8f9fa; --surface-3: #f1f3f4; --chip: #e8edf3; --chip-hover: #dde3ea; --field: #f1f3f4; --field-hover: #e8eaed; --row-hover: #f3f4f6;
   --gray-50: #f8f9fa; --gray-100: #f1f3f4; --gray-200: #e3e3e3; --gray-300: #c4c7c5; --gray-400: #9aa0a6;
   --gray-500: #5f6368; --gray-600: #444746; --gray-700: #3c4043; --gray-800: #1f1f1f; --gray-900: #202124;
   --radius: 12px; --radius-sm: 8px; --radius-xs: 8px;
@@ -142,12 +142,14 @@ p { margin: 0 0 8px; }
 /* 表单 */
 .form-group { margin-bottom: 14px; }
 .form-group label { display: block; font-weight: 500; margin-bottom: 6px; font-size: 12px; color: var(--gray-600); }
-input, textarea, select { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-size: 14px; font-family: inherit; background: var(--surface); color: var(--gray-800); transition: border-color .15s, box-shadow .15s; }
-input::placeholder, textarea::placeholder { color: var(--gray-400); }
+/* Google 式填充字段：输入框和下拉同一个浅灰底、无边框；聚焦白底 + 主色描边 */
+input, textarea, select { width: 100%; padding: 8px 12px; border: 1px solid transparent; border-radius: var(--radius-sm); font-size: 14px; font-family: inherit; background: var(--field); color: var(--gray-800); transition: border-color .15s, box-shadow .15s, background-color .15s; }
+input::placeholder, textarea::placeholder { color: var(--gray-500); }
 input:not([type="checkbox"]):not([type="file"]), select { height: 38px; padding-top: 0; padding-bottom: 0; }
 select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a7468' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
-input:hover, textarea:hover, select:hover { border-color: var(--gray-400); }
-input:focus, textarea:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(11, 87, 208, .14); }
+input:hover, textarea:hover, select:hover { background: var(--field-hover); }
+input:focus, textarea:focus, select:focus { outline: none; background: var(--surface); border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+input:disabled, textarea:disabled, select:disabled { background: var(--surface-2); color: var(--gray-500); cursor: not-allowed; }
 /* 勾选框统一为 Google 式圆形：未选空心圆，选中蓝底白勾 */
 input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 18px; height: 18px; margin: 0 6px 0 0; padding: 0; border: 1.5px solid var(--gray-400); border-radius: 50%; background: var(--surface); vertical-align: middle; cursor: pointer; flex: none; display: inline-block; position: relative; transition: background-color .15s, border-color .15s; }
 input[type="checkbox"]:hover { border-color: var(--gray-600); }
@@ -374,12 +376,13 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 /* 环节编辑表单（电脑端两栏） */
 .leg-edit .edit-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 20px; align-items: stretch; }
 .leg-edit .edit-col { display: flex; flex-direction: column; gap: 14px; }
-.leg-edit .edit-section { background: var(--surface-2); border: 1px solid var(--gray-200); border-radius: var(--radius-sm); padding: 14px 16px 4px; }
+.leg-edit .edit-section { background: transparent; border: none; border-radius: 0; padding: 0 0 4px; }
+.leg-edit .edit-col > .edit-section + .edit-section { border-top: 1px solid var(--gray-200); padding-top: 14px; } /* 分区之间用分割线，不再套灰卡片 */
 .leg-edit .edit-col > .edit-section:last-child { flex: 1; }
 .leg-edit .edit-section-fill { display: flex; flex-direction: column; padding-bottom: 14px; }
 .leg-edit .ta-group { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .leg-edit .ta-group textarea { flex: 1; }
-.leg-edit .edit-section-title { font-weight: 500; font-size: 13px; color: var(--gray-600); margin-bottom: 10px; }
+.leg-edit .edit-section-title { font-weight: 500; font-size: 15px; color: var(--gray-900); margin-bottom: 10px; }
 /* 标题行带按钮时高度与纯标题一致：按钮垂直居中并允许溢出到内边距里 */
 .leg-edit .edit-section-head { display: flex; justify-content: space-between; align-items: center; height: 18px; margin-bottom: 10px; }
 .leg-edit .edit-section-head .edit-section-title { margin: 0; }
@@ -461,7 +464,7 @@ html, body { overscroll-behavior: none; }
 .mx2 .mx-arrived { background: #fef7e0; color: #b06000; }
 
 /* 卡片内嵌套的面板（站点分工下的罚时）：用浅灰底区分 */
-.card .card { box-shadow: none; margin-bottom: 0; background: var(--surface-2); }
+.card .card { box-shadow: none; margin-bottom: 0; background: var(--surface); border: 1px solid var(--gray-200); }
 
 /* 记录表：固定表格布局，各列按比例分配（内容变化不改变列宽），列数不同也均匀铺满 */
 .record-table { table-layout: fixed; width: 100%; min-width: 600px; }
@@ -477,16 +480,16 @@ html, body { overscroll-behavior: none; }
    触发器默认是无边框的灰色胶囊，悬停加深；放在输入框旁边或表单里时用 outlined 变体与输入框对齐
    菜单是大圆角白色卡片 + 阴影，选项为圆角块，当前项左侧打勾 */
 .sel, .ms { position: relative; display: inline-block; vertical-align: middle; max-width: 100%; }
-.sel-btn, .ms-btn { width: 100%; height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 10px 0 16px; border: none; border-radius: 999px; background: var(--chip); color: var(--gray-800); cursor: pointer; text-align: left; font-family: inherit; font-size: 14px; font-weight: 500; transition: background-color .15s, box-shadow .15s; }
+.sel-btn, .ms-btn { width: 100%; height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 10px 0 16px; border: 1px solid transparent; border-radius: 999px; background: var(--field); color: var(--gray-800); cursor: pointer; text-align: left; font-family: inherit; font-size: 14px; font-weight: 500; transition: background-color .15s, box-shadow .15s; }
 .sel-sm .sel-btn, .ms-btn.input-sm { height: 32px; font-size: 13px; padding: 0 8px 0 12px; }
-.sel-btn:hover, .ms-btn:hover { background: var(--chip-hover); }
-.sel-open .sel-btn { background: var(--chip-hover); }
+.sel-btn:hover, .ms-btn:hover { background: var(--field-hover); }
+.sel-open .sel-btn { background: var(--field-hover); }
 .sel-btn:focus-visible, .ms-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 .sel-btn.sel-empty, .ms-btn.ms-empty { color: var(--gray-600); font-weight: 400; }
 .sel-disabled .sel-btn { opacity: .5; cursor: not-allowed; }
 /* outlined：与输入框同高同圆角，放在输入框旁边不突兀 */
-.sel-outlined .sel-btn { background: var(--surface); border: 1px solid var(--gray-300); border-radius: var(--radius-xs); font-weight: 400; padding: 0 8px 0 12px; }
-.sel-outlined .sel-btn:hover { background: var(--surface); border-color: var(--gray-400); }
+.sel-outlined .sel-btn { background: var(--field); border: 1px solid transparent; border-radius: var(--radius-xs); font-weight: 400; padding: 0 8px 0 12px; }
+.sel-outlined .sel-btn:hover { background: var(--field-hover); }
 .sel-outlined.sel-open .sel-btn { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); background: var(--surface); }
 .sel-text, .ms-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .sel-caret, .ms-caret { color: var(--gray-700); flex: none; display: inline-flex; transition: transform .15s; }
@@ -512,8 +515,7 @@ html, body { overscroll-behavior: none; }
 /* 「我的」页不套外层卡片：状态行 + 无边框大表格，其余区块是灰底卡片 */
 .my-work { display: flex; flex-direction: column; gap: 16px; }
 .my-work-head { margin: 0; }
-.my-work .card { background: var(--surface-3); box-shadow: none; margin-bottom: 0; }
-.my-work .card .card { background: var(--surface); }
+.my-work .card { background: var(--surface); box-shadow: none; margin-bottom: 0; }
 .my-work-table { margin: 0; }
 .my-work .station-leg { display: flex; flex-direction: column; gap: 12px; }
 .my-work .station-leg > p, .my-work .station-leg > .flex-between { margin: 0; }
@@ -683,7 +685,7 @@ html, body { overscroll-behavior: none; }
 .cl-label { font-size: 15px; font-weight: 500; color: var(--gray-900); margin-bottom: 10px; } /* 段标题比内容字大一号 */
 .cl-title { display: inline-flex; align-items: center; gap: 10px; }
 .cl-leg { font-size: 14px; font-weight: 400; color: var(--gray-600); display: inline-flex; align-items: center; gap: 4px; }
-.cl-amount:disabled { background: var(--surface-3); color: var(--gray-500); }
+
 /* 商店弹窗：选项卡 + 选中后右侧数量 */
 .shop-grid { display: flex; flex-direction: column; gap: 8px; }
 .shop-tile { height: 48px; cursor: pointer; }
