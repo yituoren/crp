@@ -109,7 +109,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
               </div>
               <div class="form-group"><label>{{ isDestinationLeg(form.type) ? '目的地' : '名称' }}</label><input v-model="form.name" :placeholder="form.type === 'RI' ? '目的地名称，显示时自动加箭头' : form.type === 'PS' ? '中继站所在地' : ''" /></div>
             </div>
-            <label v-if="moneyMode() === 'coin'" class="check-row"><input v-model="form.shop_open" type="checkbox" :disabled="!race.structureEditable" /> 本环节开放商店<span class="text-gray text-sm">（队伍可在此用货币购买商品）</span></label>
+            <label v-if="moneyMode() === 'coin'" class="check-row"><input v-model="form.shop_open" type="checkbox" :disabled="!race.structureEditable" /> 本环节开放商店</label>
           </div>
           <div v-if="form.type !== 'SQ'" class="edit-section">
             <div class="edit-section-title">淘汰</div>
