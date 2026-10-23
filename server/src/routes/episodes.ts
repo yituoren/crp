@@ -2,7 +2,7 @@ import { Hono, type Context } from 'hono';
 import fs from 'node:fs';
 import path from 'node:path';
 import { all, get, run, tx, now, UPLOAD_DIR, fromCents } from '../db.js';
-import { hostOnly, canUploadToLeg, isAdminRole, type Env, type EventRow } from '../auth.js';
+import { hostOnly, canUploadToLeg, isAdminRole, isHostRole, parseLegIds, type Env, type EventRow } from '../auth.js';
 import { audit, body, str, int, intParam, notify, bad, notFound, forbidden, money, isoOrNull } from '../util.js';
 import { startEpisodeNow, departurePlan, type EpisodeRow } from '../episodeStart.js';
 import { teamLabelMap } from './teams.js';
@@ -85,7 +85,18 @@ export function legInEvent(c: Context, id: number) {
   return leg;
 }
 
-episodeRoutes.get('/episodes', (c) => c.json({ episodes: loadEpisodes(c.get('event').id) }));
+/** 环节列表：判定标准只给主办 / 管理员，以及该赛段里被排为这个环节站点的人看；其他人拿到的是 null */
+episodeRoutes.get('/episodes', (c) => {
+  const user = c.get('user');
+  const episodes = loadEpisodes(c.get('event').id);
+  if (isHostRole(user.role)) return c.json({ episodes });
+  const mine = new Map<number, Set<number>>();
+  for (const a of all<{ episode_id: number; leg_id: number | null; leg_ids: string | null }>("SELECT episode_id, leg_id, leg_ids FROM assignments WHERE user_id = ? AND role = 'station'", user.id)) {
+    mine.set(a.episode_id, new Set(parseLegIds(a)));
+  }
+  for (const ep of episodes as { id: number; legs: { id: number; judge_criteria: string | null }[] }[]) for (const l of ep.legs) if (!mine.get(ep.id)?.has(l.id)) l.judge_criteria = null;
+  return c.json({ episodes });
+});
 
 episodeRoutes.post('/episodes', hostOnly, async (c) => {
   const b = await body(c);

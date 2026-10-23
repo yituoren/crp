@@ -37,7 +37,7 @@ let filling = false;
 function fillForm() {
   const l = leg.value; if (!l) return;
   filling = true;
-  Object.assign(form, { type: l.type, name: l.name, description: l.description, address: l.address, map_url: l.map_url, clue_text: l.clue_text, judge_criteria: l.judge_criteria, open_time: l.open_time, close_time: l.close_time, detour_a: l.detour_a, detour_b: l.detour_b, shop_open: !!l.shop_open, can_eliminate: !!l.can_eliminate, eliminate_count: l.eliminate_count || '' });
+  Object.assign(form, { type: l.type, name: l.name, description: l.description, address: l.address, map_url: l.map_url, clue_text: l.clue_text, judge_criteria: l.judge_criteria ?? '', open_time: l.open_time, close_time: l.close_time, detour_a: l.detour_a, detour_b: l.detour_b, shop_open: !!l.shop_open, can_eliminate: !!l.can_eliminate, eliminate_count: l.eliminate_count || '' });
   cutoffs.value = (l.cutoffs ?? []).map((c) => ({ id: c.id, name: c.name, start: c.start_min, interval: c.interval_min, cost: c.cost ? String(c.cost) : '' }));
   dirty.value = false;
   setTimeout(() => { filling = false; }, 0);
