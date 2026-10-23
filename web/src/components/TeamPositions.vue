@@ -10,6 +10,8 @@ import TeamStatus from './TeamStatus.vue';
 
 const race = useRace();
 const data = ref<any>(null);
+// 只在第一次请求返回前转圈；没有赛段或没有队伍时显示空状态而不是一直转
+const loading = ref(true);
 let timer: number | undefined;
 // 行高按“12 支队伍正好填满表格区域”来算：不足 12 支下方留白（卡片白底），超过 12 支表内滚动
 const ROWS = 12;
@@ -29,10 +31,11 @@ const liveEpisode = computed(() => {
 });
 const statusText = computed(() => (!liveEpisode.value ? '暂无赛段' : liveEpisode.value.status === 'running' ? '进行中' : liveEpisode.value.status === 'pending' ? '即将开始' : '已结束'));
 async function load() {
-  if (!liveEpisode.value) return;
-  try { data.value = await api(`/dashboard/${liveEpisode.value.id}`); } catch { /* keep last */ }
+  if (!liveEpisode.value) { data.value = null; loading.value = false; return; }
+  try { data.value = await api(`/dashboard/${liveEpisode.value.id}`); } catch { /* keep last */ } finally { loading.value = false; }
   await nextTick(); fitRows();
 }
+watch(() => liveEpisode.value?.id, () => { load(); });
 onMounted(() => { load(); timer = window.setInterval(load, 30000); if (grid.value) { ro = new ResizeObserver(fitRows); ro.observe(grid.value); } window.addEventListener('resize', fitRows); fitRows(); });
 onUnmounted(() => { clearInterval(timer); ro?.disconnect(); window.removeEventListener('resize', fitRows); });
 watch(() => [liveEpisode.value?.id, race.progress, race.teams, race.episodes], load, { deep: true });
@@ -45,7 +48,9 @@ watch(() => [liveEpisode.value?.id, race.progress, race.teams, race.episodes], l
       <span class="text-xs text-gray">{{ statusText }}</span>
     </div>
     <div ref="grid" class="live-grid" :style="{ '--row-h': rowH + 'px' }">
-      <div v-if="!data" class="loading"><span class="spinner"></span></div>
+      <div v-if="loading" class="loading"><span class="spinner"></span></div>
+      <div v-else-if="!data" class="empty-state">暂无赛段</div>
+      <div v-else-if="!data.teams.length" class="empty-state">暂无队伍</div>
       <template v-else>
       <div class="live-row live-row-head">
         <div>队伍</div><div>当前环节</div><div>最近记录</div><div>余额（{{ moneyUnit() }}）</div>
