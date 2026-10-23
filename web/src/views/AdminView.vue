@@ -90,7 +90,7 @@ onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
             <div v-for="(it, i) in shop.items" :key="i" class="shop-row">
               <input v-model="it.name" placeholder="商品名称" />
               <input v-model="it.price" type="number" min="1" step="1" inputmode="numeric" placeholder="价格（币）" />
-              <button class="icon-btn icon-btn-sm" title="删除" @click="removeItem(i)"><Icon name="delete" size="18" /></button>
+              <button class="icon-btn icon-btn-sm icon-btn-danger" title="删除" @click="removeItem(i)"><Icon name="delete" size="18" /></button>
             </div>
             <div v-if="!shop.items.length" class="text-sm text-gray">还没有商品，点「添加商品」开始。</div>
           </div>

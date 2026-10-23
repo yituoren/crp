@@ -123,7 +123,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
               <div class="hm-row" title="起始时间"><input v-model.number="c.sh" type="number" min="0" step="1" inputmode="numeric" /><span>h</span><input v-model.number="c.sm" type="number" min="0" max="59" step="1" inputmode="numeric" /><span>m 起</span></div>
               <div class="hm-row" title="间隔时间"><input v-model.number="c.ih" type="number" min="0" step="1" inputmode="numeric" /><span>h</span><input v-model.number="c.im" type="number" min="0" max="59" step="1" inputmode="numeric" /><span>m 隔</span></div>
               <input v-if="moneyMode() === 'coin'" v-model="c.cost" type="number" min="0" step="1" inputmode="numeric" placeholder="消耗（币）" class="cutoff-cost" />
-              <button class="icon-btn icon-btn-sm" title="删除" @click="removeCutoff(i)"><Icon name="delete" size="18" /></button>
+              <button class="icon-btn icon-btn-sm icon-btn-danger" title="删除" @click="removeCutoff(i)"><Icon name="delete" size="18" /></button>
             </div>
             <div v-if="!cutoffs.length" class="text-sm text-gray">没有熔断</div>
           </div>

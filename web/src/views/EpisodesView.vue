@@ -121,10 +121,7 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
       <div v-for="(leg, i) in ep.legs" :key="leg.id" class="leg-item" v-bind="auth.isHost ? drag.bind(i) : {}" @click="$router.push({ name: 'leg', params: { episodeId: ep.id, legId: leg.id } })">
         <div class="flex-between" style="margin-bottom: 6px">
           <LegTag :type="leg.type" :episode-id="ep.id" full />
-          <span class="flex" style="gap: 2px">
-            <span class="text-xs text-gray">#{{ i + 1 }}</span>
-            <button v-if="auth.isHost && !isFixed(leg)" class="icon-btn icon-btn-sm" title="删除环节" @click.stop="deleteLeg(leg)"><Icon name="delete" size="18" /></button>
-          </span>
+          <span class="text-xs text-gray">#{{ i + 1 }}</span>
         </div>
         <div style="font-weight: 500; font-size: 15px">{{ legName(leg) }}</div>
         <div class="text-sm text-gray">站点：<template v-if="leg.needs_staff">{{ staffOf(leg.id).join('、') || '未分配' }}</template><span v-else>无需站点</span></div>
@@ -136,7 +133,10 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
           <template v-if="leg.can_eliminate"> · 淘汰 {{ leg.eliminate_count }} 队</template>
           <template v-if="leg.cutoffs.length"> · 熔断 {{ leg.cutoffs.length }} 种</template>
         </div>
-        <div v-if="auth.isHost" class="text-xs text-gray mt-1">{{ isFixed(leg) ? '固定环节' : '拖动卡片可换序' }}</div>
+        <div v-if="auth.isHost" class="flex-between mt-1" @click.stop>
+          <span class="text-xs text-gray">{{ isFixed(leg) ? '固定环节' : '拖动卡片可换序（手机长按）' }}</span>
+          <button v-if="!isFixed(leg)" class="btn btn-text btn-text-danger btn-sm" @click="deleteLeg(leg)"><Icon name="delete" size="16" />删除</button>
+        </div>
       </div>
     </div>
   </template>
