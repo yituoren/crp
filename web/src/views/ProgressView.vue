@@ -1,20 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
-import { api } from '@/api';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
-import { useUi } from '@/stores/ui';
-import { fmtTime, fmtTimeSec, toLocalInput, fromLocalInput, fmtDurMs } from '@/utils/time';
-import { typeCode, type PitstopRow, legName, endLabel, hasStart, type LegType } from '@/types';
+import { fmtTime, fmtTimeSec, fmtDurMs } from '@/utils/time';
+import { legName, endLabel, hasStart, type LegType } from '@/types';
 import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
-import Modal from '@/components/Modal.vue';
 import PenaltyPanel from '@/components/PenaltyPanel.vue';
 import TeamStatus from '@/components/TeamStatus.vue';
 
 const auth = useAuth();
 const race = useRace();
-const ui = useUi();
 const ep = computed(() => race.currentEpisode);
 const legs = computed(() => ep.value?.legs ?? []);
 
@@ -71,38 +67,12 @@ function lastAgo(teamId: number): string {
   return `${m} 分钟前`;
 }
 
-// ---- 排名结算 ----
-const hasPsLeg = computed(() => ep.value?.legs.some((l) => l.type === 'PS'));
-const editing = ref<PitstopRow | null>(null);
-const form = reactive({ checkinAt: '', eliminated: false, note: '' });
-function open(r: PitstopRow) {
-  editing.value = r;
-  Object.assign(form, { checkinAt: toLocalInput(r.checkin_at), eliminated: r.eliminated, note: r.note });
-}
-async function save() {
-  if (!editing.value || !ep.value) return;
-  try {
-    await api(`/episodes/${ep.value.id}/pitstop/${editing.value.team_id}`, {
-      method: 'PUT',
-      body: { checkinAt: fromLocalInput(form.checkinAt), eliminated: form.eliminated, note: form.note },
-    });
-    await Promise.all([race.loadProgress(), race.loadTeams()]);
-    editing.value = null;
-    ui.toast('已保存');
-  } catch (e) { ui.error(e); }
-}
-async function toggleEliminate(r: PitstopRow) {
-  if (!ep.value) return;
-  const next = !r.eliminated;
-  if (!(await ui.confirm(next ? '标记淘汰' : '取消淘汰', next ? `将「${r.team_name}」标记为本赛段淘汰？队伍状态会同步改为已淘汰。` : `取消「${r.team_name}」的淘汰标记，恢复为存活？`, { danger: next }))) return;
-  try {
-    await api(`/episodes/${ep.value.id}/pitstop/${r.team_id}`, { method: 'PUT', body: { eliminated: next } });
-    await Promise.all([race.loadProgress(), race.loadTeams()]);
-    ui.toast(next ? '已标记淘汰' : '已恢复');
-  } catch (e) { ui.error(e); }
-}
-const sorted = computed(() => [...race.pitstop].sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999) || (a.final_time ?? 'z').localeCompare(b.final_time ?? 'z')));
-watch(() => race.currentEpisodeId, () => { editing.value = null; });
+// ---- 进度结算：矩阵行按实时名次排列（有名次的在前，其余按队伍顺序） ----
+const rankOf = computed(() => new Map(race.pitstop.map((r) => [r.team_id, r.rank])));
+const orderedTeams = computed(() => {
+  const idx = new Map(race.teams.map((t, i) => [t.id, i]));
+  return [...race.teams].sort((a, b) => (rankOf.value.get(a.id) ?? 999) - (rankOf.value.get(b.id) ?? 999) || (idx.get(a.id)! - idx.get(b.id)!));
+});
 </script>
 
 <template>
@@ -110,7 +80,7 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
 
   <!-- 进度矩阵 -->
   <div class="card">
-    <div class="card-header"><span>进度矩阵</span><span class="text-xs text-gray">绿 = 已完成，黄 = 进行中；进行中的用时按当前时间计算</span></div>
+    <div class="card-header"><span>进度结算</span><span class="text-xs text-gray">按实时名次排列：名次 = 签到时间 + 净罚时；绿 = 已完成，黄 = 进行中</span></div>
     <div v-if="!legs.length" class="empty-state">本赛段没有需要记录的环节</div>
     <div v-else class="matrix-scroll">
       <table class="table mx2">
@@ -128,9 +98,9 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
           </tr>
         </thead>
         <tbody>
-          <tr v-for="t in race.teams" :key="t.id" :class="{ 'mx-dead': t.status !== 'alive' }">
+          <tr v-for="t in orderedTeams" :key="t.id" :class="{ 'mx-dead': t.status !== 'alive' }">
             <td class="mx2-team">
-              <div class="flex" style="gap: 6px; flex-wrap: nowrap"><strong>{{ t.label }}</strong><TeamStatus :status="t.status" /></div>
+              <div class="flex" style="gap: 6px; flex-wrap: nowrap"><span v-if="rankOf.get(t.id)" class="mx2-rank" :class="'rank-' + rankOf.get(t.id)">#{{ rankOf.get(t.id) }}</span><strong>{{ t.label }}</strong><TeamStatus :status="t.status" /></div>
               <div class="text-xs text-gray">{{ lastAgo(t.id) || '尚无记录' }}</div>
             </td>
             <template v-for="l in legs" :key="l.id">
@@ -153,42 +123,4 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
   <!-- 罚时与补时 -->
   <PenaltyPanel />
 
-  <!-- 排名结算 -->
-  <div class="card">
-    <div class="card-header">
-      <span>排名结算</span>
-      <span class="text-xs text-gray">名次 = 签到时间 + 净罚时，签到或罚时一变即自动更新</span>
-    </div>
-    <div v-if="!hasPsLeg" class="alert alert-warning">本赛段没有中继站环节，只能手工填写签到时间。</div>
-    <div class="scroll-table">
-      <table class="table table-dense">
-        <thead><tr><th class="c">名次</th><th>队伍</th><th class="c">状态</th><th>签到时间</th><th class="c">净罚时</th><th>最终成绩</th><th class="c">本段淘汰</th><th>备注</th><th v-if="race.canEliminate" class="c">操作</th></tr></thead>
-        <tbody>
-          <tr v-for="r in sorted" :key="r.team_id">
-            <td class="c" :class="r.rank ? 'rank-' + r.rank : ''">{{ r.rank ? '#' + r.rank : '-' }}</td>
-            <td><strong>{{ r.team_name }}</strong></td>
-            <td class="c"><TeamStatus :status="r.team_status" /></td>
-            <td><span class="record-time">{{ fmtTimeSec(r.checkin_at) }}</span></td>
-            <td class="c">{{ r.penalty_minutes > 0 ? `+${r.penalty_minutes} 分` : r.penalty_minutes < 0 ? `${r.penalty_minutes} 分` : '-' }}</td>
-            <td><span class="record-time">{{ fmtTimeSec(r.final_time) }}</span></td>
-            <td class="c">{{ r.eliminated ? '淘汰' : '' }}</td>
-            <td class="wrap">{{ r.note }}</td>
-            <td v-if="race.canEliminate" class="c">
-              <div class="flex" style="gap: 4px; flex-wrap: nowrap">
-                <button class="btn btn-sm btn-slot" :class="r.eliminated ? 'btn-tonal' : 'btn-tonal btn-tonal-danger'" @click="toggleEliminate(r)">{{ r.eliminated ? '取消淘汰' : '淘汰' }}</button>
-                <button v-if="auth.isHost" class="icon-btn icon-btn-sm" title="编辑结算" @click="open(r)"><Icon name="edit" size="18" /></button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <Modal v-if="editing" :title="`结算 · ${editing.team_name}`" small @close="editing = null">
-    <div class="form-group"><label>签到时间（留空则采用中继站的签到时间）</label><input v-model="form.checkinAt" type="datetime-local" step="1" /></div>
-    <div class="form-group"><label><input v-model="form.eliminated" type="checkbox" /> 本赛段淘汰（会同步修改队伍状态）</label></div>
-    <div class="form-group"><label>备注</label><input v-model="form.note" /></div>
-    <div class="modal-actions"><button class="btn btn-text" @click="editing = null">取消</button><button class="btn" @click="save">保存</button></div>
-  </Modal>
 </template>

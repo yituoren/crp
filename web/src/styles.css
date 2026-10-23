@@ -278,6 +278,7 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .cell-arrived { background: var(--warning-light); }
 .cell-empty { background: var(--surface); }
 .team-stale td:first-child { color: var(--danger); }
+.mx2-rank { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--gray-500); min-width: 24px; }
 .rank-1 { color: #9a6700; font-weight: 500; }
 .rank-2 { color: #6b6761; font-weight: 500; }
 .rank-3 { color: #8a4b1f; font-weight: 500; }
