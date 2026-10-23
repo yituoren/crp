@@ -207,6 +207,10 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .leg-item:hover { background: var(--surface-2); box-shadow: var(--shadow-1); }
 .team-card { background: var(--surface); border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 16px; }
 .team-card .btn-sm.btn-text { padding: 0 8px; }
+/* 拖动换序 */
+.leg-item[draggable="true"], .team-card[draggable="true"] { cursor: grab; }
+.leg-item.dragging, .team-card.dragging { opacity: .4; }
+.leg-item.drag-over, .team-card.drag-over { outline: 2px solid var(--primary); outline-offset: -2px; background: var(--primary-soft); }
 /* 背包卡片：物品以小色块列出 */
 .bag-items { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .bag-item { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 8px; background: var(--chip); font-size: 12px; color: var(--gray-700); }

@@ -53,6 +53,10 @@ export const listTeams = (eventId: number) => {
   });
 };
 const pad2 = (n: number) => String(n).padStart(2, '0');
+/** 队伍编号由顺序自动生成（01、02…），不可手动修改；顺序变化、新增、删除后重新编号 */
+function renumberTeams(eventId: number) {
+  all<{ id: number }>('SELECT id FROM teams WHERE event_id = ? ORDER BY sort, id', eventId).forEach((t, i) => run('UPDATE teams SET sort = ?, name = ? WHERE id = ?', i + 1, pad2(i + 1), t.id));
+}
 
 /** 队伍必须属于当前比赛 */
 export function teamInEvent(c: Context, id: number) {
@@ -67,7 +71,7 @@ teamRoutes.post('/teams', hostOnly, async (c) => {
   const b = await body(c);
   const eventId = c.get('event').id;
   const count = get<{ n: number }>('SELECT COUNT(*) AS n FROM teams WHERE event_id = ?', eventId)!.n;
-  const name = str(b.name, 50) || pad2(count + 1);
+  const name = pad2(count + 1); // 编号按顺序自动生成
   let code = str(b.code, 20) || `T${count + 1}`;
   while (get('SELECT 1 FROM teams WHERE code = ? AND event_id = ?', code, eventId)) code = code + '_';
   const currency = b.currency === undefined ? 0 : money(b.currency, '货币');
@@ -75,22 +79,40 @@ teamRoutes.post('/teams', hostOnly, async (c) => {
     'INSERT INTO teams(code, name, members, status, currency, sort, event_id) VALUES (?,?,?,?,?,?,?)',
     code, name, JSON.stringify(parseMembers(b.members).slice(0, 20)), 'alive', currency, count + 1, eventId,
   );
+  renumberTeams(eventId);
   audit(c.get('user'), 'create', 'team', Number(r.lastInsertRowid), undefined, { code, name });
   notify('teams');
   return c.json({ id: Number(r.lastInsertRowid) });
+});
+
+/** 拖动换序：ids 为新的顺序；没列出的队伍按原顺序排在后面；之后重新编号 */
+teamRoutes.put('/teams/order', hostOnly, async (c) => {
+  const eventId = c.get('event').id;
+  const { ids } = await body(c);
+  if (!Array.isArray(ids)) throw bad('ids 必须是数组');
+  const existing = all<{ id: number }>('SELECT id FROM teams WHERE event_id = ? ORDER BY sort, id', eventId).map((t) => t.id);
+  const ordered = ids.map((x: unknown) => int(x)).filter((id: number) => existing.includes(id));
+  const finalOrder = [...ordered, ...existing.filter((id) => !ordered.includes(id))];
+  tx(() => {
+    finalOrder.forEach((id, i) => run('UPDATE teams SET sort = ? WHERE id = ?', i + 1, id));
+    renumberTeams(eventId);
+  });
+  audit(c.get('user'), 'reorder', 'team', eventId, undefined, finalOrder);
+  notify('teams');
+  return c.json({ ok: true });
 });
 
 teamRoutes.put('/teams/:id', hostOnly, async (c) => {
   const id = intParam(c, 'id');
   const before = teamInEvent(c, id);
   const b = await body(c);
-  const name = b.name === undefined ? before.name : str(b.name, 50) || before.name;
+  const name = before.name; // 编号由顺序决定，不接受修改
   const members = b.members === undefined ? before.members : JSON.stringify(parseMembers(b.members).slice(0, 20));
   // 状态只能手动改为“退赛”或从退赛“恢复”；淘汰由环节规则自动计算，没有手动入口
   if (b.status !== undefined && !['alive', 'withdrawn'].includes(b.status)) throw bad('淘汰由环节的淘汰规则自动判定，不能手动设置');
   if (b.status === 'alive' && before.status === 'eliminated') throw bad('淘汰状态由记录自动计算，修改记录后会自动恢复');
   const status = b.status === undefined ? before.status : b.status;
-  const sort = b.sort === undefined ? before.sort : int(b.sort, before.sort);
+  const sort = before.sort; // 顺序通过 PUT /teams/order 调整
   let locked: number | null = before.locked_from_leg_id ?? null;
   if (status === 'withdrawn' && before.status !== 'withdrawn') locked = lockFromAfterLastRecord(c.get('event').id, id); // 退赛：保留之前记录，之后环节锁定
   if (status === 'alive' && before.status === 'withdrawn') locked = null;
@@ -114,6 +136,7 @@ teamRoutes.delete('/teams/:id', hostOnly, (c) => {
     run('UPDATE assignments SET team_id = NULL WHERE team_id = ?', id);
     run('DELETE FROM teams WHERE id = ?', id);
   });
+  renumberTeams(c.get('event').id);
   audit(c.get('user'), 'delete', 'team', id, before);
   recomputeEliminations(c.get('event').id);
   notify('teams'); notify('progress'); notify('ledger'); notify('assignments');

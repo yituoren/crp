@@ -5,6 +5,7 @@ import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { type Team, legName } from '@/types';
+import { useDragSort } from '@/composables/dragSort';
 import Modal from '@/components/Modal.vue';
 import TeamStatus from '@/components/TeamStatus.vue';
 
@@ -12,14 +13,22 @@ const auth = useAuth();
 const race = useRace();
 const ui = useUi();
 const editing = ref<Team | 'new' | null>(null);
-const form = reactive({ name: '', members: [] as string[] });
+const form = reactive({ members: [] as string[] });
+// 拖动换序：编号按顺序自动重排
+const drag = useDragSort({
+  count: () => race.teams.length,
+  onReorder: async (order) => {
+    const ids = order.map((i) => race.teams[i]!.id);
+    try { await api('/teams/order', { method: 'PUT', body: { ids } }); await race.loadTeams(); } catch (e) { ui.error(e); }
+  },
+});
 const size = computed(() => Math.max(1, auth.event.teamSize || 1));
 
 function open(t: Team | 'new') {
   editing.value = t;
   const members = t === 'new' ? [] : [...t.members];
   while (members.length < size.value) members.push('');
-  Object.assign(form, { name: t === 'new' ? String(race.teams.length + 1).padStart(2, '0') : t.name, members });
+  Object.assign(form, { members });
 }
 async function save() {
   try {
@@ -55,7 +64,7 @@ async function resetAll() {
     </div>
   </div>
   <div class="grid grid-3">
-    <div v-for="t in race.teams" :key="t.id" class="team-card" :class="'team-' + t.status">
+    <div v-for="(t, i) in race.teams" :key="t.id" class="team-card" :class="'team-' + t.status" v-bind="auth.isHost ? drag.bind(i) : {}">
       <div class="flex-between" style="margin-bottom: 4px">
         <span style="font-weight: 500; font-size: 16px">{{ t.label }}</span>
         <TeamStatus :status="t.status" />
@@ -75,9 +84,9 @@ async function resetAll() {
   </div>
 
   <Modal v-if="editing" :title="editing === 'new' ? '新增队伍' : '编辑队伍'" small @close="editing = null">
-    <div class="form-group"><label>队名（编号）</label><input v-model="form.name" placeholder="如 01" /></div>
+    <div class="info-text mb-2">编号按队伍顺序自动生成（{{ editing === 'new' ? String(race.teams.length + 1).padStart(2, '0') : editing.name }}），在列表里拖动卡片即可换序。</div>
     <div v-for="i in form.members.length" :key="i" class="form-group"><label>成员 {{ i }}</label><input v-model="form.members[i - 1]" :placeholder="`成员 ${i} 姓名`" /></div>
-    <div class="info-text">填了成员后，各处显示为「编号 成员1&成员2」；每队人数在「主办后台 → 赛事设置」里改。</div>
+    <div class="info-text">填了成员后，各处显示为「编号 成员1&成员2」；每队人数在「后台 → 赛事设置」里改。</div>
     <div class="modal-actions"><button class="btn btn-text" @click="editing = null">取消</button><button class="btn" @click="save">保存</button></div>
   </Modal>
 </template>
