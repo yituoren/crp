@@ -134,6 +134,11 @@ ledgerRoutes.post('/ledger/:id/revert', (c) => {
     return Number(r.lastInsertRowid);
   });
   audit(user, 'currency_revert', 'ledger', id, { delta: fromCents(orig.delta) }, { revertId: newId, balance: fromCents(balance) });
+  // 熔断扣币被撤销 = 那次使用作废：删掉使用记录，倒计时按剩余记录重算
+  if (orig.kind === 'cutoff') {
+    const u = get<{ id: number }>('SELECT id FROM cutoff_uses WHERE ledger_id = ?', id);
+    if (u) { run('DELETE FROM cutoff_uses WHERE id = ?', u.id); audit(user, 'cutoff_use_delete', 'team', orig.team_id, { useId: u.id, byLedgerRevert: id }); notify('progress', orig.episode_id); }
+  }
   notify('ledger', orig.episode_id);
   notify('teams');
   return c.json({ id: newId, balance: fromCents(balance) });

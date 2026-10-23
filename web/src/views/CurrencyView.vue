@@ -24,7 +24,7 @@ const rows = computed(() => race.ledger.filter((l) => !l.reverts_id && (!filterT
 const revertedBy = (l: LedgerEntry) => race.ledger.find((x) => x.reverts_id === l.id)?.operator_name ?? '';
 async function revert(l: LedgerEntry) {
   if (!(await ui.confirm('撤销经费变动', `撤销「${l.team_name}」的这笔 ${fmtMoney(l.delta, true)} ${moneyUnit()}（${l.reason || '手动调整'}）？会写入一条反向流水，余额相应恢复。`, { danger: true, okText: '撤销' }))) return;
-  try { await api(`/ledger/${l.id}/revert`, { method: 'POST' }); await Promise.all([race.loadTeams(), race.loadLedger()]); ui.toast('已撤销'); } catch (e) { ui.error(e); }
+  try { await api(`/ledger/${l.id}/revert`, { method: 'POST' }); await Promise.all([race.loadTeams(), race.loadLedger(), race.loadProgress()]); ui.toast('已撤销'); } catch (e) { ui.error(e); }
 }
 </script>
 

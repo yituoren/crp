@@ -34,7 +34,7 @@ const legOptions = computed(() => {
   return form.kind !== 'shop' && auth.isHost ? [...opts, { value: 0, label: '其他' }] : opts;
 });
 const kindOptions = computed(() => [
-  { value: 'other', label: '其他' },
+  { value: 'other', label: '其他（非熔断）' },
   ...(isCoin.value && race.shopItems.length ? [{ value: 'shop', label: '商店购买' }] : []),
 ]);
 const item = computed(() => (form.itemId === '' ? null : race.shopItems.find((i) => i.id === Number(form.itemId)) ?? null));
