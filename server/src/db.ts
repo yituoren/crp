@@ -142,6 +142,14 @@ CREATE TABLE IF NOT EXISTS currency_ledger (
   leg_id INTEGER                              -- 在哪个环节发生，可空（其他）
 );
 CREATE INDEX IF NOT EXISTS idx_ledger_ep ON currency_ledger(episode_id, created_at);
+CREATE TABLE IF NOT EXISTS shop_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  price INTEGER NOT NULL DEFAULT 0,            -- 以分存，货币模式下为整币 × 100
+  sort INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS announcements (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   content TEXT NOT NULL,
@@ -219,6 +227,11 @@ ensureColumn('penalties', 'reverted', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('penalties', 'reverts_id', 'INTEGER');
 ensureColumn('penalties', 'leg_id', 'INTEGER');
 ensureColumn('currency_ledger', 'leg_id', 'INTEGER');
+// 商店：流水区分“商店购买 / 其他”，购买时记下物品（快照名字，物品删了也能追溯）；环节可开放商店
+ensureColumn('currency_ledger', 'kind', "TEXT NOT NULL DEFAULT 'other'");
+ensureColumn('currency_ledger', 'item_id', 'INTEGER');
+ensureColumn('currency_ledger', 'item_name', 'TEXT');
+ensureColumn('legs', 'shop_open', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('assignments', 'leg_ids', 'TEXT'); // 站点可驻守多个环节：JSON 数组，leg_id 保留为第一个
 
 // ---------- 多比赛：赛段、队伍、公告、日志都挂在比赛下 ----------

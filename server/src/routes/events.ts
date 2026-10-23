@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
-import { all, get, run } from '../db.js';
+import { all, get, run, tx, now, fromCents } from '../db.js';
 import { hostOnly, adminOnly, isMember, joinEvent, loadEvent, roleIn, type Env, type EventRow } from '../auth.js';
-import { audit, body, str, int, intParam, bad, notFound, notify } from '../util.js';
+import { audit, body, str, int, intParam, bad, notFound, notify, money } from '../util.js';
 
 /** 进比赛之前的接口：比赛列表、加入 */
 export const eventListRoutes = new Hono<Env>();
@@ -70,6 +70,37 @@ eventInfoRoutes.put('/info', hostOnly, async (c) => {
   audit(c.get('user'), 'update', 'event', ev.id, { name: ev.name, team_size: ev.team_size, currency_mode: ev.currency_mode, rb_gap: ev.rb_gap }, next);
   notify('admin');
   return c.json({ event: info(loadEvent(ev.hash)!, c.get('user')) });
+});
+
+// ---------- 商店（货币模式）：商品与价格由主办在赛事设置里维护 ----------
+export function listShopItems(eventId: number) {
+  return all<{ id: number; name: string; price: number; sort: number }>('SELECT id, name, price, sort FROM shop_items WHERE event_id = ? ORDER BY sort, id', eventId).map((i) => ({ ...i, price: fromCents(i.price) }));
+}
+eventInfoRoutes.get('/shop/items', (c) => c.json({ items: listShopItems(c.get('event').id) }));
+/** 整体保存商品列表：有 id 的更新，没有的新增，列表里没有的删除（流水里存了物品名快照，删除不影响历史） */
+eventInfoRoutes.put('/shop/items', hostOnly, async (c) => {
+  const ev = c.get('event');
+  const b = await body(c);
+  if (!Array.isArray(b.items)) throw bad('items 必须是数组');
+  const items = b.items.map((it: any, i: number) => ({ id: int(it.id, 0) || 0, name: str(it.name, 50), price: money(it.price, '价格'), sort: i }));
+  for (const it of items) { if (!it.name) throw bad('商品名称不能为空'); if (it.price <= 0) throw bad(`「${it.name}」的价格必须大于 0`); }
+  const before = listShopItems(ev.id);
+  tx(() => {
+    const keep = new Set<number>();
+    for (const it of items) {
+      if (it.id && get('SELECT 1 FROM shop_items WHERE id = ? AND event_id = ?', it.id, ev.id)) {
+        run('UPDATE shop_items SET name = ?, price = ?, sort = ? WHERE id = ?', it.name, it.price, it.sort, it.id);
+        keep.add(it.id);
+      } else {
+        const r = run('INSERT INTO shop_items(event_id, name, price, sort, created_at) VALUES (?,?,?,?,?)', ev.id, it.name, it.price, it.sort, now());
+        keep.add(Number(r.lastInsertRowid));
+      }
+    }
+    for (const old of before) if (!keep.has(old.id)) run('DELETE FROM shop_items WHERE id = ?', old.id);
+  });
+  audit(c.get('user'), 'update', 'shop_items', ev.id, before, items);
+  notify('admin');
+  return c.json({ items: listShopItems(ev.id) });
 });
 
 /** 比赛成员（排班用）：已加入的人 + 创建者 + 管理员 */

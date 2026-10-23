@@ -1,38 +1,23 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import LegTag from '@/components/LegTag.vue';
 import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
-import { fmtMoney, parseMoney, moneyUnit, moneyLabel, moneyMode } from '@/utils/money';
+import { fmtMoney, moneyUnit, moneyLabel, moneyMode } from '@/utils/money';
+import CurrencyOps from '@/components/CurrencyOps.vue';
 import EpSelector from '@/components/EpSelector.vue';
-import { type Team, type LedgerEntry, legName } from '@/types';
+import { type LedgerEntry, legName } from '@/types';
 
 const auth = useAuth();
 const race = useRace();
 const ui = useUi();
 const ep = computed(() => race.currentEpisode);
-const inputs = reactive<Record<number, { amount: string; reason: string }>>({});
-const legSel = ref<number | ''>(''); // 本次变动发生的环节；空 = 其他，不做校验
 const filterTeam = ref<number | ''>('');
-const get = (id: number) => (inputs[id] ??= { amount: '', reason: '' });
-
-async function apply(t: Team, sign: 1 | -1) {
-  const inp = get(t.id);
-  const amount = parseMoney(inp.amount);
-  if (amount === null) { ui.toast(moneyMode() === 'coin' ? '数量必须是正整数；扣除请用「扣除」按钮' : '金额必须是正数，最多两位小数；扣除请用「扣除」按钮', 'error'); return; }
-  const delta = amount * sign;
-  const reason = inp.reason.trim() || (sign > 0 ? '任务奖励' : '手动扣除');
-  if (!(await ui.confirm(sign > 0 ? '增加货币' : '扣除货币', `「${t.label}」${sign > 0 ? '增加' : '扣除'} ${fmtMoney(amount)} ${moneyUnit()}，原因：${reason}\n当前余额 ${fmtMoney(t.currency)} → ${fmtMoney(t.currency + delta)}`))) return;
-  try {
-    await api('/ledger', { method: 'POST', body: { episodeId: ep.value?.id, teamId: t.id, delta, reason, legId: legSel.value === '' ? null : legSel.value } });
-    inp.amount = ''; inp.reason = '';
-    await Promise.all([race.loadTeams(), race.loadLedger()]);
-    ui.toast(`已${sign > 0 ? '增加' : '扣除'} ${fmtMoney(amount)} ${moneyUnit()}`);
-  } catch (e) { ui.error(e); }
-}
+/** 跟队只能操作所跟队伍：表单里直接固定队伍 */
+const fixedTeam = computed(() => (!auth.isHost && race.myAssignment?.role === 'follow' ? race.myAssignment.team_id ?? undefined : undefined));
 // 页面上只显示原始流水（被撤销的划线标出）；反向的撤销记录保留在数据库和操作日志里，不在列表中重复出现
 const rows = computed(() => race.ledger.filter((l) => !l.reverts_id && (!filterTeam.value || l.team_id === filterTeam.value)));
 /** 谁撤销了这条记录：找到它的反向流水的操作人 */
@@ -45,33 +30,29 @@ async function revert(l: LedgerEntry) {
 
 <template>
   <EpSelector />
-  <div class="flex-between mb-2">
-    <div class="flex">
-      <div class="section-title">{{ moneyLabel() }}操作</div>
-      <MSelect v-if="race.canAdjustCurrency" v-model="legSel" sm style="width: 160px" title="本次变动发生的环节" :options="[{ value: '', label: '环节：其他' }, ...(ep?.legs ?? []).map((l) => ({ value: l.id, label: `环节：${legName(l)}` }))]" />
-    </div>
-    <span v-if="!race.canAdjustCurrency" class="text-sm text-gray">主办可操作所有队伍，跟队只能操作所跟队伍</span>
-  </div>
-  <div v-if="race.episodePending" class="alert alert-warning">赛段尚未开始，开始赛段后才能操作经费。</div>
-  <div v-else-if="race.episodeFinished && !auth.isHost" class="alert alert-info">赛段已结束，经费记录已锁定，只有主办可以修改。</div>
-  <div class="grid grid-4">
-    <div v-for="t in race.teams" :key="t.id" class="team-card" :class="'team-' + t.status">
-      <div class="flex-between"><strong>{{ t.label }}</strong><span v-if="t.status !== 'alive'" class="status-eliminated">{{ t.status === 'eliminated' ? '已淘汰' : '已退赛' }}</span></div>
-      <div class="currency-box">{{ fmtMoney(t.currency) }} <span class="text-sm text-gray">{{ moneyUnit() }}</span></div>
-      <div v-if="race.canAdjustCurrencyFor(t.id) && t.status === 'alive' && !race.episodePending" class="mt-1">
-        <div class="flex" style="gap: 6px; flex-wrap: nowrap; min-width: 0">
-          <input v-model="get(t.id).amount" type="number" :inputmode="moneyMode() === 'coin' ? 'numeric' : 'decimal'" min="0" step="1" class="input-sm" :placeholder="moneyUnit() === '币' ? '数量' : '金额'" style="width: 80px; min-width: 0; flex: 0 1 80px" />
-          <input v-model="get(t.id).reason" class="input-sm" placeholder="原因" style="flex: 1; min-width: 60px" />
-        </div>
-        <div class="flex mt-1" style="gap: 6px">
-          <button class="btn btn-tonal btn-sm" style="flex: 1" @click="apply(t, 1)">增加</button>
-          <button class="btn btn-tonal btn-tonal-danger btn-sm" style="flex: 1" @click="apply(t, -1)">扣除</button>
+
+  <!-- 背包：普通模式只看经费余额；货币模式看余额 + 持有物品 -->
+  <div class="card">
+    <div class="card-header"><span>背包</span><span class="text-xs text-gray">{{ moneyMode() === 'coin' ? '各队当前持有的货币与物品' : '各队当前经费余额' }}</span></div>
+    <div class="grid grid-4">
+      <div v-for="t in race.teams" :key="t.id" class="team-card bag-card" :class="'team-' + t.status">
+        <div class="flex-between"><strong>{{ t.label }}</strong><span v-if="t.status !== 'alive'" class="status-eliminated">{{ t.status === 'eliminated' ? '已淘汰' : '已退赛' }}</span></div>
+        <div class="currency-box">{{ fmtMoney(t.currency) }} <span class="text-sm text-gray">{{ moneyUnit() }}</span></div>
+        <div v-if="moneyMode() === 'coin'" class="bag-items">
+          <span v-for="it in t.inventory" :key="it.name" class="bag-item">{{ it.name }}<span v-if="it.count > 1" class="bag-count">×{{ it.count }}</span></span>
+          <span v-if="!t.inventory.length" class="text-xs text-gray">暂无物品</span>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="card mt-3">
+  <!-- 操作：与跟队「我的」页相同的表单，主办多一个队伍选择 -->
+  <div class="card">
+    <div class="card-header"><span>{{ moneyLabel() }}操作</span><span v-if="moneyMode() === 'coin' && !race.shopItems.length && auth.isHost" class="text-xs text-gray">在「后台 → 赛事设置」添加商品后可记录商店购买</span></div>
+    <CurrencyOps :team-id="fixedTeam" />
+  </div>
+
+  <div class="card">
     <div class="card-header">
       <span>{{ moneyLabel() }}变动日志</span>
       <MSelect v-model="filterTeam" sm style="width: 150px" :options="[{ value: '', label: '全部队伍' }, ...race.teams.map((t) => ({ value: t.id, label: t.label }))]" />

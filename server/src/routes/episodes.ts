@@ -166,6 +166,7 @@ function legFields(b: any, before?: any) {
     record_mode,
     cutoff_start: minutes('cutoff_start'),
     cutoff_interval: minutes('cutoff_interval'),
+    shop_open: b.shop_open === undefined ? (before?.shop_open ?? 0) : (b.shop_open ? 1 : 0),
     name: b.name === undefined ? (before?.name ?? '') : str(b.name, 50) || (before?.name ?? '新环节'),
     description: pick('description'),
     address: pick('address', 300),
@@ -193,9 +194,9 @@ episodeRoutes.post('/episodes/:id/legs', hostOnly, async (c) => {
   const r = tx(() => {
     if (ps) run('UPDATE legs SET sort = sort + 1 WHERE episode_id = ? AND sort >= ?', episodeId, ps.sort);
     return run(
-      `INSERT INTO legs(episode_id, sort, type, name, description, address, map_url, clue_text, judge_criteria, open_time, close_time, detour_a, detour_b, needs_staff, record_mode, cutoff_start, cutoff_interval)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      episodeId, sort, f.type, f.name, f.description, f.address, f.map_url, f.clue_text, f.judge_criteria, f.open_time, f.close_time, f.detour_a, f.detour_b, f.needs_staff, f.record_mode, f.cutoff_start, f.cutoff_interval,
+      `INSERT INTO legs(episode_id, sort, type, name, description, address, map_url, clue_text, judge_criteria, open_time, close_time, detour_a, detour_b, needs_staff, record_mode, cutoff_start, cutoff_interval, shop_open)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      episodeId, sort, f.type, f.name, f.description, f.address, f.map_url, f.clue_text, f.judge_criteria, f.open_time, f.close_time, f.detour_a, f.detour_b, f.needs_staff, f.record_mode, f.cutoff_start, f.cutoff_interval, f.shop_open,
     );
   });
   audit(c.get('user'), 'create', 'leg', Number(r.lastInsertRowid), undefined, f);
@@ -211,8 +212,8 @@ episodeRoutes.put('/legs/:id', hostOnly, async (c) => {
   if (b.type !== undefined && b.type !== before.type && (fixed || b.type === 'SL' || b.type === 'PS')) throw bad('Starting Line 与中继站的类型固定，不能改成或改自其他类型');
   const f = legFields(b, before);
   run(
-    `UPDATE legs SET type=?, name=?, description=?, address=?, map_url=?, clue_text=?, judge_criteria=?, open_time=?, close_time=?, detour_a=?, detour_b=?, needs_staff=?, record_mode=?, cutoff_start=?, cutoff_interval=? WHERE id=?`,
-    f.type, f.name, f.description, f.address, f.map_url, f.clue_text, f.judge_criteria, f.open_time, f.close_time, f.detour_a, f.detour_b, f.needs_staff, f.record_mode, f.cutoff_start, f.cutoff_interval, id,
+    `UPDATE legs SET type=?, name=?, description=?, address=?, map_url=?, clue_text=?, judge_criteria=?, open_time=?, close_time=?, detour_a=?, detour_b=?, needs_staff=?, record_mode=?, cutoff_start=?, cutoff_interval=?, shop_open=? WHERE id=?`,
+    f.type, f.name, f.description, f.address, f.map_url, f.clue_text, f.judge_criteria, f.open_time, f.close_time, f.detour_a, f.detour_b, f.needs_staff, f.record_mode, f.cutoff_start, f.cutoff_interval, f.shop_open, id,
   );
   audit(c.get('user'), 'update', 'leg', id, before, f);
   notify('episodes', before.episode_id);

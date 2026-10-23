@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { api } from '@/api';
 import { useAuth } from './auth';
-import { legName, type Announcement, type Assignment, type Episode, type LedgerEntry, type Penalty, type PitstopRow, type Progress, type Team, type User } from '@/types';
+import { legName, type ShopItem, type Announcement, type Assignment, type Episode, type LedgerEntry, type Penalty, type PitstopRow, type Progress, type Team, type User } from '@/types';
 
 
 export const useRace = defineStore('race', () => {
@@ -18,6 +18,7 @@ export const useRace = defineStore('race', () => {
   const penalties = ref<Penalty[]>([]);
   const pitstop = ref<PitstopRow[]>([]);
   const ledger = ref<LedgerEntry[]>([]);
+  const shopItems = ref<ShopItem[]>([]);
   const loaded = ref(false);
 
   const currentEpisode = computed(() => episodes.value.find((e) => e.id === currentEpisodeId.value) ?? episodes.value[0] ?? null);
@@ -149,6 +150,7 @@ export const useRace = defineStore('race', () => {
     }
   }
   async function loadTeams() { teams.value = (await api('/teams')).teams; }
+  async function loadShopItems() { try { shopItems.value = (await api('/shop/items')).items; } catch { shopItems.value = []; } }
   async function loadUsers() { users.value = (await api('/members')).users; }
   // 未读公告：最后已读的公告 id 存在账号上，跨设备一致
   const lastReadId = ref<number>(0);
@@ -182,7 +184,7 @@ export const useRace = defineStore('race', () => {
     await Promise.all([loadAssignments(), loadProgress(), loadLedger()]);
   }
   async function loadAll() {
-    await Promise.all([loadEpisodes(), loadTeams(), loadUsers(), loadAnnouncements()]);
+    await Promise.all([loadEpisodes(), loadTeams(), loadUsers(), loadAnnouncements(), loadShopItems()]);
     await loadEpisodeScoped();
     loaded.value = true;
   }
@@ -211,12 +213,12 @@ export const useRace = defineStore('race', () => {
       case 'progress': case 'pitstop': await Promise.all([mine ? loadProgress() : Promise.resolve(), loadTeams()]); break; // 路障次数随进度变
       case 'ledger': await loadTeams(); if (mine) await loadLedger(); break;
       case 'announcements': await loadAnnouncements(); break;
-      case 'admin': await Promise.all([loadUsers(), loadEpisodes(), loadTeams()]); break;
+      case 'admin': await Promise.all([loadUsers(), loadEpisodes(), loadTeams(), loadShopItems()]); break;
     }
   }
 
   return {
-    episodes, teams, users, announcements, unreadAnnouncements, markAnnouncementsRead, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
+    episodes, teams, users, announcements, shopItems, loadShopItems, unreadAnnouncements, markAnnouncementsRead, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
     aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
     loadAll, reset, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
   };

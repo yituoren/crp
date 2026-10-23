@@ -203,6 +203,13 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .leg-item:hover { background: var(--surface-2); box-shadow: var(--shadow-1); }
 .team-card { background: var(--surface); border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 16px; }
 .team-card .btn-sm.btn-text { padding: 0 8px; }
+/* 背包卡片：物品以小色块列出 */
+.bag-items { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.bag-item { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 8px; background: var(--surface-3); font-size: 12px; color: var(--gray-700); }
+.bag-count { color: var(--gray-500); }
+.check-row { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 0 0 10px; cursor: pointer; }
+.check-row input { margin: 0; }
+.ops-row { align-items: center; }
 .team-card.team-eliminated { opacity: .55; background: var(--surface-3); }
 .team-card.team-withdrawn { opacity: .5; background: var(--surface-3); }
 .currency-box { font-size: 24px; font-weight: 600; color: var(--warning); letter-spacing: 0; font-variant-numeric: tabular-nums; }

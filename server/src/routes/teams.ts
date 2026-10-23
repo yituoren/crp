@@ -30,11 +30,25 @@ function rbCountsByTeam() {
   }
   return m;
 }
+/** 每队背包：未撤销的商店购买按物品计数 */
+function inventoryByTeam(eventId: number) {
+  const m = new Map<number, { name: string; count: number }[]>();
+  for (const r of all(
+    `SELECT l.team_id, l.item_name AS name, COUNT(*) AS count FROM currency_ledger l JOIN teams t ON t.id = l.team_id
+     WHERE t.event_id = ? AND l.kind = 'shop' AND l.reverted = 0 AND l.reverts_id IS NULL AND l.item_name IS NOT NULL
+     GROUP BY l.team_id, l.item_name ORDER BY MIN(l.id)`, eventId,
+  )) {
+    if (!m.has(r.team_id)) m.set(r.team_id, []);
+    m.get(r.team_id)!.push({ name: r.name, count: r.count });
+  }
+  return m;
+}
 export const listTeams = (eventId: number) => {
   const rb = rbCountsByTeam();
+  const inv = inventoryByTeam(eventId);
   return all('SELECT id, code, name, members, status, currency, sort FROM teams WHERE event_id = ? ORDER BY sort, id', eventId).map((t) => {
     const members = parseMembers(t.members);
-    return { ...t, members, label: teamLabel(t.name, members), currency: fromCents(t.currency), rbCounts: rb.get(t.id) ?? {} };
+    return { ...t, members, label: teamLabel(t.name, members), currency: fromCents(t.currency), rbCounts: rb.get(t.id) ?? {}, inventory: inv.get(t.id) ?? [] };
   });
 };
 const pad2 = (n: number) => String(n).padStart(2, '0');

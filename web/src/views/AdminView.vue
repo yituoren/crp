@@ -13,9 +13,22 @@ const tab = ref<'settings' | 'members' | 'audit'>('settings');
 
 // 赛事设置（比赛信息）
 const settings = reactive({ name: '', inviteCode: '', teamSize: 2, currencyMode: 'yuan', rbGap: 2 });
+// 商店商品（货币模式）：整表编辑后一次保存
+const shop = reactive<{ items: { id: number; name: string; price: string }[] }>({ items: [] });
+function fillShop() { shop.items = race.shopItems.map((i) => ({ id: i.id, name: i.name, price: String(i.price) })); }
+function addItem() { shop.items.push({ id: 0, name: '', price: '' }); }
+function removeItem(i: number) { shop.items.splice(i, 1); }
+async function saveShop() {
+  try {
+    await api('/shop/items', { method: 'PUT', body: { items: shop.items.map((i) => ({ id: i.id || undefined, name: i.name.trim(), price: i.price })) } });
+    await race.loadShopItems(); fillShop();
+    ui.toast('商品已保存');
+  } catch (e) { ui.error(e); }
+}
 function fill() {
   const e = auth.event;
   Object.assign(settings, { name: e.name, inviteCode: e.inviteCode ?? '', teamSize: e.teamSize, currencyMode: e.currencyMode, rbGap: e.rbGap });
+  fillShop();
 }
 async function saveSettings() {
   try {
@@ -59,6 +72,20 @@ onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
     <div class="form-group"><label>每队人数（大于等于 1 的整数；决定队伍编辑页有几个成员栏）</label><input v-model.number="settings.teamSize" type="number" min="1" max="20" step="1" inputmode="numeric" /></div>
     <div class="form-group"><label>路障限制（同队成员完成路障次数之差不能超过的整数，默认 2）</label><input v-model.number="settings.rbGap" type="number" min="0" max="99" step="1" inputmode="numeric" /></div>
     <button class="btn" @click="saveSettings">保存设置</button>
+  </div>
+
+  <div v-if="tab === 'settings' && settings.currencyMode === 'coin'" class="card" style="max-width: 520px">
+    <div class="card-header"><span>商店商品</span><span class="text-xs text-gray">队伍在开放商店的环节用货币购买；价格为整币</span></div>
+    <div v-for="(it, i) in shop.items" :key="i" class="flex mb-2" style="flex-wrap: nowrap">
+      <input v-model="it.name" placeholder="商品名称" style="flex: 1; min-width: 0" />
+      <input v-model="it.price" type="number" min="1" step="1" inputmode="numeric" placeholder="价格" style="width: 100px" />
+      <button class="icon-btn icon-btn-sm" title="删除" @click="removeItem(i)"><Icon name="delete" size="18" /></button>
+    </div>
+    <div v-if="!shop.items.length" class="text-sm text-gray mb-2">还没有商品</div>
+    <div class="flex">
+      <button class="btn btn-text" @click="addItem"><Icon name="add" size="18" />添加商品</button>
+      <button class="btn" @click="saveShop">保存商品</button>
+    </div>
   </div>
 
   <div v-if="tab === 'members'" class="card">

@@ -1,38 +1,22 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed } from 'vue';
 import { api } from '@/api';
 import { useRace } from '@/stores/race';
 import LegTag from './LegTag.vue';
 import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
-import { fmtMoney, parseMoney, moneyUnit, moneyLabel, moneyMode } from '@/utils/money';
+import { fmtMoney, moneyUnit, moneyLabel } from '@/utils/money';
+import CurrencyOps from './CurrencyOps.vue';
 import { legName, type LedgerEntry } from '@/types';
 
 // 跟队在「我的」页面对所跟队伍的经费操作：加减、环节、最近流水与撤销
 const props = defineProps<{ teamId: number }>();
 const race = useRace();
 const ui = useUi();
-const ep = computed(() => race.currentEpisode);
 const team = computed(() => race.teamById.get(props.teamId));
-const form = reactive({ amount: '', reason: '' });
-const legSel = ref<number | ''>('');
 const rows = computed(() => race.ledger.filter((l) => l.team_id === props.teamId && !l.reverts_id).slice(0, 20));
 const revertedBy = (l: LedgerEntry) => race.ledger.find((x) => x.reverts_id === l.id)?.operator_name ?? '';
 
-async function apply(sign: 1 | -1) {
-  const t = team.value; if (!t) return;
-  const amount = parseMoney(form.amount);
-  if (amount === null) { ui.toast(moneyMode() === 'coin' ? '数量必须是正整数；扣除请用「扣除」按钮' : '金额必须是正数，最多两位小数；扣除请用「扣除」按钮', 'error'); return; }
-  const delta = amount * sign;
-  const reason = form.reason.trim() || (sign > 0 ? '任务奖励' : '手动扣除');
-  if (!(await ui.confirm(sign > 0 ? '增加经费' : '扣除经费', `「${t.label}」${sign > 0 ? '增加' : '扣除'} ${fmtMoney(amount)} ${moneyUnit()}，原因：${reason}\n当前余额 ${fmtMoney(t.currency)} → ${fmtMoney(t.currency + delta)}`))) return;
-  try {
-    await api('/ledger', { method: 'POST', body: { episodeId: ep.value?.id, teamId: t.id, delta, reason, legId: legSel.value === '' ? null : legSel.value } });
-    form.amount = ''; form.reason = '';
-    await Promise.all([race.loadTeams(), race.loadLedger()]);
-    ui.toast(`已${sign > 0 ? '增加' : '扣除'} ${fmtMoney(amount)} ${moneyUnit()}`);
-  } catch (e) { ui.error(e); }
-}
 async function revert(l: LedgerEntry) {
   if (!(await ui.confirm('撤销经费变动', `撤销这笔 ${fmtMoney(l.delta, true)} ${moneyUnit()}（${l.reason || '手动调整'}）？会写入一条反向流水，余额相应恢复。`, { danger: true, okText: '撤销' }))) return;
   try { await api(`/ledger/${l.id}/revert`, { method: 'POST' }); await Promise.all([race.loadTeams(), race.loadLedger()]); ui.toast('已撤销'); } catch (e) { ui.error(e); }
@@ -44,15 +28,7 @@ async function revert(l: LedgerEntry) {
     <div class="card-header">
       <span>{{ moneyLabel() }}操作 <span class="text-gray text-sm">当前余额 {{ fmtMoney(team.currency) }} {{ moneyUnit() }}</span></span>
     </div>
-    <div v-if="race.episodePending" class="alert alert-warning">赛段尚未开始，开始赛段后才能操作经费。</div>
-    <div v-else-if="race.episodeFinished && !race.canAdjustCurrencyFor(team.id)" class="alert alert-info">赛段已结束，经费记录已锁定，只有主办可以修改。</div>
-    <div v-else class="flex mb-2">
-      <input v-model="form.amount" type="number" :inputmode="moneyMode() === 'coin' ? 'numeric' : 'decimal'" min="0" step="1" class="input-inline" :placeholder="moneyUnit() === '币' ? '数量' : '金额'" style="width: 110px" />
-      <MSelect v-model="legSel" outlined style="width: 160px" :options="[{ value: '', label: '环节：其他' }, ...(ep?.legs ?? []).map((l) => ({ value: l.id, label: `环节：${legName(l)}` }))]" />
-      <input v-model="form.reason" class="input-inline" placeholder="原因（如：任务奖励、买线索）" style="flex: 1; min-width: 160px" />
-      <button class="btn btn-tonal" @click="apply(1)"><Icon name="add" size="18" />增加</button>
-      <button class="btn btn-tonal btn-tonal-danger" @click="apply(-1)">扣除</button>
-    </div>
+    <CurrencyOps :team-id="props.teamId" />
     <div v-if="!rows.length" class="text-gray text-sm">本赛段暂无变动</div>
     <div v-else class="scroll-table">
       <table class="table table-dense">

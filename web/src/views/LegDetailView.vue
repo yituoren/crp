@@ -7,6 +7,7 @@ import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
 import { LEG_TYPES, LEG_TYPE_LABEL, legTypeLabel, typeCode, type LegType, legName, isDestinationLeg } from '@/types';
 import { fmtDurMs } from '@/utils/time';
+import { moneyMode } from '@/utils/money';
 import { reactive } from 'vue';
 import { useAuth } from '@/stores/auth';
 import LegTag from '@/components/LegTag.vue';
@@ -26,13 +27,13 @@ const auth = useAuth();
 const isFixed = computed(() => leg.value?.type === 'SL' || leg.value?.type === 'PS');
 const selectableTypes = LEG_TYPES.filter((t) => t !== 'SL' && t !== 'PS');
 // 熔断：开始时间（从赛段开始计）与间隔，都按小时+分钟填写，存为分钟
-const form = reactive({ type: 'TI' as LegType, name: '', description: '', address: '', map_url: '', clue_text: '', judge_criteria: '', open_time: '', close_time: '', detour_a: '', detour_b: '', cutoff_start_h: 0, cutoff_start_m: 0, cutoff_interval_h: 0, cutoff_interval_m: 0 });
+const form = reactive({ type: 'TI' as LegType, name: '', description: '', address: '', map_url: '', clue_text: '', judge_criteria: '', open_time: '', close_time: '', detour_a: '', detour_b: '', cutoff_start_h: 0, cutoff_start_m: 0, cutoff_interval_h: 0, cutoff_interval_m: 0, shop_open: false });
 const dirty = ref(false);
 let filling = false;
 function fillForm() {
   const l = leg.value; if (!l) return;
   filling = true;
-  Object.assign(form, { type: l.type, name: l.name, description: l.description, address: l.address, map_url: l.map_url, clue_text: l.clue_text, judge_criteria: l.judge_criteria, open_time: l.open_time, close_time: l.close_time, detour_a: l.detour_a, detour_b: l.detour_b, cutoff_start_h: Math.floor((l.cutoff_start ?? 0) / 60), cutoff_start_m: (l.cutoff_start ?? 0) % 60, cutoff_interval_h: Math.floor((l.cutoff_interval ?? 0) / 60), cutoff_interval_m: (l.cutoff_interval ?? 0) % 60 });
+  Object.assign(form, { type: l.type, name: l.name, description: l.description, address: l.address, map_url: l.map_url, clue_text: l.clue_text, judge_criteria: l.judge_criteria, open_time: l.open_time, close_time: l.close_time, detour_a: l.detour_a, detour_b: l.detour_b, cutoff_start_h: Math.floor((l.cutoff_start ?? 0) / 60), cutoff_start_m: (l.cutoff_start ?? 0) % 60, cutoff_interval_h: Math.floor((l.cutoff_interval ?? 0) / 60), cutoff_interval_m: (l.cutoff_interval ?? 0) % 60, shop_open: !!l.shop_open });
   dirty.value = false;
   setTimeout(() => { filling = false; }, 0);
 }
@@ -96,6 +97,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
               <div class="form-group"><label>{{ isDestinationLeg(form.type) ? '目的地' : '名称' }}</label><input v-model="form.name" :placeholder="form.type === 'RI' ? '目的地名称，显示时自动加箭头' : form.type === 'PS' ? '中继站所在地' : ''" /></div>
             </div>
             <p class="text-sm text-gray" style="margin: 0 0 10px">{{ form.type === 'RI' ? '路线信息不需要站点人员' : '需要安排站点人员' }}；每个环节记录开始与结束两个时间，开始时间自动接上一环节的结束时间。</p>
+            <label v-if="moneyMode() === 'coin'" class="check-row"><input v-model="form.shop_open" type="checkbox" /> 本环节开放商店<span class="text-gray text-sm">（队伍可在此用货币购买商品）</span></label>
           </div>
           <div class="edit-section">
             <div class="edit-section-title">熔断</div>
@@ -146,6 +148,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
         <div>
           <div v-if="leg.address" class="mb-2">地址：{{ leg.address }} <a v-if="leg.map_url" :href="leg.map_url" target="_blank">打开地图</a></div>
           <div v-if="leg.open_time || leg.close_time" class="mb-2">开放时间：{{ leg.open_time || '-' }} ~ {{ leg.close_time || '-' }}</div>
+          <div v-if="leg.shop_open" class="mb-2"><span class="badge badge-info">开放商店</span></div>
           <div v-if="leg.cutoff_start || leg.cutoff_interval" class="mb-2">熔断：{{ fmtDurMs(leg.cutoff_start * 60000) }} 起，间隔 {{ fmtDurMs(leg.cutoff_interval * 60000) }}</div>
           <div v-if="leg.type === 'DT'" class="mb-2">绕道：A「{{ leg.detour_a || '未填写' }}」 / B「{{ leg.detour_b || '未填写' }}」</div>
           <div class="section-title text-sm">环节说明</div>
