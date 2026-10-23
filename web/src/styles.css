@@ -119,6 +119,11 @@ p { margin: 0 0 8px; }
 .mt-1 { margin-top: 6px; } .mt-2 { margin-top: 12px; } .mt-3 { margin-top: 18px; }
 .mb-2 { margin-bottom: 12px; }
 .empty-state { text-align: center; padding: 36px 12px; color: var(--gray-400); font-size: 13px; }
+/* 加载：Google 风格的圆形转圈 */
+.loading { display: flex; align-items: center; justify-content: center; padding: 40px 12px; }
+.spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--primary-light); border-top-color: var(--primary); animation: spin .8s linear infinite; }
+.spinner-sm { width: 18px; height: 18px; border-width: 2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .mono { font-family: var(--font-mono); }
 .pre { white-space: pre-wrap; word-break: break-word; }
 
@@ -298,10 +303,11 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .pane-main { flex: 1; min-width: 0; height: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; } /* 主区域永不横向滚动，宽表格在各自的 .scroll-table 里滚 */
 html, body { overscroll-behavior: none; }
 .pager-dots { display: none; }
-.live-card { flex: 1; display: flex; flex-direction: column; min-height: 0; margin-bottom: 0; padding: 18px 18px 14px; }
+.live-card { flex: none; display: flex; flex-direction: column; min-height: 0; max-height: 100%; margin-bottom: 0; padding: 18px 18px 14px; }
 .live-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
-.live-grid { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: auto; }
-.live-row { flex: 1 1 0; min-height: 44px; display: grid; grid-template-columns: minmax(90px, 1.2fr) minmax(110px, 1.5fr) minmax(96px, 1.4fr) 76px; gap: 10px; align-items: center; padding: 0 6px; border-bottom: 1px solid var(--gray-100); font-size: 13px; white-space: nowrap; }
+/* 表头 34px + 12 行 × 44px；队伍少于 12 支时下方留白，多于 12 支时在表内滚动 */
+.live-grid { flex: none; display: flex; flex-direction: column; min-height: 0; max-height: calc(34px + 12 * 44px); overflow: auto; }
+.live-row { flex: none; height: 44px; display: grid; grid-template-columns: minmax(90px, 1.2fr) minmax(110px, 1.5fr) minmax(96px, 1.4fr) 76px; gap: 10px; align-items: center; padding: 0 6px; border-bottom: 1px solid var(--gray-100); font-size: 13px; white-space: nowrap; }
 .live-row > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .live-row:last-child { border-bottom: none; }
 .live-row-head { flex: 0 0 auto; min-height: 34px; font-size: 12px; font-weight: 500; color: var(--gray-500); background: var(--surface-3); border-radius: 8px; border-bottom: none; }
@@ -316,8 +322,8 @@ html, body { overscroll-behavior: none; }
   .pane { flex: none; width: 100vw; height: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
   .pane-live { position: static; padding: 16px 16px 40px; }
   /* 手机端大屏：列与电脑端一致，固定列给足宽度，队伍和环节允许换行 */
-  .live-grid { overflow-x: hidden; }
-  .live-row { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.95fr); gap: 6px; font-size: 12px; min-height: 40px; padding: 0 2px; } /* 全部按比例分配，适配不同屏宽 */
+  .live-grid { overflow-x: hidden; max-height: none; } /* 手机端整屏可滚，不限制行数 */
+  .live-row { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.95fr); gap: 6px; font-size: 12px; height: auto; min-height: 44px; padding: 0 2px; } /* 全部按比例分配，适配不同屏宽 */
   .live-row > div { white-space: normal; line-height: 1.3; }
   .live-row .live-time, .live-row .live-money { white-space: nowrap; }
   .live-row .record-time { font-size: 11px; }

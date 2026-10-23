@@ -122,7 +122,7 @@ async function logout() {
     <!-- 左屏 / 电脑端左栏：实时大屏（队伍当前位置） -->
     <section class="pane pane-live">
       <TeamPositions v-if="race.loaded" />
-      <div v-else class="empty-state">加载中…</div>
+      <div v-else class="loading"><span class="spinner"></span></div>
     </section>
     <!-- 右屏 / 电脑端主区域 -->
     <section class="pane pane-main">
@@ -133,8 +133,7 @@ async function logout() {
         <h1>{{ auth.event.name }}</h1>
       </div>
       <div class="user-bar">
-        <span class="sync-status" :class="ui.online ? 'online' : 'offline'"><span class="sync-dot"></span>{{ ui.online ? '实时同步中' : '连接中断' }}</span>
-        <span class="badge" :class="auth.isHost ? 'badge-host' : 'badge-crew'">{{ auth.isAdmin ? '管理员' : auth.isHost ? '主办' : '幕后' }}</span>
+        <span v-if="!ui.online" class="sync-status offline" title="与服务器的实时连接已断开，正在重连"><span class="sync-dot"></span>连接中断</span>
         <span class="user-name">{{ auth.user?.displayName }}</span>
         <router-link to="/password" class="icon-btn" title="修改密码" aria-label="修改密码"><Icon name="key" /></router-link>
         <button class="icon-btn" title="退出登录" aria-label="退出登录" @click="logout"><Icon name="logout" /></button>
@@ -152,7 +151,7 @@ async function logout() {
     </nav>
     <div class="page-body">
       <router-view v-if="race.loaded" />
-      <div v-else class="empty-state">加载中…</div>
+      <div v-else class="loading"><span class="spinner"></span></div>
     </div>
   </div>
     </section>

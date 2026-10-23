@@ -96,7 +96,7 @@ async function copyPrev() {
         <thead><tr><th style="width: 22%">幕后</th><th style="width: 12%">角色</th><th style="width: 26%">分配详情</th><th v-if="auth.isHost" style="min-width: 290px">编辑</th></tr></thead>
         <tbody>
           <tr v-for="r in form.rows" :key="r.userId">
-            <td><strong>{{ userById.get(r.userId)?.displayName }}</strong> <span v-if="userById.get(r.userId)?.role === 'admin'" class="badge badge-host">管理员</span><span v-else-if="userById.get(r.userId)?.role === 'host'" class="badge badge-host">主办</span></td>
+            <td><strong>{{ userById.get(r.userId)?.displayName }}</strong></td>
             <td><span class="badge" :class="displayRole(r.userId)[1]">{{ displayRole(r.userId)[0] }}</span></td>
             <td class="wrap">{{ assignText(r.userId) }}<template v-for="(l, i) in stationLegs(r.userId)" :key="l.id"><template v-if="i">、</template><LegTag :type="l.type" /> {{ legName(l) }}</template></td>
             <td v-if="auth.isHost">

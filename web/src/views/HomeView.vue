@@ -30,7 +30,7 @@ onMounted(load);
 <template>
   <div class="card">
     <div class="card-header"><span>我的比赛</span><span class="text-xs text-gray">点击进入</span></div>
-    <div v-if="loading" class="text-gray text-sm">加载中…</div>
+    <div v-if="loading" class="loading"><span class="spinner"></span></div>
     <div v-else-if="!mine.length" class="empty-state">还没有加入任何比赛，在下方输入邀请码加入。</div>
     <div v-else class="grid grid-3">
       <router-link v-for="ev in mine" :key="ev.id" :to="{ name: 'today', params: { hash: ev.hash } }" class="event-card">
@@ -42,7 +42,7 @@ onMounted(load);
 
   <div class="card">
     <div class="card-header"><span>公共赛事</span><span class="text-xs text-gray">输入主办给的邀请码加入</span></div>
-    <div v-if="loading" class="text-gray text-sm">加载中…</div>
+    <div v-if="loading" class="loading"><span class="spinner"></span></div>
     <div v-else class="grid grid-3">
       <div v-for="ev in all" :key="ev.id" class="event-card event-card-static">
         <div class="event-name">{{ ev.name }}</div>

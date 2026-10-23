@@ -30,9 +30,9 @@ watch(() => [liveEpisode.value?.id, race.progress, race.teams, race.episodes], l
   <div class="card live-card">
     <div class="live-head">
       <span class="section-title">{{ liveEpisode?.code ?? '-' }} 队伍当前位置</span>
-      <span class="text-xs text-gray">{{ statusText }} · 实时更新</span>
+      <span class="text-xs text-gray">{{ statusText }}</span>
     </div>
-    <div v-if="!data" class="text-gray text-sm">加载中…</div>
+    <div v-if="!data" class="loading"><span class="spinner"></span></div>
     <div v-else class="live-grid">
       <div class="live-row live-row-head">
         <div>队伍</div><div>当前环节</div><div>最近记录</div><div>余额（{{ moneyUnit() }}）</div>
