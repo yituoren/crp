@@ -24,7 +24,8 @@ async function renameUser(u: any) {
   if (!name || name.trim() === u.username) return;
   try { await api(`/users/${u.id}`, { method: 'PUT', body: { username: name.trim() } }); await loadUsers(); ui.toast('ID 已修改'); } catch (e) { ui.error(e); }
 }
-const roleName = (r?: string) => (r === 'admin' ? '管理员' : r === 'host' ? '主办' : '幕后');
+/** 身份：管理员是全局角色；主办按是否在任一比赛担任主办判断 */
+const myRole = computed(() => (auth.isAdmin ? '管理员' : auth.hostAnywhere ? '主办' : '幕后'));
 const initial = computed(() => (auth.user?.displayName ?? '?').slice(0, 1).toUpperCase());
 
 // 修改自己的密码（所有人）
@@ -124,7 +125,7 @@ onMounted(() => { if (auth.isAdmin) { loadUsers(); loadAudit(); } });
       <div class="acc-avatar">{{ initial }}</div>
       <div class="acc-hero-text">
         <div class="acc-name">{{ auth.user?.displayName }}</div>
-        <div class="text-sm text-gray">{{ roleName(auth.user?.role) }}<template v-if="auth.user?.createdAt"> · 注册于 {{ fmtDateTime(auth.user.createdAt) }}</template></div>
+        <div class="text-sm text-gray">{{ myRole }}<template v-if="auth.user?.createdAt"> · 注册于 {{ fmtDateTime(auth.user.createdAt) }}</template></div>
       </div>
     </div>
     <div class="acc-grid">
@@ -140,7 +141,7 @@ onMounted(() => { if (auth.isAdmin) { loadUsers(); loadAudit(); } });
             <template v-else><button class="btn btn-text btn-sm" @click="renaming = false">取消</button><button class="btn btn-sm" @click="saveRename">保存</button></template>
           </div>
         </div>
-        <div class="acc-row"><div class="acc-row-label">身份</div><div class="acc-row-value">{{ roleName(auth.user?.role) }}</div><div class="acc-row-action"></div></div>
+        <div class="acc-row"><div class="acc-row-label">身份</div><div class="acc-row-value">{{ myRole }}</div><div class="acc-row-action"></div></div>
         <div class="acc-row"><div class="acc-row-label">注册时间</div><div class="acc-row-value">{{ fmtDateTime(auth.user?.createdAt) }}</div><div class="acc-row-action"></div></div>
       </section>
       <section class="card acc-card">
