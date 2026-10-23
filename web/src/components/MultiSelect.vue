@@ -27,7 +27,8 @@ function toggle(v: number) {
   const next = props.modelValue.includes(v) ? props.modelValue.filter((x) => x !== v) : [...props.modelValue, v];
   emit('update:modelValue', next);
 }
-function onDocClick(e: MouseEvent) { if (root.value && !root.value.contains(e.target as Node)) open.value = false; }
+const menu = ref<HTMLElement | null>(null);
+function onDocClick(e: MouseEvent) { const t = e.target as Node; if (root.value && !root.value.contains(t) && !menu.value?.contains(t)) open.value = false; }
 function onScroll() { if (open.value) place(); }
 onMounted(() => { document.addEventListener('click', onDocClick); window.addEventListener('scroll', onScroll, true); window.addEventListener('resize', onScroll); });
 onUnmounted(() => { document.removeEventListener('click', onDocClick); window.removeEventListener('scroll', onScroll, true); window.removeEventListener('resize', onScroll); });
@@ -38,11 +39,11 @@ onUnmounted(() => { document.removeEventListener('click', onDocClick); window.re
     <button type="button" class="ms-btn input-sm" :class="{ 'ms-empty': !modelValue.length }" @click="toggleOpen">
       <span class="ms-text">{{ summary }}</span><span class="ms-caret"><Icon name="expand_more" size="18" /></span>
     </button>
-    <div v-if="open" class="ms-menu" :style="menuStyle">
+    <Teleport to="body"><div v-if="open" ref="menu" class="ms-menu" :style="menuStyle">
       <label v-for="o in options" :key="o.value" class="ms-item">
         <input type="checkbox" :checked="modelValue.includes(o.value)" @change="toggle(o.value)" /> {{ o.label }}
       </label>
       <div v-if="!options.length" class="text-xs text-gray" style="padding: 6px 10px">本赛段没有需要站点的环节</div>
-    </div>
+    </div></Teleport>
   </div>
 </template>

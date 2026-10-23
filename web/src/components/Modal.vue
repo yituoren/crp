@@ -4,6 +4,7 @@ const emit = defineEmits<{ close: [] }>();
 </script>
 
 <template>
+  <Teleport to="body">
   <div class="modal-overlay" @click.self="emit('close')">
     <div class="modal" :class="{ 'modal-sm': small }">
       <div class="flex-between mb-2">
@@ -13,4 +14,5 @@ const emit = defineEmits<{ close: [] }>();
       <slot />
     </div>
   </div>
+  </Teleport>
 </template>

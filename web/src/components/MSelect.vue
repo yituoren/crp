@@ -38,7 +38,8 @@ function pick(o: { value: string | number; disabled?: boolean }) {
   emit('update:modelValue', o.value);
   emit('change', o.value);
 }
-function onDocClick(e: MouseEvent) { if (root.value && !root.value.contains(e.target as Node)) open.value = false; }
+const menu = ref<HTMLElement | null>(null);
+function onDocClick(e: MouseEvent) { const t = e.target as Node; if (root.value && !root.value.contains(t) && !menu.value?.contains(t)) open.value = false; }
 function onKey(e: KeyboardEvent) { if (e.key === 'Escape') open.value = false; }
 function onScroll() { if (open.value) place(); }
 onMounted(() => { document.addEventListener('click', onDocClick); document.addEventListener('keydown', onKey); window.addEventListener('scroll', onScroll, true); window.addEventListener('resize', onScroll); });
@@ -50,11 +51,11 @@ onUnmounted(() => { document.removeEventListener('click', onDocClick); document.
     <button type="button" class="sel-btn" :class="{ 'sel-empty': isEmpty }" :disabled="disabled" @click="toggleOpen">
       <span class="sel-text">{{ label }}</span><Icon name="expand_more" :size="sm ? 18 : 20" class="sel-caret" />
     </button>
-    <div v-if="open" class="sel-menu" :style="menuStyle" role="listbox">
+    <Teleport to="body"><div v-if="open" ref="menu" class="sel-menu" :style="menuStyle" role="listbox">
       <button v-for="o in options" :key="String(o.value)" type="button" class="sel-item" :class="{ active: String(o.value) === String(modelValue ?? ''), disabled: o.disabled }" role="option" :aria-selected="String(o.value) === String(modelValue ?? '')" @click="pick(o)">
         <span class="sel-item-check"><Icon v-if="String(o.value) === String(modelValue ?? '')" name="check" size="18" /></span>{{ o.label }}
       </button>
       <div v-if="!options.length" class="text-xs text-gray" style="padding: 8px 12px">无可选项</div>
-    </div>
+    </div></Teleport>
   </div>
 </template>
