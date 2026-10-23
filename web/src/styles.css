@@ -427,7 +427,8 @@ html, body { overscroll-behavior: none; }
 .mx2 { min-width: max-content; border-collapse: separate; border-spacing: 0; border-top: 2px solid var(--gray-300); border-bottom: 2px solid var(--gray-300); border-right: 2px solid var(--gray-300); border-radius: 0; }
 .mx2 th, .mx2 td { text-align: center; border-bottom: 1px solid var(--gray-200); white-space: nowrap; }
 .mx2 tbody tr:last-child td { border-bottom: none; }
-.mx2 .mx2-team { position: sticky; left: 0; z-index: 2; background: var(--surface); text-align: left; min-width: 150px; border-left: 2px solid var(--gray-300); }
+.mx2 .mx2-team { position: sticky; left: 0; z-index: 2; background: var(--surface); text-align: left; min-width: 150px; border-left: 2px solid var(--gray-300); border-right: 2px solid var(--gray-300); } /* 与右侧的分割线画在队伍列上：横向滚动时跟着固定列走，不会消失 */
+.mx2 .mx2-team + .mx2-first, .mx2 thead tr:nth-child(2) > :first-child { border-left: none; }
 .mx2 thead .mx2-team { background: var(--surface-2); z-index: 3; }
 .mx2 .mx2-leg { background: var(--surface-2); padding: 8px 12px; }
 .mx2 .mx2-leg-title { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
