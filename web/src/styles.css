@@ -535,7 +535,8 @@ html, body { overscroll-behavior: none; }
 .home-menu .sel-item:hover { text-decoration: none; }
 /* 列表面板 */
 .home-panel { flex: 1; background: var(--surface); border-radius: 16px; padding: 12px 0 8px; display: flex; flex-direction: column; min-height: 0; }
-.home-chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 12px 12px 16px; border-bottom: 1px solid var(--gray-200); }
+.home-chips { display: flex; align-items: center; gap: 8px; padding: 0 12px 12px 16px; border-bottom: 1px solid var(--gray-200); }
+.home-chips-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
 .home-view { margin-left: auto; display: flex; gap: 2px; }
 .home-view .icon-btn { width: 36px; height: 36px; }
 .home-view .icon-btn.active { background: #c2e7ff; color: #001d35; }
@@ -584,7 +585,15 @@ html, body { overscroll-behavior: none; }
   .home-search { max-width: none; height: 44px; padding-left: 12px; }
   .home-account-btn { padding: 0 6px; }
   .home-account-name { display: none; }
-  .home-chips { padding: 0 8px 10px 12px; }
+  /* 手机：三个筛选条固定一行，放不下时横向滑动；展示切换固定在右侧 */
+  .home-chips { padding: 0 6px 10px 8px; gap: 4px; }
+  .home-chips-row { flex: 1; flex-wrap: nowrap; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-bottom: 1px; }
+  .home-chips-row::-webkit-scrollbar { display: none; }
+  .home-chips-row .sel { flex: none; }
+  .home-chips-row .sel-btn { height: 32px; font-size: 13px; padding: 0 2px 0 8px; gap: 1px; }
+  .home-chips-row .sel-caret .icon { width: 16px; height: 16px; }
+  .home-view { flex: none; gap: 0; }
+  .home-view .icon-btn { width: 30px; height: 30px; }
   .home-cards { grid-template-columns: 1fr; padding: 8px 12px 12px; }
   .home-row { height: auto; padding: 8px 12px; flex-wrap: wrap; gap: 6px 10px; }
   .home-row-text { flex-basis: calc(100% - 70px); }

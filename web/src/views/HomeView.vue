@@ -134,9 +134,11 @@ onUnmounted(() => document.removeEventListener('click', onDocClick));
 
       <section class="home-panel">
         <div class="home-chips">
-          <MSelect v-model="filter.time" chip :options="TIME_OPTIONS" />
-          <MSelect v-model="filter.role" chip :options="ROLE_OPTIONS" />
-          <MSelect v-model="filter.status" chip :options="STATUS_OPTIONS" />
+          <div class="home-chips-row">
+            <MSelect v-model="filter.time" chip :options="TIME_OPTIONS" />
+            <MSelect v-model="filter.role" chip :options="ROLE_OPTIONS" />
+            <MSelect v-model="filter.status" chip :options="STATUS_OPTIONS" />
+          </div>
           <div class="home-view">
             <button class="icon-btn" :class="{ active: view === 'cards' }" title="卡片" aria-label="卡片" @click="view = 'cards'"><Icon name="grid_view" size="20" /></button>
             <button class="icon-btn" :class="{ active: view === 'list' }" title="条目" aria-label="条目" @click="view = 'list'"><Icon name="view_list" size="20" /></button>
