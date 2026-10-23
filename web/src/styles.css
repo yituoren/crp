@@ -221,15 +221,21 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .bag-items { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .bag-item { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 8px; background: var(--chip); font-size: 12px; color: var(--gray-700); }
 .bag-count { color: var(--gray-500); }
-.cutoff-edit { display: grid; grid-template-columns: minmax(120px, 1.2fr) minmax(150px, 1fr) minmax(150px, 1fr) 90px 32px; gap: 8px; align-items: center; margin-bottom: 8px; }
-.cutoff-edit .hm-row input { min-width: 44px; }
+/* 熔断设置：每条两行（名称 / 消耗 / 删除；起始 / 间隔），适应窄栏 */
+.cutoff-edit { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--gray-200); }
+.cutoff-edit:last-of-type { border-bottom: none; }
+.cutoff-edit-top { display: flex; align-items: center; gap: 8px; }
+.cutoff-edit-top .cutoff-name { flex: 1; min-width: 0; }
+.cutoff-edit-top .cutoff-cost { width: 96px; flex: none; }
+.cutoff-edit-times { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.cutoff-edit .hm-row input { min-width: 36px; padding-left: 8px; padding-right: 8px; text-align: center; }
+.cutoff-edit .hm-row span { white-space: nowrap; }
 .cutoff-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--gray-100); }
 .cutoff-row:last-child { border-bottom: none; }
 .cutoff-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .cutoff-group + .cutoff-group { margin-top: 12px; }
 .cutoff-wait { font-variant-numeric: tabular-nums; min-width: 110px; }
 .cutoff-row .btn-slot { min-width: 110px; }
-@media (max-width: 760px) { .cutoff-edit { grid-template-columns: 1fr 32px; } }
 .check-row { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 0 0 10px; cursor: pointer; }
 .check-row input { margin: 0; }
 /* 经费操作表单：两组固定槽位。选择项一组、金额/原因/按钮一组；窄屏时整组换行，组内不拆 */
@@ -349,6 +355,10 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .leg-edit .ta-group { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .leg-edit .ta-group textarea { flex: 1; }
 .leg-edit .edit-section-title { font-weight: 500; font-size: 13px; color: var(--gray-600); margin-bottom: 10px; }
+/* 标题行带按钮时高度与纯标题一致：按钮垂直居中并允许溢出到内边距里 */
+.leg-edit .edit-section-head { display: flex; justify-content: space-between; align-items: center; height: 18px; margin-bottom: 10px; }
+.leg-edit .edit-section-head .edit-section-title { margin: 0; }
+.leg-edit .edit-section-head .btn { margin-right: -10px; }
 .leg-edit .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .leg-edit .edit-hint { margin: -4px 0 12px; }
 .leg-edit .form-group label .text-gray { font-weight: 400; margin-left: 4px; }

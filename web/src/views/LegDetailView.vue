@@ -114,13 +114,17 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
             <div class="form-group" style="max-width: 200px"><label>淘汰队数</label><input v-model.number="form.eliminate_count" type="number" min="1" step="1" inputmode="numeric" :disabled="(!form.can_eliminate && form.type !== 'PS') || !race.structureEditable" /></div>
           </div>
           <div class="edit-section">
-            <div class="flex-between" style="margin-bottom: 8px"><span class="edit-section-title" style="margin: 0">熔断</span><button v-if="race.structureEditable" class="btn btn-text btn-sm" @click="addCutoff"><Icon name="add" size="16" />添加熔断</button></div>
+            <div class="edit-section-head"><span class="edit-section-title">熔断</span><button v-if="race.structureEditable" class="btn btn-text btn-sm" @click="addCutoff"><Icon name="add" size="16" />添加熔断</button></div>
             <div v-for="(c, i) in cutoffs" :key="i" class="cutoff-edit">
-              <input v-model="c.name" placeholder="种类名称" class="cutoff-name" :disabled="!race.structureEditable" />
-              <div class="hm-row" title="起始时间"><input v-model.number="c.sh" type="number" min="0" step="1" inputmode="numeric" :disabled="!race.structureEditable" /><span>h</span><input v-model.number="c.sm" type="number" min="0" max="59" step="1" inputmode="numeric" :disabled="!race.structureEditable" /><span>m 起</span></div>
-              <div class="hm-row" title="间隔时间"><input v-model.number="c.ih" type="number" min="0" step="1" inputmode="numeric" :disabled="!race.structureEditable" /><span>h</span><input v-model.number="c.im" type="number" min="0" max="59" step="1" inputmode="numeric" :disabled="!race.structureEditable" /><span>m 隔</span></div>
-              <input v-if="moneyMode() === 'coin'" v-model="c.cost" type="number" min="0" step="1" inputmode="numeric" placeholder="消耗（币）" class="cutoff-cost" :disabled="!race.structureEditable" />
-              <button v-if="race.structureEditable" class="icon-btn icon-btn-sm icon-btn-danger" title="删除" @click="removeCutoff(i)"><Icon name="delete" size="18" /></button><span v-else></span>
+              <div class="cutoff-edit-top">
+                <input v-model="c.name" placeholder="种类名称" class="cutoff-name" :disabled="!race.structureEditable" />
+                <input v-if="moneyMode() === 'coin'" v-model="c.cost" type="number" min="0" step="1" inputmode="numeric" placeholder="消耗（币）" class="cutoff-cost" :disabled="!race.structureEditable" />
+                <button v-if="race.structureEditable" class="icon-btn icon-btn-sm icon-btn-danger" title="删除" @click="removeCutoff(i)"><Icon name="delete" size="18" /></button>
+              </div>
+              <div class="cutoff-edit-times">
+                <div class="hm-row" title="起始时间"><input v-model.number="c.sh" type="number" min="0" step="1" inputmode="numeric" :disabled="!race.structureEditable" /><span>h</span><input v-model.number="c.sm" type="number" min="0" max="59" step="1" inputmode="numeric" :disabled="!race.structureEditable" /><span>m 起</span></div>
+                <div class="hm-row" title="间隔时间"><input v-model.number="c.ih" type="number" min="0" step="1" inputmode="numeric" :disabled="!race.structureEditable" /><span>h</span><input v-model.number="c.im" type="number" min="0" max="59" step="1" inputmode="numeric" :disabled="!race.structureEditable" /><span>m 隔</span></div>
+              </div>
             </div>
             <div v-if="!cutoffs.length" class="text-sm text-gray">没有熔断</div>
           </div>
