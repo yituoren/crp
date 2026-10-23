@@ -203,7 +203,9 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .ep-btn { flex: 0 0 auto; padding: 0 16px; min-height: 32px; border-radius: 8px; border: 1px solid var(--gray-300); background: transparent; color: var(--gray-700); cursor: pointer; font-size: 14px; font-weight: 500; font-family: inherit; transition: background-color .15s, border-color .15s, color .15s; }
 .ep-btn:hover { background: rgba(60, 64, 67, .06); }
 .ep-btn.active { background: var(--primary-light); border-color: var(--primary-light); color: var(--primary-on-light); }
-.ep-btn .sub { font-weight: 400; font-size: 11px; opacity: .75; margin-left: 4px; }
+.ep-btn.done { color: var(--gray-500); border-color: var(--gray-200); background: var(--surface-3); }
+.ep-btn.done.active { color: var(--primary-on-light); border-color: var(--primary-light); background: var(--primary-light); opacity: .8; }
+.ep-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--success); margin-left: 6px; vertical-align: 1px; }
 
 /* 环节 / 队伍卡片 */
 .leg-item { background: var(--surface); border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 16px; cursor: pointer; transition: background-color .15s, box-shadow .15s; }
