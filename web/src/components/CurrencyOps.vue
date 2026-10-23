@@ -77,7 +77,7 @@ async function apply(sign: 1 | -1) {
   <div class="card">
     <div class="card-header">
       <span class="flex" style="gap: 12px">
-        <span>{{ moneyLabel() }}操作</span>
+        <span>{{ props.teamId !== undefined ? `本队${moneyLabel()}` : `${moneyLabel()}操作` }}</span>
         <MSelect v-if="props.teamId === undefined && canOperate" v-model="form.teamId" sm style="width: 170px" placeholder="选择队伍" :options="teamOptions" />
         <slot name="title" />
       </span>

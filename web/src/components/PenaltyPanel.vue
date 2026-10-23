@@ -73,7 +73,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
       <button class="btn btn-tonal btn-tonal-danger" @click="apply(1)">增加罚时</button>
       <button class="btn btn-tonal" @click="apply(-1)">补充时间</button>
     </div>
-    <div v-if="!visible.length" class="text-gray text-sm">本赛段暂无罚时或补时记录</div>
+    <div v-if="!visible.length" class="empty-rows">暂无记录</div>
     <div v-else class="scroll-table">
       <table class="table table-dense">
         <thead><tr><th>时间</th><th>队伍</th><th v-if="!props.legId">环节</th><th class="c">类型</th><th class="c">分钟</th><th class="c">净罚时</th><th>操作人</th><th>原因</th><th class="c">其他</th></tr></thead>

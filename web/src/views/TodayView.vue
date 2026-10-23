@@ -12,6 +12,7 @@ import LegExtraField from '@/components/LegExtraField.vue';
 import TeamCurrencyPanel from '@/components/TeamCurrencyPanel.vue';
 import CurrencyOps from '@/components/CurrencyOps.vue';
 import CutoffCard from '@/components/CutoffCard.vue';
+import BagCard from '@/components/BagCard.vue';
 import ProgressEditModal from '@/components/ProgressEditModal.vue';
 import { type Leg, type Progress, legName } from '@/types';
 import { endLabel, hasStart } from '@/types';
@@ -39,13 +40,6 @@ const legRows = computed(() => {
     return { leg, p, label: endLabel(leg.type), block, locked, isBranch, state };
   });
 });
-const stats = computed(() => ({
-  alive: race.aliveTeams.length,
-  total: race.teams.length,
-  legs: ep.value?.legs.length ?? 0,
-  staffed: race.assignments.length,
-  finished: ep.value ? race.teams.filter((t) => ep.value!.legs.some((l) => l.type === 'PS' && race.progressOf(t.id, l.id)?.completed_at)).length : 0,
-}));
 
 </script>
 
@@ -55,23 +49,8 @@ const stats = computed(() => ({
   <div v-if="race.episodePending" class="alert alert-warning">{{ ep?.code }} 尚未开始。主办点「开始赛段」后才能记录时间、操作经费和罚时。</div>
   <div v-else-if="race.episodeFinished" class="alert alert-info">{{ ep?.code }} 已结束，所有记录已锁定，只有管理员可以修改。</div>
 
-  <!-- 主办概览 -->
-  <div v-if="auth.isHost" class="card">
-    <div class="card-header">概览</div>
-    <template v-if="auth.isHost">
-      <div class="grid grid-stat">
-        <div class="team-card"><div class="text-gray text-sm">存活队伍</div><div class="stat-num" style="color: var(--success)">{{ stats.alive }}<span class="text-gray text-sm"> / {{ stats.total }}</span></div></div>
-        <div class="team-card"><div class="text-gray text-sm">本赛段环节</div><div class="stat-num" style="color: var(--primary)">{{ stats.legs }}</div></div>
-        <div class="team-card"><div class="text-gray text-sm">已排班幕后</div><div class="stat-num" style="color: var(--primary)">{{ stats.staffed }}</div></div>
-        <div class="team-card"><div class="text-gray text-sm">已到中继站</div><div class="stat-num" style="color: #db2777">{{ stats.finished }}</div></div>
-      </div>
-      <div class="flex mt-2">
-        <router-link :to="{ name: 'progress' }" class="btn">查看进度</router-link>
-        <router-link :to="{ name: 'schedule' }" class="btn btn-tonal">去排班</router-link>
-        
-      </div>
-    </template>
-  </div>
+  <!-- 跟队：本队熔断放最上面 -->
+  <CutoffCard v-if="my?.role === 'follow' && myTeam" :team-id="myTeam.id" />
 
   <!-- 我的分工（按排班，主办也可能被排为跟队/站点） -->
   <div class="card">
@@ -111,9 +90,6 @@ const stats = computed(() => ({
           </tbody>
         </table>
       </div>
-      <div class="mt-3"><CutoffCard :team-id="myTeam.id" /></div>
-      <div class="mt-3"><TeamCurrencyPanel :team-id="myTeam.id" /></div>
-      <div class="mt-3"><PenaltyPanel :team-id="myTeam.id" /></div>
     </template>
 
     <template v-else-if="my?.role === 'station' && myLegs.length">
@@ -146,6 +122,12 @@ const stats = computed(() => ({
       <template v-else>本赛段你没有跟队或站点任务（机动幕后）。<br /><span class="text-sm">可以在「赛段信息」查看环节安排，排班有变动会实时更新。</span></template>
     </div>
   </div>
+
+  <template v-if="my?.role === 'follow' && myTeam">
+    <BagCard :team-id="myTeam.id" />
+    <TeamCurrencyPanel :team-id="myTeam.id" />
+    <PenaltyPanel :team-id="myTeam.id" />
+  </template>
 
   <ProgressEditModal v-if="editing && myTeam" :leg="editing.leg" :team="myTeam" :progress="editing.progress" @close="editing = null" />
 </template>

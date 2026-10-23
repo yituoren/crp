@@ -31,18 +31,26 @@ function rbCountsByTeam() {
   }
   return m;
 }
-/** 每队背包：未撤销的商店购买按物品计数 */
-function inventoryByTeam(eventId: number) {
+/** 每队背包：未撤销的商店购买减去未撤销的使用，按物品计数 */
+export function inventoryByTeam(eventId: number) {
   const m = new Map<number, { name: string; count: number }[]>();
   for (const r of all(
-    `SELECT l.team_id, l.item_name AS name, COUNT(*) AS count FROM currency_ledger l JOIN teams t ON t.id = l.team_id
-     WHERE t.event_id = ? AND l.kind = 'shop' AND l.reverted = 0 AND l.reverts_id IS NULL AND l.item_name IS NOT NULL
-     GROUP BY l.team_id, l.item_name ORDER BY MIN(l.id)`, eventId,
+    `SELECT l.team_id, l.item_name AS name, SUM(CASE l.kind WHEN 'shop' THEN 1 WHEN 'use' THEN -1 ELSE 0 END) AS count
+     FROM currency_ledger l JOIN teams t ON t.id = l.team_id
+     WHERE t.event_id = ? AND l.kind IN ('shop', 'use') AND l.reverted = 0 AND l.reverts_id IS NULL AND l.item_name IS NOT NULL
+     GROUP BY l.team_id, l.item_name HAVING count > 0 ORDER BY MIN(l.id)`, eventId,
   )) {
     if (!m.has(r.team_id)) m.set(r.team_id, []);
     m.get(r.team_id)!.push({ name: r.name, count: r.count });
   }
   return m;
+}
+/** 某队某物品的持有数 */
+export function inventoryCount(teamId: number, itemName: string): number {
+  return get<{ n: number | null }>(
+    `SELECT SUM(CASE kind WHEN 'shop' THEN 1 WHEN 'use' THEN -1 ELSE 0 END) AS n FROM currency_ledger
+     WHERE team_id = ? AND item_name = ? AND kind IN ('shop', 'use') AND reverted = 0 AND reverts_id IS NULL`, teamId, itemName,
+  )?.n ?? 0;
 }
 export const listTeams = (eventId: number) => {
   const rb = rbCountsByTeam();

@@ -121,6 +121,8 @@ p { margin: 0 0 8px; }
 .mt-1 { margin-top: 6px; } .mt-2 { margin-top: 12px; } .mt-3 { margin-top: 18px; }
 .mb-2 { margin-bottom: 12px; }
 .empty-state { text-align: center; padding: 36px 12px; color: var(--gray-400); font-size: 13px; }
+/* 卡片内“暂无记录”：所有记录类区块统一用这个（高度、边距、字号一致） */
+.empty-rows { text-align: center; padding: 20px 12px; color: var(--gray-400); font-size: 13px; }
 /* 加载：Google 风格的圆形转圈 */
 .loading { display: flex; align-items: center; justify-content: center; padding: 40px 12px; flex: 1; min-height: 160px; }
 .spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--primary-light); border-top-color: var(--primary); animation: spin .8s linear infinite; }
@@ -327,6 +329,7 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 
 /* 弹窗：Material 对话框 */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, .32); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; backdrop-filter: blur(2px); animation: fade-in .15s ease; }
+.modal-overlay-top { z-index: 160; } /* 确认框要盖在其他弹窗（Teleport 到 body 的 Modal）之上 */
 .modal { background: var(--surface); border-radius: 28px; padding: 24px; width: 100%; max-width: 720px; max-height: 92vh; overflow-y: auto; box-shadow: var(--shadow-3); animation: modal-in .18s ease; }
 .modal-sm { max-width: 440px; }
 .modal h3 { font-size: 22px; font-weight: 500; }
@@ -627,3 +630,19 @@ html, body { overscroll-behavior: none; }
 .acc-pw { padding: 4px 0 12px; }
 .acc-pw .form-group { margin-bottom: 12px; }
 @media (max-width: 520px) { .acc-row { grid-template-columns: 72px minmax(0, 1fr) auto; } .acc-avatar { width: 56px; height: 56px; font-size: 24px; } .acc-name { font-size: 20px; } }
+
+/* ---------- 背包卡片：物品格子可多选，用掉的消失 ---------- */
+.bag-card-click { cursor: pointer; transition: background-color .15s; }
+.bag-card-click:hover { background: var(--surface-2); }
+.bag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.bag-tile { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px 0 10px; border: 1px solid var(--gray-300); border-radius: 10px; background: var(--surface); color: var(--gray-900); font-family: inherit; font-size: 14px; cursor: pointer; text-align: left; transition: background-color .15s, border-color .15s; }
+.bag-tile:hover { background: var(--surface-2); }
+.bag-tile.on { background: var(--primary-light); border-color: var(--primary-light); color: var(--primary-on-light); }
+.bag-tile.off { cursor: default; }
+.bag-tile.off:hover { background: var(--surface); }
+.bag-tile-check { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--gray-400); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.bag-tile.on .bag-tile-check { background: var(--primary); border-color: var(--primary); color: #fff; }
+.bag-tile-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bag-tile-count { font-size: 12px; color: var(--gray-500); font-variant-numeric: tabular-nums; }
+.bag-tile.on .bag-tile-count { color: var(--primary-on-light); }
+.bag-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }

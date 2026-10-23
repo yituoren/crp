@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { all, get, run, tx, now, fromCents } from '../db.js';
 import { canAdjustCurrency, type Env, isAdminRole, isHostRole } from '../auth.js';
 import { audit, body, str, int, notify, bad, forbidden, notFound, money, currencyMode, editLockReason } from '../util.js';
-import { teamLabelMap } from './teams.js';
+import { teamLabelMap, inventoryCount } from './teams.js';
 
 export const ledgerRoutes = new Hono<Env>();
 
@@ -63,8 +63,8 @@ ledgerRoutes.post('/ledger', async (c) => {
   const b = await body(c);
   const episodeId = int(b.episodeId, 0) || null;
   const teamId = int(b.teamId, 0);
-  const kind: 'shop' | 'cutoff' | 'other' = b.kind === 'shop' ? 'shop' : b.kind === 'cutoff' ? 'cutoff' : 'other';
-  let delta = kind === 'shop' ? 0 : money(b.delta);
+  const kind: 'shop' | 'cutoff' | 'other' | 'use' = b.kind === 'shop' ? 'shop' : b.kind === 'cutoff' ? 'cutoff' : b.kind === 'use' ? 'use' : 'other';
+  let delta = kind === 'shop' || kind === 'use' ? 0 : money(b.delta);
   let reason = str(b.reason, 200) || '手动调整';
   if (kind === 'cutoff') {
     // 熔断：只能扣除
@@ -81,15 +81,27 @@ ledgerRoutes.post('/ledger', async (c) => {
     delta = -item.price;
     reason = `购买：${item.name}`;
   }
-  if (!delta) throw bad('金额不能为 0');
+  let useName: string | null = null;
+  if (kind === 'use') {
+    // 使用背包物品：不动余额，只记一条流水；每次只用一件，物品必须在背包里
+    useName = str(b.itemName, 100);
+    if (!useName) throw bad('缺少物品');
+    if (inventoryCount(teamId, useName) < 1) throw bad(`背包里没有「${useName}」`);
+    reason = `使用：${useName}`;
+  }
+  if (!delta && kind !== 'use') throw bad('金额不能为 0');
   if (!canAdjustCurrency(user, episodeId ?? 0, teamId, int(b.legId, 0) || null)) throw forbidden('主办可操作所有队伍；跟队只能操作所跟队伍；站点只能记在自己驻守的环节上');
   const team = get('SELECT * FROM teams WHERE id = ?', teamId);
   if (!team || team.event_id !== c.get('event').id) throw notFound('队伍不存在');
   const epRow = episodeId ? get<{ status: string; code: string }>('SELECT status, code FROM episodes WHERE id = ?', episodeId) : null;
   if (epRow?.status === 'pending' && !isAdminRole(user.role)) throw bad(`${epRow.code} 尚未开始，开始赛段后才能操作经费`);
   { const r = editLockReason(user, epRow, team as { status: string }); if (r) throw forbidden(r); }
-  const legId = int(b.legId, 0) || null; // 环节为空 = “其他”，只有主办能选（与罚时一致）
-  if (!legId && !isHostRole(user.role)) throw forbidden('“其他”环节只能由主办选择，请选择具体环节');
+  // 环节为空 = “其他”，只有主办能选（与罚时一致）；使用物品不选环节，自动记在该队当前进行中的环节上
+  let legId = int(b.legId, 0) || null;
+  if (kind === 'use' && !legId && episodeId) legId = get<{ leg_id: number }>(
+    `SELECT p.leg_id FROM progress p JOIN legs l ON l.id = p.leg_id WHERE p.episode_id = ? AND p.team_id = ? AND p.arrived_at IS NOT NULL AND p.completed_at IS NULL ORDER BY l.sort DESC, l.id DESC LIMIT 1`, episodeId, teamId,
+  )?.leg_id ?? null;
+  if (!legId && !isHostRole(user.role) && kind !== 'use') throw forbidden('“其他”环节只能由主办选择，请选择具体环节');
   const legRow = legId ? get('SELECT id, shop_open FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId ?? 0) : null;
   if (legId && !legRow) throw notFound('环节不存在');
   if (kind === 'shop') {
@@ -101,11 +113,11 @@ ledgerRoutes.post('/ledger', async (c) => {
     run('UPDATE teams SET currency = ? WHERE id = ?', balance, teamId);
     const r = run(
       'INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at, leg_id, kind, item_id, item_name) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-      episodeId, teamId, delta, balance, reason, user.id, user.displayName, now(), legId, kind, item?.id ?? null, item?.name ?? null,
+      episodeId, teamId, delta, balance, reason, user.id, user.displayName, now(), legId, kind, item?.id ?? null, item?.name ?? useName,
     );
     return Number(r.lastInsertRowid);
   });
-  audit(user, kind === 'shop' ? 'shop_buy' : 'currency', 'team', teamId, { currency: fromCents(team.currency) }, { delta: fromCents(delta), balance: fromCents(balance), reason, item: item?.name });
+  audit(user, kind === 'shop' ? 'shop_buy' : kind === 'use' ? 'item_use' : 'currency', 'team', teamId, { currency: fromCents(team.currency) }, { delta: fromCents(delta), balance: fromCents(balance), reason, item: item?.name ?? useName });
   notify('ledger', episodeId);
   notify('teams');
   return c.json({ id, balance: fromCents(balance) });
@@ -118,6 +130,7 @@ ledgerRoutes.post('/ledger/:id/revert', (c) => {
   const orig = get('SELECT * FROM currency_ledger WHERE id = ?', id);
   if (!orig) throw notFound('流水不存在');
   if (!isHostRole(user.role) && orig.operator_id !== user.id) throw forbidden('只有发出这条记录的本人或主办可以撤销');
+  if (orig.kind === 'shop' && orig.item_name && inventoryCount(orig.team_id, orig.item_name) < 1) throw bad(`「${orig.item_name}」已经被使用，请先撤销使用记录`);
   { const r = editLockReason(user, orig.episode_id ? get<{ status: string; code: string }>('SELECT status, code FROM episodes WHERE id = ?', orig.episode_id) : null, get<{ status: string }>('SELECT status FROM teams WHERE id = ?', orig.team_id)); if (r) throw forbidden(r); }
   if (orig.reverted) throw bad('这条变动已经撤销过了');
   if (orig.reverts_id) throw bad('撤销记录本身不能再撤销');

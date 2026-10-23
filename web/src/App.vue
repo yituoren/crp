@@ -7,7 +7,7 @@ const ui = useUi();
   <router-view />
 
   <!-- 确认对话框 -->
-  <div v-if="ui.confirmState" class="modal-overlay" @click.self="ui.closeConfirm(false)">
+  <div v-if="ui.confirmState" class="modal-overlay modal-overlay-top" @click.self="ui.closeConfirm(false)">
     <div class="modal modal-sm">
       <h3>{{ ui.confirmState.title }}</h3>
       <p class="text-gray" style="white-space: pre-wrap; line-height: 1.6">{{ ui.confirmState.message }}</p>

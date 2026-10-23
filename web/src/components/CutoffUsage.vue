@@ -51,7 +51,7 @@ async function removeUse(id: number) {
     </div>
   </div>
   <Modal v-if="editing" :title="`熔断记录 · ${editing.label}`" small @close="editing = null">
-    <div v-if="!usesOf(editing.id).length" class="text-gray text-sm">本环节还没有使用记录</div>
+    <div v-if="!usesOf(editing.id).length" class="empty-rows">暂无记录</div>
     <table v-else class="table table-dense">
       <thead><tr><th>时间</th><th>种类</th><th>操作人</th><th class="c"></th></tr></thead>
       <tbody>
