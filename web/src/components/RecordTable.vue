@@ -82,7 +82,6 @@ function detourOptions(): string[] {
               <template v-else-if="edit && p?.completed_at">
                 <button class="btn btn-text btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
               </template>
-              <span v-if="can && !p?.completed_at && disabledReason(p, block)" class="block-hint" :title="disabledReason(p, block) ?? ''">{{ disabledReason(p, block) }}</span>
             </div>
           </td>
         </tr>
