@@ -44,16 +44,16 @@ async function save() {
     <div v-if="withStart" class="form-group"><label>开始时间<span class="text-gray">（默认 = 上一环节的{{ label === '完成' ? '结束' : '结束' }}时间，留空 = 未开始）</span></label><input v-model="form.arrivedAt" type="datetime-local" step="1" /></div>
     <div class="form-group"><label>{{ label }}时间<span class="text-gray">（留空 = 未{{ label }}；改动会同步为下一环节的开始时间）</span></label><input v-model="form.completedAt" type="datetime-local" step="1" /></div>
     <div v-if="leg.type === 'UT' || leg.type === 'YD'" class="form-group"><label>施加对象</label>
-      <select v-model="form.targetTeamId"><option value="">未使用</option><option v-for="t in teams.filter((x) => x.id !== team.id)" :key="t.id" :value="t.id">{{ t.label }}</option></select>
+      <MSelect v-model="form.targetTeamId" :options="[{ value: '', label: '未使用' }, ...teams.filter((x) => x.id !== team.id).map((t) => ({ value: t.id, label: t.label }))]" />
     </div>
     <div v-if="leg.type === 'DT'" class="form-group"><label>绕道选择</label>
-      <select v-model="form.detourChoice"><option value="">未选</option><option v-for="o in detourOptions" :key="o" :value="o">{{ o }}</option></select>
+      <MSelect v-model="form.detourChoice" :options="[{ value: '', label: '未选' }, ...detourOptions.map((o) => ({ value: o, label: o }))]" />
     </div>
     <div v-if="leg.type === 'RB'" class="form-group"><label>路障完成人</label>
-      <select v-model="form.roadblockBy"><option value="">未选</option><option v-for="m in race.memberOptions(team.id, progress?.roadblock_by, form.roadblockBy)" :key="m" :value="m">{{ m }}</option></select>
+      <MSelect v-model="form.roadblockBy" :options="[{ value: '', label: '未选' }, ...race.memberOptions(team.id, progress?.roadblock_by, form.roadblockBy).map((m) => ({ value: m, label: m }))]" />
     </div>
     <div v-if="leg.type === 'FF'" class="form-group"><label>快进结果</label>
-      <select v-model="form.ffResult"><option value="">未尝试</option><option value="success">成功</option><option value="fail">失败</option></select>
+      <MSelect v-model="form.ffResult" :options="[{ value: '', label: '未尝试' }, { value: 'success', label: '成功' }, { value: 'fail', label: '失败' }]" />
     </div>
     <div class="form-group"><label>备注</label><textarea v-model="form.note" style="min-height: 60px" /></div>
     <div class="modal-actions">

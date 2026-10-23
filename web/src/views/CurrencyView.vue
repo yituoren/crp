@@ -48,10 +48,7 @@ async function revert(l: LedgerEntry) {
   <div class="flex-between mb-2">
     <div class="flex">
       <div class="section-title">{{ moneyLabel() }}操作</div>
-      <select v-if="race.canAdjustCurrency" v-model="legSel" class="input-sm input-inline" style="width: 150px" title="本次变动发生的环节">
-        <option value="">环节：其他</option>
-        <option v-for="l in ep?.legs ?? []" :key="l.id" :value="l.id">环节：{{ legName(l) }}</option>
-      </select>
+      <MSelect v-if="race.canAdjustCurrency" v-model="legSel" sm style="width: 160px" title="本次变动发生的环节" :options="[{ value: '', label: '环节：其他' }, ...(ep?.legs ?? []).map((l) => ({ value: l.id, label: `环节：${legName(l)}` }))]" />
     </div>
     <span v-if="!race.canAdjustCurrency" class="text-sm text-gray">主办可操作所有队伍，跟队只能操作所跟队伍</span>
   </div>
@@ -77,7 +74,7 @@ async function revert(l: LedgerEntry) {
   <div class="card mt-3">
     <div class="card-header">
       <span>{{ moneyLabel() }}变动日志</span>
-      <select v-model="filterTeam" class="input-sm input-inline" style="width: 140px"><option value="">全部队伍</option><option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.label }}</option></select>
+      <MSelect v-model="filterTeam" sm style="width: 150px" :options="[{ value: '', label: '全部队伍' }, ...race.teams.map((t) => ({ value: t.id, label: t.label }))]" />
     </div>
     <div v-if="!rows.length" class="empty-state">暂无货币变动记录</div>
     <div v-else class="scroll-table">

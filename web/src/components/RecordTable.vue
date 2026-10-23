@@ -54,30 +54,19 @@ function detourOptions(): string[] {
           <td v-if="withStart"><span class="record-time">{{ fmtTime(p?.arrived_at) }}</span></td>
           <td><span class="record-time">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td>
           <td v-if="showTarget">
-            <select v-if="inline(can, p)" class="input-sm input-inline" style="width: 120px" :value="p?.target_team_id ?? ''" @change="rec.setValue('target', team.id, leg.id, ($event.target as HTMLSelectElement).value)">
-              <option value="">未使用</option>
-              <option v-for="t in race.teams.filter((x) => x.id !== team.id)" :key="t.id" :value="t.id">{{ t.label }}</option>
-            </select>
+            <MSelect v-if="inline(can, p)" sm style="width: 130px" :model-value="p?.target_team_id ?? ''" :options="[{ value: '', label: '未使用' }, ...race.teams.filter((x) => x.id !== team.id).map((t) => ({ value: t.id, label: t.label }))]" @update:model-value="rec.setValue('target', team.id, leg.id, String($event))" />
             <span v-else>{{ p?.target_team_id ? race.teamById.get(p.target_team_id)?.label : '-' }}</span>
           </td>
           <td v-if="leg.type === 'DT'">
-            <select v-if="inline(can, p)" class="input-sm input-inline" :value="p?.detour_choice ?? ''" @change="rec.setValue('detour', team.id, leg.id, ($event.target as HTMLSelectElement).value)">
-              <option value="">未选</option>
-              <option v-for="o in detourOptions()" :key="o" :value="o">{{ o }}</option>
-            </select>
+            <MSelect v-if="inline(can, p)" sm style="width: 120px" :model-value="p?.detour_choice ?? ''" :options="[{ value: '', label: '未选' }, ...detourOptions().map((o) => ({ value: o, label: o }))]" @update:model-value="rec.setValue('detour', team.id, leg.id, String($event))" />
             <span v-else>{{ p?.detour_choice || '-' }}</span>
           </td>
           <td v-if="leg.type === 'RB'">
-            <select v-if="inline(can, p)" class="input-sm input-inline" style="width: 110px" :value="p?.roadblock_by ?? ''" @change="rec.setValue('roadblock', team.id, leg.id, ($event.target as HTMLSelectElement).value)">
-              <option value="">未选</option>
-              <option v-for="m in race.memberOptions(team.id, p?.roadblock_by)" :key="m" :value="m">{{ m }}</option>
-            </select>
+            <MSelect v-if="inline(can, p)" sm style="width: 120px" :model-value="p?.roadblock_by ?? ''" :options="[{ value: '', label: '未选' }, ...race.memberOptions(team.id, p?.roadblock_by).map((m) => ({ value: m, label: m }))]" @update:model-value="rec.setValue('roadblock', team.id, leg.id, String($event))" />
             <span v-else>{{ p?.roadblock_by || '-' }}</span>
           </td>
           <td v-if="leg.type === 'FF'">
-            <select v-if="inline(can, p)" class="input-sm input-inline" :value="p?.ff_result ?? ''" @change="rec.setValue('ff', team.id, leg.id, ($event.target as HTMLSelectElement).value)">
-              <option value="">未尝试</option><option value="success">成功</option><option value="fail">失败</option>
-            </select>
+            <MSelect v-if="inline(can, p)" sm style="width: 110px" :model-value="p?.ff_result ?? ''" :options="[{ value: '', label: '未尝试' }, { value: 'success', label: '成功' }, { value: 'fail', label: '失败' }]" @update:model-value="rec.setValue('ff', team.id, leg.id, String($event))" />
             <span v-else>{{ p?.ff_result === 'success' ? '成功' : p?.ff_result === 'fail' ? '失败' : '-' }}</span>
           </td>
           <td>

@@ -152,7 +152,7 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
   <Modal v-if="epEditing" title="编辑赛段" small @close="epEditing = false">
     <div class="form-group"><label>名称</label><input v-model="epForm.name" /></div>
     <div class="form-group"><label>本赛段补充{{ moneyLabel() }}（{{ moneyUnit() }}/队）</label><input v-model.number="epForm.budget" type="number" min="0" step="1" :inputmode="moneyMode() === 'coin' ? 'numeric' : 'decimal'" /><div class="info-text">点「开始赛段」时，在每支存活队伍现有余额上增加这笔数，不清零、不重置；上赛段剩余会累积。{{ moneyMode() === 'coin' ? '必须是整数' : '最多两位小数' }}，填 0 表示本赛段不发。</div></div>
-    <div class="form-group"><label>状态（一般用「开始赛段 / 结束赛段」按钮切换，这里可手工修正）</label><select v-model="epForm.status"><option value="pending">未开始</option><option value="running">进行中</option><option value="finished">已结束</option></select></div>
+    <div class="form-group"><label>状态（一般用「开始赛段 / 结束赛段」按钮切换，这里可手工修正）</label><MSelect v-model="epForm.status" :options="[{ value: 'pending', label: '未开始' }, { value: 'running', label: '进行中' }, { value: 'finished', label: '已结束' }]" /></div>
     <div class="form-group"><label>赛段说明（所有幕后可见）</label><textarea v-model="epForm.notes" /></div>
     <div class="modal-actions"><button class="btn btn-text" @click="epEditing = false">取消</button><button class="btn" @click="saveEp">保存</button></div>
   </Modal>

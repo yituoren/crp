@@ -101,13 +101,8 @@ async function copyPrev() {
             <td>{{ assignText(r.userId) }}<template v-for="(l, i) in stationLegs(r.userId)" :key="l.id"><template v-if="i">、</template><LegTag :type="l.type" /> {{ legName(l) }}</template></td>
             <td v-if="auth.isHost">
               <div class="flex" style="gap: 6px; flex-wrap: nowrap">
-                <select v-model="r.role" class="input-sm input-inline" style="width: 90px; flex: none">
-                  <option value="crew">机动</option><option value="follow">跟队</option><option value="station">站点</option><option value="live">直播员</option>
-                </select>
-                <select v-if="r.role === 'follow'" v-model="r.teamId" class="input-sm input-inline" style="width: 180px; flex: none">
-                  <option value="">选择队伍</option>
-                  <option v-for="t in race.teams" :key="t.id" :value="t.id">{{ t.label }}{{ t.status !== 'alive' ? '（已淘汰）' : '' }}</option>
-                </select>
+                <MSelect v-model="r.role" sm style="width: 96px; flex: none" :options="[{ value: 'crew', label: '机动' }, { value: 'follow', label: '跟队' }, { value: 'station', label: '站点' }, { value: 'live', label: '直播员' }]" />
+                <MSelect v-if="r.role === 'follow'" v-model="r.teamId" sm style="width: 180px; flex: none" placeholder="选择队伍" :options="race.teams.map((t) => ({ value: t.id, label: `${t.label}${t.status !== 'alive' ? '（已淘汰）' : ''}` }))" />
                 <MultiSelect v-else-if="r.role === 'station'" v-model="r.legIds" :options="legOptions" placeholder="选择环节（可多选）" style="width: 180px; flex: none" />
                 <span v-else class="text-xs text-gray" style="width: 180px; flex: none">{{ r.role === 'live' ? '全赛段只读' : '无需分配' }}</span>
               </div>

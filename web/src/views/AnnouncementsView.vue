@@ -36,9 +36,7 @@ watch(() => race.announcements, () => race.markAnnouncementsRead());
     <div class="card fill-card">
       <div class="card-header"><span>公告（{{ race.announcements.length }}）</span></div>
       <div v-if="auth.isHost" class="ann-compose mb-2">
-        <select v-model="form.audience" class="input-inline" style="width: 120px; flex: none" disabled title="通知对象（暂只支持全部幕后）">
-          <option value="all">全部幕后</option>
-        </select>
+        <MSelect v-model="form.audience" style="width: 130px; flex: none" disabled title="通知对象（暂只支持全部幕后）" :options="[{ value: 'all', label: '全部幕后' }]" />
         <textarea v-model="form.content" placeholder="发给所有幕后的内容…" rows="2" @keydown.ctrl.enter="post" @keydown.meta.enter="post" />
         <button class="btn" style="flex: none; align-self: stretch" @click="post">发送</button>
       </div>

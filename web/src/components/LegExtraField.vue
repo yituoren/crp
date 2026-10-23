@@ -33,19 +33,8 @@ const text = computed(() => {
 <template>
   <template v-if="!kind"><span class="text-gray">-</span></template>
   <template v-else-if="!can"><span>{{ text }}</span></template>
-  <select v-else-if="kind === 'detour'" class="input-sm input-inline extra-ctl" :value="progress?.detour_choice ?? ''" @change="rec.setValue('detour', teamId, leg.id, ($event.target as HTMLSelectElement).value)">
-    <option value="">绕道未选</option>
-    <option v-for="o in detourOptions" :key="o" :value="o">{{ o }}</option>
-  </select>
-  <select v-else-if="kind === 'roadblock'" class="input-sm input-inline extra-ctl" :value="progress?.roadblock_by ?? ''" @change="rec.setValue('roadblock', teamId, leg.id, ($event.target as HTMLSelectElement).value)">
-    <option value="">路障完成人</option>
-    <option v-for="m in race.memberOptions(teamId, progress?.roadblock_by)" :key="m" :value="m">{{ m }}</option>
-  </select>
-  <select v-else-if="kind === 'ff'" class="input-sm input-inline extra-ctl" :value="progress?.ff_result ?? ''" @change="rec.setValue('ff', teamId, leg.id, ($event.target as HTMLSelectElement).value)">
-    <option value="">快进未尝试</option><option value="success">快进成功</option><option value="fail">快进失败</option>
-  </select>
-  <select v-else class="input-sm input-inline extra-ctl" :value="progress?.target_team_id ?? ''" @change="rec.setValue('target', teamId, leg.id, ($event.target as HTMLSelectElement).value)">
-    <option value="">未使用</option>
-    <option v-for="t in others" :key="t.id" :value="t.id">{{ t.label }}</option>
-  </select>
+  <MSelect v-else-if="kind === 'detour'" sm class="extra-ctl" :model-value="progress?.detour_choice ?? ''" :options="[{ value: '', label: '绕道未选' }, ...detourOptions.map((o) => ({ value: o, label: o }))]" @update:model-value="rec.setValue('detour', teamId, leg.id, String($event))" />
+  <MSelect v-else-if="kind === 'roadblock'" sm class="extra-ctl" :model-value="progress?.roadblock_by ?? ''" placeholder="路障完成人" :options="race.memberOptions(teamId, progress?.roadblock_by).map((m) => ({ value: m, label: m }))" @update:model-value="rec.setValue('roadblock', teamId, leg.id, String($event))" />
+  <MSelect v-else-if="kind === 'ff'" sm class="extra-ctl" :model-value="progress?.ff_result ?? ''" :options="[{ value: '', label: '快进未尝试' }, { value: 'success', label: '快进成功' }, { value: 'fail', label: '快进失败' }]" @update:model-value="rec.setValue('ff', teamId, leg.id, String($event))" />
+  <MSelect v-else sm class="extra-ctl" :model-value="progress?.target_team_id ?? ''" :options="[{ value: '', label: '未使用' }, ...others.map((t) => ({ value: t.id, label: t.label }))]" @update:model-value="rec.setValue('target', teamId, leg.id, String($event))" />
 </template>

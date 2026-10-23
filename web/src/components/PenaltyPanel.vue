@@ -64,12 +64,8 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
     <div v-if="race.episodePending" class="alert alert-warning">赛段尚未开始，开始赛段后才能操作罚时。</div>
     <div v-else-if="race.episodeFinished && !auth.isHost" class="alert alert-info">赛段已结束，罚时记录已锁定，只有主办可以修改。</div>
     <div v-else-if="canAdd" class="flex mb-2">
-      <select v-if="!props.teamId" v-model="form.teamId" class="input-inline" style="width: 140px"><option value="">选择队伍</option><option v-for="t in teamOptions" :key="t.id" :value="t.id">{{ t.label }}</option></select>
-      <select v-if="!props.legId" v-model="form.legId" class="input-inline" style="width: 150px">
-        <option value="" disabled>选择环节</option>
-        <option v-for="l in legOptions" :key="l.id" :value="l.id">{{ legName(l) }}</option>
-        <option v-if="auth.isHost" :value="0">其他</option>
-      </select>
+      <MSelect v-if="!props.teamId" v-model="form.teamId" style="width: 150px" placeholder="选择队伍" :options="teamOptions.map((t) => ({ value: t.id, label: t.label }))" />
+      <MSelect v-if="!props.legId" v-model="form.legId" style="width: 160px" placeholder="选择环节" :options="[...legOptions.map((l) => ({ value: l.id, label: legName(l) })), ...(auth.isHost ? [{ value: 0, label: '其他' }] : [])]" />
       <input v-model="form.minutes" type="number" inputmode="numeric" min="1" step="1" class="input-inline" placeholder="分钟" style="width: 90px" />
       <input v-model="form.reason" class="input-inline" placeholder="原因（如：打车超预算 / 站点失误耽误）" style="flex: 1; min-width: 160px" />
       <button class="btn btn-tonal btn-tonal-danger" @click="apply(1)">增加罚时</button>
