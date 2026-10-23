@@ -116,6 +116,23 @@ export const useRace = defineStore('race', () => {
     for (const v of [saved, selected]) if (v && !ok.includes(v)) ok.push(v); // 已存/已选的值始终可见
     return ok;
   }
+  /** 支线紧跟在主线之后：主线 = 前一个环节；支线 = 后一个环节（若是支线） */
+  function parentOf(legId: number) {
+    const ep = currentEpisode.value; if (!ep) return null;
+    const i = ep.legs.findIndex((l) => l.id === legId);
+    return i > 0 && ep.legs[i]!.type === 'BR' ? ep.legs[i - 1]! : null;
+  }
+  function branchOf(legId: number) {
+    const ep = currentEpisode.value; if (!ep) return null;
+    const i = ep.legs.findIndex((l) => l.id === legId);
+    const n = i >= 0 ? ep.legs[i + 1] : undefined;
+    return n && n.type === 'BR' && ep.legs[i]!.type !== 'BR' ? n : null;
+  }
+  /** 支线对该队是否已锁定：主线记录完成后，普通幕后不能再改支线 */
+  function branchLocked(teamId: number, legId: number) {
+    const parent = parentOf(legId); if (!parent) return false;
+    return !!progressOf(teamId, parent.id)?.completed_at && !auth.isHost;
+  }
   /** 记录完成前必须填好的附加信息：返回缺什么，null 表示齐了 */
   function extraMissing(leg: { id?: number; type: string }, p: { detour_choice?: string | null; roadblock_by?: string | null; ff_result?: string | null; target_team_id?: number | null } | null, teamId?: number): string | null {
     if (leg.type === 'DT' && !p?.detour_choice) return '先填写绕道选择';
@@ -138,6 +155,16 @@ export const useRace = defineStore('race', () => {
       if (ep.status !== 'running' && !auth.isHost) return '赛段已结束';
     }
     const idx = ep.legs.findIndex((l) => l.id === legId);
+    const self = ep.legs[idx];
+    if (self?.type === 'BR') {
+      // 支线：只要主线在进行中就能进入，不检查前面的必经环节
+      const parent = parentOf(legId); const pp = parent ? progressOf(teamId, parent.id) : null;
+      if (!pp?.arrived_at) return '主线还没有开始';
+      if (pp.completed_at) return auth.isHost ? null : '主线已完成';
+      return null;
+    }
+    const br = branchOf(legId);
+    if (br) { const bp = progressOf(teamId, br.id); if (bp?.arrived_at && !bp.completed_at) return '支线进行中，先结束支线'; }
     const missing: string[] = [];
     for (let i = 0; i < idx; i++) {
       const l = ep.legs[i]!;
@@ -233,7 +260,7 @@ export const useRace = defineStore('race', () => {
 
   return {
     episodes, teams, users, announcements, shopItems, loadShopItems, unreadAnnouncements, markAnnouncementsRead, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
-    aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, isLocked, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
+    aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, isLocked, parentOf, branchOf, branchLocked, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
     loadAll, reset, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
   };
 });

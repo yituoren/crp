@@ -4,21 +4,21 @@ export interface User { id: number; username: string; displayName: string; role:
 export interface EventInfo { id: number; hash: string; name: string; teamSize: number; currencyMode: 'yuan' | 'coin'; rbGap: number; inviteCode?: string; ownerId: number | null; myRole: 'admin' | 'host' | 'crew' }
 export interface EventSummary { id: number; hash: string; name: string; joined: boolean; role: 'admin' | 'host' | 'crew' }
 
-export const LEG_TYPES = ['SL', 'RI', 'TI', 'DT', 'RB', 'FF', 'Union', 'Shuffle', 'UT', 'YD', 'SB', 'FO', 'Trap', 'PS'] as const;
+export const LEG_TYPES = ['SL', 'RI', 'TI', 'DT', 'RB', 'FF', 'Union', 'Shuffle', 'UT', 'YD', 'SB', 'FO', 'Trap', 'BR', 'PS'] as const;
 export type LegType = (typeof LEG_TYPES)[number];
 export type RecordMode = 'none' | 'single' | 'full';
 /** 类型缩写的显示文字：SL 显示为 Starting Line，其余用缩写 */
 export const typeCode = (t: LegType): string => (t === 'SL' ? 'Starting Line' : t);
 export const LEG_TYPE_LABEL: Record<LegType, string> = {
-  SL: '起跑线', RI: '路线信息', TI: '任务点', DT: '绕道', RB: '路障', FF: '快进/捷径', Union: '联合', Shuffle: '洗牌', UT: '回转点', YD: '让路点', SB: '减速带', FO: '对抗', Trap: '陷阱', PS: '中继站',
+  SL: '起跑线', RI: '路线信息', TI: '任务点', DT: '绕道', RB: '路障', FF: '快进/捷径', Union: '联合', Shuffle: '洗牌', UT: '回转点', YD: '让路点', SB: '减速带', FO: '对抗', Trap: '陷阱', BR: '支线', PS: '中继站',
 };
 export const TYPE_DEFAULTS: Record<LegType, { staff: boolean; mode: RecordMode }> = {
   SL: { staff: true, mode: 'full' }, RI: { staff: false, mode: 'full' }, TI: { staff: true, mode: 'full' }, DT: { staff: true, mode: 'full' },
   RB: { staff: true, mode: 'full' }, FF: { staff: true, mode: 'full' }, Union: { staff: true, mode: 'full' }, Shuffle: { staff: true, mode: 'full' }, UT: { staff: true, mode: 'full' },
-  YD: { staff: true, mode: 'full' }, SB: { staff: true, mode: 'full' }, FO: { staff: true, mode: 'full' }, Trap: { staff: true, mode: 'full' }, PS: { staff: true, mode: 'full' },
+  YD: { staff: true, mode: 'full' }, SB: { staff: true, mode: 'full' }, FO: { staff: true, mode: 'full' }, Trap: { staff: true, mode: 'full' }, BR: { staff: true, mode: 'full' }, PS: { staff: true, mode: 'full' },
 };
 /** 每个环节只手动记一次“结束”时间，按类型叫法不同：起跑线=出发，路线信息=到达，中继站=签到，其余=完成 */
-export const END_LABEL: Partial<Record<LegType, string>> = { SL: '出发', RI: '到达', PS: '签到' };
+export const END_LABEL: Partial<Record<LegType, string>> = { SL: '出发', RI: '到达', PS: '签到', BR: '结束' };
 export const endLabel = (t: LegType) => END_LABEL[t] ?? '完成';
 /** 首个环节（起跑线）没有开始时间 */
 export const hasStart = (t: LegType) => t !== 'SL';

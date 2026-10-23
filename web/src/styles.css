@@ -192,6 +192,7 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .tag-Trap { background: #1E293B; }                   /* 陷阱 */
 .tag-PS { background: #DB2777; }                     /* 中继站 */
 .tag-Shuffle { background: #6B7280; }                /* 洗牌 */
+.tag-BR { background: #0D9488; }                     /* 支线 */
 
 /* 赛段选择 */
 .ep-selector { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; scrollbar-width: none; }
@@ -394,6 +395,7 @@ html, body { overscroll-behavior: none; }
 .mx2 .mx2-extra { font-family: inherit; min-width: 72px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
 /* 分组之间只画一条线：每组首列画左边线，表格右缘由 .mx2 的 border-right 收尾 */
 .mx2 .mx2-first { border-left: 2px solid var(--gray-300); }
+.mx2 .mx2-branch { color: var(--gray-600); font-size: 12px; }
 .mx2 .mx-done { background: #e6f4ea; color: #137333; }
 .mx2 .mx-arrived { background: #fef7e0; color: #b06000; }
 

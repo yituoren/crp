@@ -31,8 +31,10 @@ const legRows = computed(() => {
   return ep.value.legs.map((leg) => {
     const p = race.progressOf(myTeam.value!.id, leg.id);
     const block = race.blockReason(myTeam.value!.id, leg.id) ?? race.extraMissing(leg, p, myTeam.value!.id);
-    const locked = race.isLocked(myTeam.value!.id, leg.id) && !auth.isAdmin;
-    return { leg, p, label: endLabel(leg.type), block, locked, state: locked ? '-' : p?.completed_at ? `已${endLabel(leg.type)}` : hasStart(leg.type) ? (p?.arrived_at ? '进行中' : '未开始') : '未出发' };
+    const isBranch = leg.type === 'BR';
+    const locked = (race.isLocked(myTeam.value!.id, leg.id) && !auth.isAdmin) || (isBranch && race.branchLocked(myTeam.value!.id, leg.id) && !p?.completed_at && !auth.isAdmin);
+    const state = locked ? '-' : isBranch ? (p?.completed_at ? '已完成' : p?.arrived_at ? '进行中' : '未进入') : p?.completed_at ? `已${endLabel(leg.type)}` : hasStart(leg.type) ? (p?.arrived_at ? '进行中' : '未开始') : '未出发';
+    return { leg, p, label: endLabel(leg.type), block, locked, isBranch, state };
   });
 });
 const stats = computed(() => ({
@@ -78,7 +80,7 @@ const stats = computed(() => ({
         <table class="table record-table">
           <thead><tr><th class="col-first">环节</th><th class="col-status">状态</th><th class="col-time">开始</th><th class="col-time">结束</th><th class="col-extra c">记录信息</th><th class="col-action c">操作</th></tr></thead>
           <tbody>
-            <tr v-for="{ leg, p, label, block, state, locked } in legRows" :key="leg.id">
+            <tr v-for="{ leg, p, label, block, state, locked, isBranch } in legRows" :key="leg.id">
               <td><LegTag :type="leg.type" /> <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: leg.id } }">{{ legName(leg) }}</router-link></td>
               <td>{{ state }}</td>
               <td><span class="record-time">{{ hasStart(leg.type) ? fmtTime(p?.arrived_at) : '-' }}</span></td>
@@ -89,6 +91,13 @@ const stats = computed(() => ({
                 <template v-else-if="race.episodeFinished">
                   <button v-if="race.canEdit(myTeam!.id)" class="btn btn-text btn-sm btn-slot" @click="editing = { leg, progress: p }">修改记录</button>
                   <span v-else class="text-gray text-sm">已锁定</span>
+                </template>
+                <template v-else-if="isBranch">
+                  <div class="flex" style="gap: 6px; flex-wrap: nowrap">
+                    <button v-if="!p?.arrived_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.branch('start', myTeam!.id, leg.id)">开始支线</button>
+                    <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm btn-slot" @click="rec.branch('end', myTeam!.id, leg.id)">结束支线</button>
+                    <button v-else class="btn btn-text btn-sm btn-slot" @click="editing = { leg, progress: p }">修改记录</button>
+                  </div>
                 </template>
                 <template v-else>
                   <div class="flex" style="gap: 6px; flex-wrap: nowrap">

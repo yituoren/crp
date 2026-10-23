@@ -61,7 +61,7 @@ progressRoutes.post('/progress', async (c) => {
   let action = String(b.action ?? '');
   if (!episodeId || !teamId || !legId) throw bad('缺少赛段/队伍/环节');
   episodeInEvent(c, episodeId);
-  const leg = get('SELECT * FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId);
+  const leg = get<any>('SELECT * FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId);
   if (!leg) throw notFound('环节不存在');
   if (action === 'single') action = 'complete'; // 旧客户端兼容：所有环节都记开始/结束
   const episode = get('SELECT status, code FROM episodes WHERE id = ?', episodeId)!;
@@ -69,7 +69,7 @@ progressRoutes.post('/progress', async (c) => {
     if (episode.status === 'pending') throw bad(`${episode.code} 尚未开始，开始赛段后才能记录`);
     if (episode.status === 'finished') throw bad(`${episode.code} 已结束，记录已锁定${isHostRole(user.role) ? '，如需修正请使用“修改记录”' : ''}`);
   }
-  if (['arrive', 'complete'].includes(action)) {
+  if (['arrive', 'complete'].includes(action) && leg.type !== 'BR') {
     const missing = missingPrerequisites(episodeId, teamId, legId);
     if (missing.length) throw bad(`该队伍还没有完成前面的环节：${missing.join('、')}`);
   }
@@ -81,7 +81,7 @@ progressRoutes.post('/progress', async (c) => {
   if (['undo_arrive', 'undo_complete'].includes(action)) {
     const later = all(
       `SELECT l.name FROM progress p JOIN legs l ON l.id = p.leg_id
-       WHERE p.episode_id = ? AND p.team_id = ? AND (l.sort > (SELECT sort FROM legs WHERE id = ?)) AND p.completed_at IS NOT NULL`,
+       WHERE p.episode_id = ? AND p.team_id = ? AND (l.sort > (SELECT sort FROM legs WHERE id = ?)) AND p.completed_at IS NOT NULL AND l.type != 'BR'`,
       episodeId, teamId, legId,
     );
     if (later.length) throw bad(`后面的环节已有记录（${later.map((r) => r.name).join('、')}），请先撤销后面的`);
@@ -94,6 +94,19 @@ progressRoutes.post('/progress', async (c) => {
   if (['undo_arrive', 'undo_complete'].includes(action) && !isHostRole(user.role)) throw forbidden('撤销记录仅主办可操作');
 
   const before = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, legId);
+  // 支线：只能在主线进行中进入；主线完成后普通幕后不能再改支线。主线：支线进行中不能记录完成
+  if (leg.type === 'BR' && ['arrive', 'complete'].includes(action)) {
+    const parent = parentLegOf(leg);
+    const pp = parent ? get('SELECT arrived_at, completed_at FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, parent.id) : null;
+    if (!pp?.arrived_at) throw bad('主线还没有开始，不能进入支线');
+    if (pp.completed_at && !isHostRole(user.role)) throw forbidden('主线已记录完成，支线不能再修改');
+    if (action === 'complete' && !before?.arrived_at) throw bad('请先记录开始支线');
+  }
+  if (action === 'complete' && leg.type !== 'BR') {
+    const br = branchLegOf(leg);
+    const bp = br ? get('SELECT arrived_at, completed_at FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, br.id) : null;
+    if (bp?.arrived_at && !bp.completed_at) throw bad('支线进行中，请先记录结束支线');
+  }
   // 记录时间：前端弹表单让人确认/修改，默认服务器当前时间；不允许填未来时间
   let t = now();
   const at = isoOrNull(b.at);
@@ -124,8 +137,8 @@ progressRoutes.post('/progress', async (c) => {
           const mate = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, cur.target_team_id, legId);
           if (!mate || mate.target_team_id !== teamId) throw bad('合作队伍尚未选择本队，双方互选后才能记录完成');
         }
-        // 开始时间自动 = 上一个已完成环节的结束时间（首个环节留空）
-        if (!next.arrived_at) next.arrived_at = prevEndTime(episodeId, teamId, leg.sort);
+        // 开始时间自动 = 上一个已完成环节的结束时间（首个环节留空）；支线的开始时间来自“开始支线”，不自动接
+        if (!next.arrived_at && leg.type !== 'BR') next.arrived_at = prevEndTime(episodeId, teamId, leg.sort);
         if (next.arrived_at && t < next.arrived_at) throw bad(`完成时间不能早于开始时间（${next.arrived_at}）`);
         next.completed_at = t;
       }
@@ -161,7 +174,7 @@ progressRoutes.post('/progress', async (c) => {
   if (!already) {
     tx(() => {
       upsertProgress(episodeId, teamId, legId, next, user.id);
-      if (action === 'complete') chainAfterComplete(episodeId, teamId, leg.sort, next.completed_at, user.id);
+      if (action === 'complete') chainAfterComplete(episodeId, teamId, leg.sort, next.completed_at, user.id, leg.type);
       if (action === 'complete' && leg.type === 'Union' && next.target_team_id) {
         // 合作队伍同步记录完成（同一时间），之后两队各自继续
         const mate = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, next.target_team_id, legId);
@@ -172,7 +185,7 @@ progressRoutes.post('/progress', async (c) => {
           audit(user, 'progress:complete', 'progress', `${episodeId}/${mate.team_id}/${legId}`, mate, mateNext);
         }
       }
-      if (action === 'undo_complete' && cur.completed_at) unchainAfterUndo(episodeId, teamId, leg.sort, cur.completed_at, user.id);
+      if (action === 'undo_complete' && cur.completed_at) unchainAfterUndo(episodeId, teamId, leg.sort, cur.completed_at, user.id, leg.type);
     });
     audit(user, `progress:${action}`, 'progress', `${episodeId}/${teamId}/${legId}`, before, next);
     notify('progress', episodeId);
@@ -183,10 +196,20 @@ progressRoutes.post('/progress', async (c) => {
 });
 
 /** 上一个已完成环节的结束时间；没有则 null（首个环节的开始时间留空） */
+/** 支线紧跟在主线之后：主线 = 支线前一个环节；支线 = 主线后一个环节（若是支线） */
+function parentLegOf(leg: { episode_id: number; sort: number; type: string }) {
+  if (leg.type !== 'BR') return null;
+  return get<{ id: number; type: string }>('SELECT id, type FROM legs WHERE episode_id = ? AND sort < ? ORDER BY sort DESC, id DESC LIMIT 1', leg.episode_id, leg.sort) ?? null;
+}
+function branchLegOf(leg: { id: number; episode_id: number; sort: number; type: string }) {
+  if (leg.type === 'BR') return null;
+  const next = get<{ id: number; type: string }>('SELECT id, type FROM legs WHERE episode_id = ? AND sort > ? ORDER BY sort, id LIMIT 1', leg.episode_id, leg.sort);
+  return next?.type === 'BR' ? next : null;
+}
 function prevEndTime(episodeId: number, teamId: number, sort: number): string | null {
   return get(
     `SELECT p.completed_at FROM progress p JOIN legs l ON l.id = p.leg_id
-     WHERE p.episode_id = ? AND p.team_id = ? AND l.sort < ? AND p.completed_at IS NOT NULL ORDER BY l.sort DESC, l.id DESC LIMIT 1`,
+     WHERE p.episode_id = ? AND p.team_id = ? AND l.sort < ? AND l.type != 'BR' AND p.completed_at IS NOT NULL ORDER BY l.sort DESC, l.id DESC LIMIT 1`,
     episodeId, teamId, sort,
   )?.completed_at ?? null;
 }
@@ -198,9 +221,9 @@ function emptyProgress() {
  *  - 下一个环节（尚未完成）的开始时间 = 本环节结束时间
  *  - 中间被跳过的环节（只有自动填的开始时间、没有完成）把开始时间清掉
  */
-function chainAfterComplete(episodeId: number, teamId: number, sort: number, endAt: string | null, userId: number) {
-  if (!endAt) return;
-  const nextLeg = get('SELECT id FROM legs WHERE episode_id = ? AND sort > ? ORDER BY sort, id LIMIT 1', episodeId, sort);
+function chainAfterComplete(episodeId: number, teamId: number, sort: number, endAt: string | null, userId: number, legType = '') {
+  if (!endAt || legType === 'BR') return; // 支线结束不触发下一环节
+  const nextLeg = get("SELECT id FROM legs WHERE episode_id = ? AND sort > ? AND type != 'BR' ORDER BY sort, id LIMIT 1", episodeId, sort);
   if (nextLeg) {
     const np = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, nextLeg.id) ?? emptyProgress();
     if (!np.completed_at) upsertProgress(episodeId, teamId, nextLeg.id, { ...np, arrived_at: endAt }, userId);
@@ -213,21 +236,22 @@ function chainAfterComplete(episodeId: number, teamId: number, sort: number, end
   const lower = prevDone?.sort ?? -1;
   for (const sk of all(
     `SELECT p.* FROM progress p JOIN legs l ON l.id = p.leg_id
-     WHERE p.episode_id = ? AND p.team_id = ? AND l.sort > ? AND l.sort < ? AND p.arrived_at IS NOT NULL AND p.completed_at IS NULL`,
+     WHERE p.episode_id = ? AND p.team_id = ? AND l.sort > ? AND l.sort < ? AND l.type != 'BR' AND p.arrived_at IS NOT NULL AND p.completed_at IS NULL`,
     episodeId, teamId, lower, sort,
   )) upsertProgress(episodeId, teamId, sk.leg_id, { ...sk, arrived_at: null }, userId);
 }
 /** 撤销完成后：下一个环节若只是自动带上了这个开始时间，也一并清掉 */
-function unchainAfterUndo(episodeId: number, teamId: number, sort: number, oldEnd: string, userId: number) {
-  const nextLeg = get('SELECT id FROM legs WHERE episode_id = ? AND sort > ? ORDER BY sort, id LIMIT 1', episodeId, sort);
+function unchainAfterUndo(episodeId: number, teamId: number, sort: number, oldEnd: string, userId: number, legType = '') {
+  if (legType === 'BR') return;
+  const nextLeg = get("SELECT id FROM legs WHERE episode_id = ? AND sort > ? AND type != 'BR' ORDER BY sort, id LIMIT 1", episodeId, sort);
   if (!nextLeg) return;
   const np = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, nextLeg.id);
   if (np && !np.completed_at && np.arrived_at === oldEnd) upsertProgress(episodeId, teamId, nextLeg.id, { ...np, arrived_at: null }, userId);
 }
 /** 修改记录改了结束时间：下一个环节的开始时间若还是跟着旧值（或为空），同步成新值 */
-function rechainAfterEdit(episodeId: number, teamId: number, sort: number, oldEnd: string | null, newEnd: string | null, userId: number) {
-  if (oldEnd === newEnd) return;
-  const nextLeg = get('SELECT id FROM legs WHERE episode_id = ? AND sort > ? ORDER BY sort, id LIMIT 1', episodeId, sort);
+function rechainAfterEdit(episodeId: number, teamId: number, sort: number, oldEnd: string | null, newEnd: string | null, userId: number, legType = '') {
+  if (oldEnd === newEnd || legType === 'BR') return;
+  const nextLeg = get("SELECT id FROM legs WHERE episode_id = ? AND sort > ? AND type != 'BR' ORDER BY sort, id LIMIT 1", episodeId, sort);
   if (!nextLeg) return;
   const np = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, nextLeg.id) ?? emptyProgress();
   if (np.completed_at) return;
@@ -278,10 +302,15 @@ progressRoutes.put('/progress/:episodeId/:teamId/:legId', async (c) => {
     for (const t of [next.arrived_at, next.completed_at]) if (t && new Date(t).getTime() > limit) throw bad('记录时间不能晚于当前时间');
   }
   if (next.arrived_at && next.completed_at && next.completed_at < next.arrived_at) throw bad('完成时间不能早于开始时间');
-  const legRow = get('SELECT sort FROM legs WHERE id = ?', legId)!;
+  const legRow = get<{ id: number; episode_id: number; sort: number; type: string }>('SELECT id, episode_id, sort, type FROM legs WHERE id = ?', legId)!;
+  if (legRow.type === 'BR' && !isHostRole(user.role)) {
+    const parent = parentLegOf(legRow);
+    const pp = parent ? get('SELECT completed_at FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, parent.id) : null;
+    if (pp?.completed_at) throw forbidden('主线已记录完成，支线不能再修改');
+  }
   tx(() => {
     upsertProgress(episodeId, teamId, legId, next, user.id);
-    rechainAfterEdit(episodeId, teamId, legRow.sort, before?.completed_at ?? null, next.completed_at, user.id);
+    rechainAfterEdit(episodeId, teamId, legRow.sort, before?.completed_at ?? null, next.completed_at, user.id, legRow.type);
   });
   audit(user, 'progress:edit', 'progress', `${episodeId}/${teamId}/${legId}`, before, next);
   notify('progress', episodeId);

@@ -96,10 +96,10 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
               </div>
               <div class="form-group"><label>{{ isDestinationLeg(form.type) ? '目的地' : '名称' }}</label><input v-model="form.name" :placeholder="form.type === 'RI' ? '目的地名称，显示时自动加箭头' : form.type === 'PS' ? '中继站所在地' : ''" /></div>
             </div>
-            <p class="text-sm text-gray" style="margin: 0 0 10px">{{ form.type === 'RI' ? '路线信息不需要站点人员' : '需要安排站点人员' }}；每个环节记录开始与结束两个时间，开始时间自动接上一环节的结束时间。</p>
+            <p class="text-sm text-gray" style="margin: 0 0 10px">{{ form.type === 'BR' ? '支线必须紧跟在一个主线环节之后；主线进行中可随时进入支线，支线计时期间主线暂停，支线结束后主线恢复，支线不是必须完成的。' : (form.type === 'RI' ? '路线信息不需要站点人员' : '需要安排站点人员') + '；每个环节记录开始与结束两个时间，开始时间自动接上一环节的结束时间。' }}</p>
             <label v-if="moneyMode() === 'coin'" class="check-row"><input v-model="form.shop_open" type="checkbox" /> 本环节开放商店<span class="text-gray text-sm">（队伍可在此用货币购买商品）</span></label>
           </div>
-          <div class="edit-section">
+          <div v-if="form.type !== 'BR'" class="edit-section">
             <div class="edit-section-title">淘汰</div>
             <label class="check-row"><input v-model="form.can_eliminate" type="checkbox" :disabled="form.type === 'PS'" /> 本环节可淘汰<span class="text-gray text-sm">（{{ form.type === 'PS' ? '中继站一定可淘汰' : '所有队伍到达后，最后到的几队自动淘汰' }}）</span></label>
             <div class="form-group" style="max-width: 200px"><label>淘汰队数</label><input v-model.number="form.eliminate_count" type="number" min="1" step="1" inputmode="numeric" :disabled="!form.can_eliminate && form.type !== 'PS'" /></div>

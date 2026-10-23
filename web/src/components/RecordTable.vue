@@ -17,7 +17,7 @@ const editing = ref<{ team: Team; progress: Progress | null } | null>(null);
 const rows = computed(() => {
   const list = props.onlyTeamId ? race.teams.filter((t) => t.id === props.onlyTeamId) : race.teams;
   return list.map((team) => {
-    const locked = race.isLocked(team.id, props.leg.id) && !auth.isAdmin; // 淘汰/退赛之后的环节：只读留空
+    const locked = (race.isLocked(team.id, props.leg.id) && !auth.isAdmin) || (race.branchLocked(team.id, props.leg.id) && !race.progressOf(team.id, props.leg.id)?.completed_at && !auth.isAdmin); // 淘汰/退赛之后的环节、主线已完成的未完成支线：只读留空
     return { team, p: race.progressOf(team.id, props.leg.id), locked, can: !locked && race.canRecord(team.id, props.leg.id), edit: !locked && race.canEdit(team.id), block: race.blockReason(team.id, props.leg.id) };
   });
 });
@@ -27,7 +27,8 @@ const showTarget = computed(() => props.leg.type === 'UT' || props.leg.type === 
 const targetLabel = computed(() => (props.leg.type === 'Union' ? '合作队伍' : '施加对象'));
 const label = computed(() => endLabel(props.leg.type));
 const withStart = computed(() => hasStart(props.leg.type));
-const stateOf = (p: Progress | null) => (p?.completed_at ? `已${label.value}` : withStart.value && p?.arrived_at ? '进行中' : withStart.value ? '未开始' : `未${label.value}`);
+const isBranch = computed(() => props.leg.type === 'BR');
+const stateOf = (p: Progress | null) => (isBranch.value ? (p?.completed_at ? '已完成' : p?.arrived_at ? '进行中' : '未进入') : p?.completed_at ? `已${label.value}` : withStart.value && p?.arrived_at ? '进行中' : withStart.value ? '未开始' : `未${label.value}`);
 /** 记录按钮不可用的原因：顺序未到 / 附加信息没填 */
 const disabledReason = (p: Progress | null, block: string | null, teamId: number) => block ?? race.extraMissing(props.leg, p, teamId);
 
@@ -43,7 +44,7 @@ function detourOptions(): string[] {
       <thead>
         <tr>
           <th class="col-first">队伍</th><th class="col-status">状态</th>
-          <th v-if="withStart" class="col-time">开始</th><th class="col-time">{{ label }}</th>
+          <th v-if="withStart" class="col-time">{{ isBranch ? '开始支线' : '开始' }}</th><th class="col-time">{{ isBranch ? '结束支线' : label }}</th>
           <th v-if="showTarget" class="col-extra c">{{ targetLabel }}</th>
           <th v-if="leg.type === 'DT'" class="col-extra c">绕道选择</th>
           <th v-if="leg.type === 'RB'" class="col-extra c">路障完成人</th>
@@ -79,6 +80,11 @@ function detourOptions(): string[] {
               <template v-else-if="race.episodeFinished">
                 <button v-if="edit" class="btn btn-text btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
                 <span v-else class="text-gray text-sm">已锁定</span>
+              </template>
+              <template v-else-if="can && isBranch">
+                <button v-if="!p?.arrived_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.branch('start', team.id, leg.id)">开始支线</button>
+                <button v-else-if="!p?.completed_at" class="btn btn-success btn-sm btn-slot" @click="rec.branch('end', team.id, leg.id)">结束支线</button>
+                <button v-else class="btn btn-text btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
               </template>
               <template v-else-if="can">
                 <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!disabledReason(p, block, team.id)" :title="disabledReason(p, block, team.id) ?? ''" @click="rec.complete(team.id, leg.id)">记录{{ label }}</button>
