@@ -47,7 +47,22 @@ authRoutes.post('/logout', (c) => {
 
 authRoutes.get('/me', authRequired, (c) => {
   const user = c.get('user');
-  return c.json({ user, hostAnywhere: user.role === 'admin' || hostAnywhere(user.id), serverTime: now() });
+  const createdAt = get<{ created_at: string }>('SELECT created_at FROM users WHERE id = ?', user.id)?.created_at ?? null;
+  return c.json({ user: { ...user, createdAt }, hostAnywhere: user.role === 'admin' || hostAnywhere(user.id), serverTime: now() });
+});
+
+/** 改自己的幕后ID（管理员账号不能改）；各处显示名一并更新，历史记录里的操作人快照不动 */
+authRoutes.put('/profile', authRequired, async (c) => {
+  const user = c.get('user');
+  if (user.role === 'admin') return c.json({ error: '管理员账号的ID不能修改' }, 403);
+  const { username } = await body(c);
+  const u = str(username, 50);
+  if (!u) return c.json({ error: '请填写新的ID' }, 400);
+  if (u === user.username) return c.json({ user });
+  if (get('SELECT 1 FROM users WHERE username = ? AND id != ?', u, user.id)) return c.json({ error: '该ID已被使用' }, 409);
+  run('UPDATE users SET username = ?, display_name = ? WHERE id = ?', u, u, user.id);
+  audit(user, 'rename', 'user', user.id, { username: user.username }, { username: u });
+  return c.json({ user: { ...user, username: u, displayName: u } });
 });
 
 authRoutes.post('/change-password', authRequired, async (c) => {

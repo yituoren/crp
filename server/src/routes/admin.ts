@@ -25,10 +25,17 @@ userRoutes.put('/users/:id', async (c) => {
   const b = await body(c);
   if (before.role === 'admin' && me.role !== 'admin') throw bad('管理员账号只能由管理员修改');
   const disabled = b.disabled === undefined ? before.disabled : b.disabled ? 1 : 0;
-  const displayName = b.displayName === undefined ? before.display_name : str(b.displayName, 50) || before.display_name;
+  let username = before.username;
+  if (b.username !== undefined) {
+    if (before.role === 'admin') throw bad('管理员账号的ID不能修改');
+    username = str(b.username, 50);
+    if (!username) throw bad('请填写新的ID');
+    if (get('SELECT 1 FROM users WHERE username = ? AND id != ?', username, id)) throw bad('该ID已被使用');
+  }
+  const displayName = b.username !== undefined ? username : b.displayName === undefined ? before.display_name : str(b.displayName, 50) || before.display_name;
   if (id === me.id && disabled) throw bad('不能停用自己');
-  run('UPDATE users SET disabled = ?, display_name = ? WHERE id = ?', disabled, displayName, id);
-  audit(me, 'update', 'user', id, before, { disabled, displayName });
+  run('UPDATE users SET disabled = ?, username = ?, display_name = ? WHERE id = ?', disabled, username, displayName, id);
+  audit(me, 'update', 'user', id, before, { disabled, username, displayName });
   notify('admin');
   return c.json({ ok: true });
 });

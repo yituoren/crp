@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref, watch } from 'vue';
 import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
@@ -45,6 +45,14 @@ async function setRole(u: any, role: 'host' | 'crew') {
   try { await api(`/members/${u.id}`, { method: 'PUT', body: { role } }); await race.loadUsers(); ui.toast('已更新'); } catch (e) { ui.error(e); }
 }
 const roleText = (r: string) => (r === 'admin' ? '管理员' : r === 'host' ? '主办' : '幕后');
+// 申请名单：凭邀请码提交的加入申请，通过后成为幕后
+const requests = ref<{ id: number; user_id: number; username: string; note: string; created_at: string }[]>([]);
+async function loadRequests() { try { requests.value = (await api('/join-requests')).requests; } catch { requests.value = []; } }
+async function decide(r: { id: number; username: string }, action: 'approve' | 'reject') {
+  if (action === 'reject' && !(await ui.confirm('拒绝申请', `拒绝「${r.username}」的加入申请？对方可以再次申请。`, { danger: true, okText: '拒绝' }))) return;
+  try { await api(`/join-requests/${r.id}/${action}`, { method: 'POST' }); await Promise.all([loadRequests(), race.loadUsers()]); ui.toast(action === 'approve' ? '已通过' : '已拒绝'); } catch (e) { ui.error(e); }
+}
+watch(() => race.users, () => { if (tab.value === 'members') loadRequests(); });
 
 // 本比赛的操作日志（管理员）
 const audit = ref<any[]>([]);
@@ -58,7 +66,7 @@ onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
 <template>
   <div class="nav">
     <a href="#" :class="{ 'router-link-active': tab === 'settings' }" @click.prevent="tab = 'settings'">赛事设置</a>
-    <a href="#" :class="{ 'router-link-active': tab === 'members' }" @click.prevent="tab = 'members'; race.loadUsers()">成员与主办</a>
+    <a href="#" :class="{ 'router-link-active': tab === 'members' }" @click.prevent="tab = 'members'; race.loadUsers(); loadRequests()">成员与主办</a>
     <a v-if="auth.isAdmin" href="#" :class="{ 'router-link-active': tab === 'audit' }" @click.prevent="tab = 'audit'; loadAudit()">操作日志</a>
   </div>
 
@@ -116,6 +124,24 @@ onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
               </template>
               <span v-else class="text-xs text-gray">{{ u.role === 'admin' ? '管理员' : u.id === auth.event.ownerId ? '创建者' : '' }}</span>
             </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div v-if="tab === 'members'" class="card">
+    <div class="card-header"><span>申请名单</span><span class="text-sm text-gray">{{ requests.length ? `${requests.length} 条待审核` : '' }}</span></div>
+    <div v-if="!requests.length" class="empty-state">暂无申请</div>
+    <div v-else class="scroll-table">
+      <table class="table">
+        <thead><tr><th>幕后ID</th><th>说明</th><th>申请时间</th><th class="c">操作</th></tr></thead>
+        <tbody>
+          <tr v-for="r in requests" :key="r.id">
+            <td><strong>{{ r.username }}</strong></td>
+            <td class="wrap">{{ r.note || '-' }}</td>
+            <td>{{ fmtDateTime(r.created_at) }}</td>
+            <td class="c"><button class="btn btn-text btn-sm" @click="decide(r, 'approve')"><Icon name="check" size="16" />通过</button><button class="btn btn-text btn-text-danger btn-sm" @click="decide(r, 'reject')"><Icon name="close" size="16" />拒绝</button></td>
           </tr>
         </tbody>
       </table>

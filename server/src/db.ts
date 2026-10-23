@@ -194,6 +194,16 @@ CREATE TABLE IF NOT EXISTS events (
   owner_id INTEGER,                           -- 创建者：与管理员一样无需邀请码
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS event_join_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  note TEXT NOT NULL DEFAULT '',                -- 申请说明（选填）
+  status TEXT NOT NULL DEFAULT 'pending',       -- pending | approved | rejected
+  created_at TEXT NOT NULL,
+  decided_at TEXT,
+  decided_by INTEGER
+);
 CREATE TABLE IF NOT EXISTS event_members (
   event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

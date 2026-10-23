@@ -1,8 +1,8 @@
 export type Role = 'admin' | 'host' | 'crew';
 export const ROLE_LABEL: Record<Role, string> = { admin: '管理员', host: '主办', crew: '幕后' };
-export interface User { id: number; username: string; displayName: string; role: Role; disabled?: number }
+export interface User { id: number; username: string; displayName: string; role: Role; disabled?: number; createdAt?: string | null }
 export interface EventInfo { id: number; hash: string; name: string; teamSize: number; currencyMode: 'yuan' | 'coin'; rbGap: number; inviteCode?: string; ownerId: number | null; myRole: 'admin' | 'host' | 'crew' }
-export interface EventSummary { id: number; hash: string; name: string; joined: boolean; role: 'admin' | 'host' | 'crew'; ownerName: string; memberCount: number; episodeCount: number; status: 'pending' | 'running' | 'finished'; createdAt: string }
+export interface EventSummary { id: number; hash: string; name: string; joined: boolean; pending: boolean; role: 'admin' | 'host' | 'crew'; ownerName: string; memberCount: number; episodeCount: number; status: 'pending' | 'running' | 'finished'; createdAt: string }
 
 export const LEG_TYPES = ['SL', 'RI', 'TI', 'DT', 'RB', 'FF', 'Union', 'Shuffle', 'UT', 'YD', 'SB', 'FO', 'Trap', 'SQ', 'PS'] as const;
 export type LegType = (typeof LEG_TYPES)[number];

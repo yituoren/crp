@@ -18,8 +18,9 @@ function summary(ev: EventRow, user: { id: number; username: string; role: strin
   const owner = ev.owner_id ? get<{ display_name: string }>('SELECT display_name FROM users WHERE id = ?', ev.owner_id) : null;
   const memberCount = get<{ n: number }>('SELECT COUNT(*) AS n FROM event_members WHERE event_id = ?', ev.id)!.n;
   const episodeCount = get<{ n: number }>('SELECT COUNT(*) AS n FROM episodes WHERE event_id = ?', ev.id)!.n;
+  const pending = !!get("SELECT 1 FROM event_join_requests WHERE event_id = ? AND user_id = ? AND status = 'pending'", ev.id, user.id);
   return {
-    id: ev.id, hash: ev.hash, name: ev.name, joined: isMember(user, ev), role: roleIn(user, ev),
+    id: ev.id, hash: ev.hash, name: ev.name, joined: isMember(user, ev), role: roleIn(user, ev), pending,
     ownerName: owner?.display_name ?? '', memberCount, episodeCount, status: eventStatus(ev.id), createdAt: ev.created_at,
   };
 }
@@ -61,7 +62,7 @@ eventListRoutes.post('/events', async (c) => {
   return c.json({ event: summary(ev, user) });
 });
 
-/** 输入邀请码加入 */
+/** 凭邀请码申请加入（可附说明），由主办 / 管理员审核通过后才成为成员 */
 eventListRoutes.post('/events/join', async (c) => {
   const user = c.get('user');
   const b = await body(c);
@@ -70,8 +71,11 @@ eventListRoutes.post('/events/join', async (c) => {
   const ev = get<EventRow>('SELECT * FROM events WHERE invite_code = ? AND invite_code != \'\'', code);
   if (!ev) throw bad('邀请码不正确');
   if (b.hash && ev.hash !== String(b.hash)) throw bad('邀请码与这个比赛不匹配');
-  joinEvent(user.id, ev.id);
-  audit(user, 'join', 'event', ev.id, undefined, { hash: ev.hash });
+  if (isMember(user, ev)) throw bad('你已经是这个比赛的成员');
+  if (get("SELECT 1 FROM event_join_requests WHERE event_id = ? AND user_id = ? AND status = 'pending'", ev.id, user.id)) throw bad('已提交过申请，请等待主办审核');
+  run('INSERT INTO event_join_requests(event_id, user_id, note, status, created_at) VALUES (?,?,?,?,?)', ev.id, user.id, str(b.note, 200), 'pending', now());
+  audit(user, 'join_request', 'event', ev.id, undefined, { hash: ev.hash, note: str(b.note, 200) });
+  notify('admin');
   return c.json({ event: summary(ev, user) });
 });
 
@@ -158,6 +162,33 @@ eventInfoRoutes.get('/members', (c) => {
 });
 
 /** 设置 / 取消主办：主办可操作；管理员和创建者的身份固定，不能改自己 */
+/** 申请名单：待审核的加入申请 */
+eventInfoRoutes.get('/join-requests', hostOnly, (c) => {
+  const ev = c.get('event');
+  const requests = all(
+    `SELECT r.id, r.user_id, u.username, r.note, r.created_at FROM event_join_requests r JOIN users u ON u.id = r.user_id
+     WHERE r.event_id = ? AND r.status = 'pending' ORDER BY r.created_at, r.id`, ev.id,
+  );
+  return c.json({ requests });
+});
+function decideRequest(c: any, status: 'approved' | 'rejected') {
+  const ev = c.get('event');
+  const id = intParam(c, 'id');
+  const r = get('SELECT * FROM event_join_requests WHERE id = ? AND event_id = ?', id, ev.id);
+  if (!r) throw notFound('申请不存在');
+  if (r.status !== 'pending') throw bad('该申请已经处理过');
+  const me = c.get('user');
+  tx(() => {
+    run('UPDATE event_join_requests SET status = ?, decided_at = ?, decided_by = ? WHERE id = ?', status, now(), me.id, id);
+    if (status === 'approved') joinEvent(r.user_id, ev.id);
+  });
+  audit(me, status === 'approved' ? 'approve_join' : 'reject_join', 'event', ev.id, undefined, { userId: r.user_id });
+  notify('admin');
+  return c.json({ ok: true });
+}
+eventInfoRoutes.post('/join-requests/:id/approve', hostOnly, (c) => decideRequest(c, 'approved'));
+eventInfoRoutes.post('/join-requests/:id/reject', hostOnly, (c) => decideRequest(c, 'rejected'));
+
 eventInfoRoutes.put('/members/:userId', hostOnly, async (c) => {
   const ev = c.get('event');
   const me = c.get('user');

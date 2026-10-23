@@ -51,25 +51,27 @@ const rows = computed(() => {
     return true;
   });
 });
-const roleText = (e: EventSummary) => (!e.joined ? '未加入' : e.role === 'admin' ? '管理员' : e.role === 'host' ? '主办' : '幕后');
+const roleText = (e: EventSummary) => (!e.joined ? (e.pending ? '待审核' : '未加入') : e.role === 'admin' ? '管理员' : e.role === 'host' ? '主办' : '幕后');
 const STATUS_TEXT = { pending: '未开始', running: '进行中', finished: '已结束' } as const;
 const snippet = (e: EventSummary) => [e.ownerName ? `主办 ${e.ownerName}` : '', `${e.memberCount} 名幕后`, `${e.episodeCount} 个赛段`].filter(Boolean).join(' · ');
 
-// 点击一行：已加入直接进入；未加入弹出邀请码
+// 点击一行：已加入直接进入；未加入弹出申请（邀请码 + 说明），主办审核通过后才成为成员
 const joining = ref<EventSummary | null>(null);
 const code = ref('');
+const note = ref('');
 function openRow(e: EventSummary) {
   if (e.joined) { router.push({ name: 'today', params: { hash: e.hash } }); return; }
-  joining.value = e; code.value = '';
+  if (e.pending) { ui.toast('已提交申请，等待主办审核'); return; }
+  joining.value = e; code.value = ''; note.value = '';
 }
 async function join() {
   const ev = joining.value; if (!ev) return;
   const c = code.value.trim();
   if (!c) { ui.toast('请输入邀请码', 'error'); return; }
   try {
-    await api('/events/join', { method: 'POST', body: { code: c, hash: ev.hash } });
+    await api('/events/join', { method: 'POST', body: { code: c, note: note.value.trim(), hash: ev.hash } });
     joining.value = null;
-    ui.toast(`已加入「${ev.name}」`);
+    ui.toast('已提交申请，等待主办审核');
     await load();
   } catch (e) { ui.error(e); }
 }
@@ -155,9 +157,10 @@ onMounted(() => {
     </main>
   </div>
 
-  <Modal v-if="joining" :title="`加入「${joining.name}」`" small @close="joining = null">
+  <Modal v-if="joining" :title="`申请加入「${joining.name}」`" small @close="joining = null">
     <div class="form-group"><label>邀请码</label><input v-model="code" placeholder="向主办索取" autofocus @keyup.enter="join" /></div>
-    <div class="modal-actions"><button class="btn btn-text" @click="joining = null">取消</button><button class="btn" @click="join">加入</button></div>
+    <div class="form-group"><label>说明<span class="text-gray text-sm">（选填，给主办看）</span></label><textarea v-model="note" rows="3" placeholder="如：我是站点志愿者，负责第 2 赛段" /></div>
+    <div class="modal-actions"><button class="btn btn-text" @click="joining = null">取消</button><button class="btn" @click="join">提交申请</button></div>
   </Modal>
 
   <Modal v-if="creating" title="创建比赛" small @close="creating = false">

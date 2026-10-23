@@ -59,7 +59,7 @@ export const eventContext: MiddlewareHandler<Env> = async (c, next) => {
   const ev = loadEvent(c.req.param('hash') ?? '');
   if (!ev) return c.json({ error: '比赛不存在' }, 404);
   const base = c.get('user');
-  if (!isMember(base, ev)) return c.json({ error: '你还没有加入这个比赛，请先输入邀请码加入' }, 403);
+  if (!isMember(base, ev)) return c.json({ error: '你还没有加入这个比赛，请先凭邀请码申请并等待主办审核' }, 403);
   c.set('event', ev);
   c.set('user', { ...base, role: roleIn(base, ev) });
   await eventStore.run(ev, next);
