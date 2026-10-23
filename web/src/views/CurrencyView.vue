@@ -40,7 +40,7 @@ async function revert(l: LedgerEntry) {
         <div class="currency-box">{{ fmtMoney(t.currency) }} <span class="text-sm text-gray">{{ moneyUnit() }}</span></div>
         <div v-if="moneyMode() === 'coin'" class="bag-items">
           <span v-for="it in t.inventory" :key="it.name" class="bag-item">{{ it.name }}<span v-if="it.count > 1" class="bag-count">×{{ it.count }}</span></span>
-          <span v-if="!t.inventory.length" class="text-xs text-gray">暂无物品</span>
+          <span v-if="!t.inventory.length" class="bag-empty">暂无物品</span>
         </div>
       </div>
     </div>
