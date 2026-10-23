@@ -6,15 +6,59 @@ import { audit, body, str, int, intParam, bad, notFound, notify, money } from '.
 /** 进比赛之前的接口：比赛列表、加入 */
 export const eventListRoutes = new Hono<Env>();
 
+/** 比赛整体状态：有进行中的赛段 = 进行中；赛段全部结束 = 已结束；否则未开始 */
+function eventStatus(eventId: number): 'pending' | 'running' | 'finished' {
+  const eps = all<{ status: string }>('SELECT status FROM episodes WHERE event_id = ?', eventId);
+  if (eps.some((e) => e.status === 'running')) return 'running';
+  if (eps.length && eps.every((e) => e.status === 'finished')) return 'finished';
+  return 'pending';
+}
+
 function summary(ev: EventRow, user: { id: number; username: string; role: string }) {
-  return { id: ev.id, hash: ev.hash, name: ev.name, joined: isMember(user, ev), role: roleIn(user, ev) };
+  const owner = ev.owner_id ? get<{ display_name: string }>('SELECT display_name FROM users WHERE id = ?', ev.owner_id) : null;
+  const memberCount = get<{ n: number }>('SELECT COUNT(*) AS n FROM event_members WHERE event_id = ?', ev.id)!.n;
+  const episodeCount = get<{ n: number }>('SELECT COUNT(*) AS n FROM episodes WHERE event_id = ?', ev.id)!.n;
+  return {
+    id: ev.id, hash: ev.hash, name: ev.name, joined: isMember(user, ev), role: roleIn(user, ev),
+    ownerName: owner?.display_name ?? '', memberCount, episodeCount, status: eventStatus(ev.id), createdAt: ev.created_at,
+  };
 }
 
 /** 我的比赛 + 公共赛事（全部比赛，未加入的需要邀请码） */
 eventListRoutes.get('/events', (c) => {
   const user = c.get('user');
-  const rows = all<EventRow>('SELECT * FROM events ORDER BY id').map((ev) => summary(ev, user));
+  const rows = all<EventRow>('SELECT * FROM events ORDER BY id DESC').map((ev) => summary(ev, user));
   return c.json({ mine: rows.filter((r) => r.joined), all: rows });
+});
+
+const randomHash = () => [...crypto.getRandomValues(new Uint8Array(4))].map((b) => b.toString(16).padStart(2, '0')).join('');
+const randomCode = () => { const a = 'abcdefghjkmnpqrstuvwxyz23456789'; return [...crypto.getRandomValues(new Uint8Array(6))].map((b) => a[b % a.length]).join(''); };
+
+/** 创建比赛：任何登录用户都可以，创建者自动成为该比赛的主办 */
+eventListRoutes.post('/events', async (c) => {
+  const user = c.get('user');
+  const b = await body(c);
+  const name = str(b.name, 50);
+  if (!name) throw bad('请填写赛事名称');
+  let inviteCode = str(b.inviteCode, 50);
+  if (inviteCode && get('SELECT 1 FROM events WHERE invite_code = ?', inviteCode)) throw bad('这个邀请码已被其他比赛使用');
+  while (!inviteCode || get('SELECT 1 FROM events WHERE invite_code = ?', inviteCode)) inviteCode = randomCode();
+  const teamSize = b.teamSize === undefined ? 2 : int(b.teamSize, 0);
+  if (teamSize < 1 || teamSize > 20) throw bad('每队人数必须是 1 到 20 的整数');
+  const currencyMode = b.currencyMode === undefined ? 'yuan' : b.currencyMode;
+  if (!['yuan', 'coin'].includes(currencyMode)) throw bad('经费类型只能是 yuan 或 coin');
+  let hash = randomHash();
+  while (get('SELECT 1 FROM events WHERE hash = ?', hash)) hash = randomHash();
+  const id = tx(() => {
+    const r = run('INSERT INTO events(hash, name, invite_code, hosts, team_size, currency_mode, rb_gap, owner_id, created_at) VALUES (?,?,?,?,?,?,?,?,?)',
+      hash, name, inviteCode, '', teamSize, currencyMode, 2, user.id, now());
+    const newId = Number(r.lastInsertRowid);
+    joinEvent(user.id, newId, 'host');
+    return newId;
+  });
+  const ev = loadEvent(hash)!;
+  audit(user, 'create', 'event', id, undefined, { hash, name, inviteCode, teamSize, currencyMode });
+  return c.json({ event: summary(ev, user) });
 });
 
 /** 输入邀请码加入 */

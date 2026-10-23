@@ -4,6 +4,7 @@ const timeFmt = new Intl.DateTimeFormat('zh-CN', { timeZone: TZ, hour12: false, 
 const dateTimeFmt = new Intl.DateTimeFormat('zh-CN', { timeZone: TZ, hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 const dateMinuteFmt = new Intl.DateTimeFormat('zh-CN', { timeZone: TZ, hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 
+const dateOnlyFmt = new Intl.DateTimeFormat('zh-CN', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
 const timeMinFmt = new Intl.DateTimeFormat('zh-CN', { timeZone: TZ, hour12: false, hour: '2-digit', minute: '2-digit' });
 /** 时刻，精确到分钟（默认） */
 export function fmtTime(iso?: string | null): string {
@@ -20,6 +21,13 @@ export function fmtTimeSec(iso?: string | null): string {
   return timeFmt.format(d).replace(/^24:/, '00:');
 }
 /** 日期时刻，精确到分钟 */
+/** 仅日期：2026-10-24 */
+export function fmtDate(iso?: string | null): string {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '-';
+  return dateOnlyFmt.format(d).replace(/\//g, '-');
+}
 export function fmtDateTime(iso?: string | null): string {
   if (!iso) return '-';
   const d = new Date(iso);

@@ -17,7 +17,8 @@ async function logout() {
 </script>
 
 <template>
-  <div class="plain-wrap">
+  <router-view v-if="$route.name === 'home'" />
+  <div v-else class="plain-wrap">
     <div class="container">
       <header class="page-header">
         <div class="appbar-left">
