@@ -142,6 +142,22 @@ p { margin: 0 0 8px; }
 /* 表单 */
 .form-group { margin-bottom: 14px; }
 .form-group label { display: block; font-weight: 500; margin-bottom: 6px; font-size: 12px; color: var(--gray-600); }
+/* Material 3 填充式文本框：标签放在框内左上角，灰底、上圆角、底部一条线；聚焦时底线变主色加粗。
+   只作用于“标签 + 单个控件”的表单组（输入框 / 文本域 / 下拉） */
+.form-group:has(> label + input:not([type="checkbox"]):not([type="file"]), > label + textarea, > label + .sel) { position: relative; background: var(--field); border-radius: 8px 8px 0 0; box-shadow: inset 0 -1px 0 var(--gray-500); transition: background-color .15s, box-shadow .15s; }
+.form-group:has(> label + input:not([type="checkbox"]):not([type="file"]), > label + textarea, > label + .sel):hover { background: var(--field-hover); }
+.form-group:has(> label + input:not([type="checkbox"]):not([type="file"]), > label + textarea, > label + .sel):focus-within { box-shadow: inset 0 -2px 0 var(--primary); }
+.form-group:has(> label + input:not([type="checkbox"]):not([type="file"]), > label + textarea, > label + .sel) > label { position: absolute; top: 7px; left: 12px; margin: 0; font-size: 11px; line-height: 14px; font-weight: 500; color: var(--gray-600); pointer-events: none; z-index: 1; white-space: nowrap; }
+.form-group:has(> label + input:not([type="checkbox"]):not([type="file"]), > label + textarea, > label + .sel):focus-within > label { color: var(--primary); }
+.form-group > label + input:not([type="checkbox"]):not([type="file"]) { background: transparent; border: none; border-radius: 8px 8px 0 0; height: 52px; padding: 18px 12px 0; box-shadow: none; }
+.form-group > label + textarea { background: transparent; border: none; border-radius: 8px 8px 0 0; padding: 24px 12px 8px; min-height: 96px; box-shadow: none; }
+.form-group > label + input:hover, .form-group > label + textarea:hover, .form-group > label + input:focus, .form-group > label + textarea:focus { background: transparent; border: none; box-shadow: none; }
+.form-group > label + input:disabled, .form-group > label + textarea:disabled { background: transparent; }
+.form-group:has(> label + input:disabled, > label + textarea:disabled) { background: var(--surface-2); box-shadow: inset 0 -1px 0 var(--gray-300); }
+.form-group > label + .sel { display: block; width: 100%; }
+.form-group > label + .sel .sel-btn { background: transparent; border: none; border-radius: 8px 8px 0 0; height: 52px; padding: 18px 10px 0 12px; font-weight: 400; }
+.form-group > label + .sel .sel-btn:hover, .form-group > label + .sel.sel-open .sel-btn { background: transparent; box-shadow: none; }
+.form-group > label + .sel .sel-caret { margin-top: -14px; }
 /* Google 式填充字段：输入框和下拉同一个浅灰底、无边框；聚焦白底 + 主色描边 */
 input, textarea, select { width: 100%; padding: 8px 12px; border: 1px solid transparent; border-radius: var(--radius-sm); font-size: 14px; font-family: inherit; background: var(--field); color: var(--gray-800); transition: border-color .15s, box-shadow .15s, background-color .15s; }
 input::placeholder, textarea::placeholder { color: var(--gray-500); }
@@ -389,7 +405,7 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .leg-edit .edit-section-head .btn { margin-right: -10px; }
 .leg-edit .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .leg-edit .edit-hint { margin: -4px 0 12px; }
-.leg-edit .form-group label .text-gray { font-weight: 400; margin-left: 4px; }
+.leg-edit .form-group label .text-gray { font-weight: 400; margin-left: 4px; font-size: 11px; }
 .leg-edit .ta-md { min-height: 96px; resize: none; }
 .leg-edit .form-group { margin-bottom: 12px; }
 @media (max-width: 900px) { .leg-edit .edit-grid { grid-template-columns: 1fr; } }
@@ -666,11 +682,11 @@ html, body { overscroll-behavior: none; }
 .bag-card-click { cursor: pointer; transition: background-color .15s; }
 .bag-card-click:hover { background: var(--surface-2); }
 .bag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-.bag-tile { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px 0 10px; border: 1px solid var(--gray-300); border-radius: 10px; background: var(--surface); color: var(--gray-900); font-family: inherit; font-size: 14px; cursor: pointer; text-align: left; transition: background-color .15s, border-color .15s; }
-.bag-tile:hover { background: var(--surface-2); }
+.bag-tile { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px 0 10px; border: 1px solid transparent; border-radius: 12px; background: var(--field); color: var(--gray-900); font-family: inherit; font-size: 14px; cursor: pointer; text-align: left; transition: background-color .15s, border-color .15s; }
+.bag-tile:hover { background: var(--field-hover); }
 .bag-tile.on { background: var(--primary-light); border-color: var(--primary-light); color: var(--primary-on-light); }
 .bag-tile.off { cursor: default; }
-.bag-tile.off:hover { background: var(--surface); }
+.bag-tile.off:hover { background: var(--field); }
 .bag-tile-check { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--gray-400); display: inline-flex; align-items: center; justify-content: center; flex: none; }
 .bag-tile.on .bag-tile-check { background: var(--primary); border-color: var(--primary); color: #fff; }
 .bag-tile-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -692,13 +708,14 @@ html, body { overscroll-behavior: none; }
 .shop-tile .bag-tile-name { flex: 1; }
 .shop-qty { display: inline-flex; align-items: center; gap: 2px; width: 92px; justify-content: flex-end; visibility: hidden; flex: none; }
 .shop-qty.show { visibility: visible; }
-.shop-step { width: 28px; height: 28px; border-radius: 50%; border: none; background: var(--surface); color: var(--gray-700); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.shop-step { width: 28px; height: 28px; border-radius: 50%; border: none; background: var(--surface); color: var(--gray-700); box-shadow: var(--shadow-1); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 .shop-step:hover { background: var(--chip-hover); }
 .shop-num { min-width: 24px; text-align: center; font-variant-numeric: tabular-nums; font-weight: 500; }
 .bag-tile.on .shop-step { background: rgba(255, 255, 255, .7); color: var(--primary-on-light); }
 .cl-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .cl-tiles { display: flex; gap: 8px; flex: 1 1 320px; min-width: 0; flex-wrap: wrap; }
-.cl-tile { flex: 1 1 0; min-width: 72px; height: 40px; padding: 0 10px; justify-content: space-between; }
+.cl-tile { flex: 1 1 0; min-width: 88px; height: 40px; padding: 0 14px; justify-content: space-between; border-radius: 999px; white-space: nowrap; }
+.cl-tile .bag-tile-count { white-space: nowrap; }
 .cl-tile .bag-tile-name { flex: none; }
 .cl-amount { width: 110px; flex: none; height: 38px; }
 .cl-confirm { flex: none; min-width: 64px; }
