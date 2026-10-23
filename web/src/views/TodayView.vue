@@ -89,8 +89,11 @@ const stats = computed(() => ({
                   <span v-else class="text-gray text-sm">已锁定</span>
                 </template>
                 <template v-else>
-                  <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.complete(myTeam!.id, leg.id)">记录{{ label }}</button>
-                  <button v-else class="btn btn-text btn-sm btn-slot" @click="editing = { leg, progress: p }">修改记录</button>
+                  <div class="flex" style="gap: 6px; flex-wrap: nowrap">
+                    <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.complete(myTeam!.id, leg.id)">记录{{ label }}</button>
+                    <button v-else class="btn btn-text btn-sm btn-slot" @click="editing = { leg, progress: p }">修改记录</button>
+                    <span v-if="block && !p?.completed_at" class="block-hint" :title="block">{{ block }}</span>
+                  </div>
                 </template>
               </td>
             </tr>
