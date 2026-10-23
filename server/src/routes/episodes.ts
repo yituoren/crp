@@ -7,7 +7,7 @@ import { audit, body, str, int, intParam, notify, bad, notFound, forbidden, mone
 import { startEpisodeNow, departurePlan, type EpisodeRow } from '../episodeStart.js';
 import { recomputeEliminations, lockFromAfterLastRecord } from '../elimination.js';
 
-export const LEG_TYPES = ['SL', 'RI', 'TI', 'DT', 'RB', 'FF', 'Union', 'Shuffle', 'UT', 'YD', 'SB', 'FO', 'Trap', 'BR', 'PS'] as const;
+export const LEG_TYPES = ['SL', 'RI', 'TI', 'DT', 'RB', 'FF', 'Union', 'Shuffle', 'UT', 'YD', 'SB', 'FO', 'Trap', 'SQ', 'PS'] as const;
 export type RecordMode = 'none' | 'single' | 'full';
 /** 各类型环节的默认行为：是否需要站点人员、记录方式 */
 export const TYPE_DEFAULTS: Record<string, { staff: 0 | 1; mode: RecordMode }> = {
@@ -24,7 +24,7 @@ export const TYPE_DEFAULTS: Record<string, { staff: 0 | 1; mode: RecordMode }> =
   SB: { staff: 1, mode: 'full' },     // 减速带
   FO: { staff: 1, mode: 'full' },     // 对抗 Face Off
   Trap: { staff: 1, mode: 'full' },
-  BR: { staff: 1, mode: 'full' },     // 支线：紧跟在一个主线环节之后，主线进行中可随时进入，支线计时期间主线暂停
+  SQ: { staff: 1, mode: 'full' },     // 支线：紧跟在一个主线环节之后，主线进行中可随时进入，支线计时期间主线暂停
   PS: { staff: 1, mode: 'full' },   // 中继站：记签到
 };
 
@@ -32,9 +32,9 @@ export const TYPE_DEFAULTS: Record<string, { staff: 0 | 1; mode: RecordMode }> =
 export function validateBranchPlacement(episodeId: number) {
   const legs = all<{ id: number; type: string; name: string }>('SELECT id, type, name FROM legs WHERE episode_id = ? ORDER BY sort, id', episodeId);
   legs.forEach((l, i) => {
-    if (l.type !== 'BR') return;
+    if (l.type !== 'SQ') return;
     const prev = legs[i - 1];
-    if (!prev || ['SL', 'PS', 'BR'].includes(prev.type)) throw bad(`支线「${l.name}」必须紧跟在一个主线环节之后`);
+    if (!prev || ['SL', 'PS', 'SQ'].includes(prev.type)) throw bad(`支线「${l.name}」必须紧跟在一个主线环节之后`);
   });
 }
 export const episodeRoutes = new Hono<Env>();
@@ -58,7 +58,7 @@ export function loadEpisodes(eventId: number) {
   const legsByEp = new Map<number, any[]>();
   for (const l of legs) {
     if (!legsByEp.has(l.episode_id)) legsByEp.set(l.episode_id, []);
-    const norm = l.type === 'PS' ? { can_eliminate: 1, eliminate_count: l.eliminate_count > 0 ? l.eliminate_count : 2 } : {};
+    const norm = {};
     legsByEp.get(l.episode_id)!.push({ ...l, ...norm, attachments: attByLeg.get(l.id) ?? [], cutoffs: cutoffsByLeg.get(l.id) ?? [] });
   }
   return episodes.map((e) => ({ ...e, budget: fromCents(e.budget), legs: legsByEp.get(e.id) ?? [] }));
@@ -100,7 +100,7 @@ episodeRoutes.post('/episodes', hostOnly, async (c) => {
     const id = Number(r.lastInsertRowid);
     // 固定结构：第一个赛段以 Starting Line 开头；每个赛段以中继站结尾
     if (count === 0) run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', id, 1, 'SL', '起跑线', 'full');
-    run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode, can_eliminate, eliminate_count) VALUES (?,?,?,?,1,?,1,2)', id, 99, 'PS', '中继站', 'full');
+    run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode, can_eliminate, eliminate_count) VALUES (?,?,?,?,1,?,0,0)', id, 99, 'PS', '中继站', 'full');
     return id;
   });
   const r = { lastInsertRowid: epId };
@@ -196,6 +196,11 @@ episodeRoutes.post('/episodes/:id/finish', hostOnly, (c) => {
 });
 
 function legFields(b: any, before?: any) {
+  const f = legFieldsRaw(b, before);
+  if (f.can_eliminate && f.eliminate_count < 1) throw bad('勾选了可淘汰，请填写淘汰队数');
+  return f;
+}
+function legFieldsRaw(b: any, before?: any) {
   const pick = (k: string, max = 5000) => (b[k] === undefined ? (before?.[k] ?? '') : str(b[k], max));
   const type = LEG_TYPES.includes(b.type) ? b.type : (before?.type ?? 'TI');
   // 是否需要站点由类型查表决定（目前只有路线信息不需要）；所有环节都记录开始/结束两个时间
@@ -210,8 +215,8 @@ function legFields(b: any, before?: any) {
     cutoff_interval: minutes('cutoff_interval'),
     shop_open: b.shop_open === undefined ? (before?.shop_open ?? 0) : (b.shop_open ? 1 : 0),
     // 中继站一定可淘汰（默认 2 人）；其他环节可选
-    can_eliminate: type === 'PS' ? 1 : type === 'BR' ? 0 : (b.can_eliminate === undefined ? (before?.can_eliminate ?? 0) : (b.can_eliminate ? 1 : 0)),
-    eliminate_count: Math.max(1, b.eliminate_count === undefined ? (before?.eliminate_count ?? (type === 'PS' ? 2 : 1)) : int(b.eliminate_count, 1)),
+    can_eliminate: type === 'SQ' ? 0 : (b.can_eliminate === undefined ? (before?.can_eliminate ?? 0) : (b.can_eliminate ? 1 : 0)),
+    eliminate_count: Math.max(0, b.eliminate_count === undefined ? (before?.eliminate_count ?? 0) : int(b.eliminate_count, 0)),
     name: b.name === undefined ? (before?.name ?? '') : str(b.name, 50) || (before?.name ?? '新环节'),
     description: pick('description'),
     address: pick('address', 300),
@@ -327,9 +332,9 @@ episodeRoutes.put('/episodes/:id/legs/order', hostOnly, async (c) => {
   const mid = ordered.filter((id: number) => types.get(id) !== 'SL' && types.get(id) !== 'PS');
   const finalOrder = [...sl, ...mid, ...ps]; // Starting Line 永远第一，中继站永远最后
   finalOrder.forEach((legId: number, i: number) => {
-    if (types.get(legId) !== 'BR') return;
+    if (types.get(legId) !== 'SQ') return;
     const prev = i > 0 ? types.get(finalOrder[i - 1]!) : undefined;
-    if (!prev || ['SL', 'PS', 'BR'].includes(prev)) throw bad('支线必须紧跟在一个主线环节之后');
+    if (!prev || ['SL', 'PS', 'SQ'].includes(prev)) throw bad('支线必须紧跟在一个主线环节之后');
   });
   tx(() => {
     finalOrder.forEach((legId: number, i: number) => run('UPDATE legs SET sort = ? WHERE id = ? AND episode_id = ?', i + 1, legId, episodeId));

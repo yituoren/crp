@@ -27,7 +27,7 @@ const auth = useAuth();
 // ---- 主办/管理员：页内编辑 ----
 const isFixed = computed(() => leg.value?.type === 'SL' || leg.value?.type === 'PS');
 const selectableTypes = LEG_TYPES.filter((t) => t !== 'SL' && t !== 'PS');
-const form = reactive({ type: 'TI' as LegType, name: '', description: '', address: '', map_url: '', clue_text: '', judge_criteria: '', open_time: '', close_time: '', detour_a: '', detour_b: '', shop_open: false, can_eliminate: false, eliminate_count: 1 });
+const form = reactive({ type: 'TI' as LegType, name: '', description: '', address: '', map_url: '', clue_text: '', judge_criteria: '', open_time: '', close_time: '', detour_a: '', detour_b: '', shop_open: false, can_eliminate: false, eliminate_count: '' as number | '' });
 // 熔断种类列表：名称、起始时间、间隔（小时+分钟）、货币模式的消耗；随「保存修改」一起整表保存
 const cutoffs = ref<{ id: number; name: string; start: number; interval: number; cost: string }[]>([]);
 function addCutoff() { cutoffs.value.push({ id: 0, name: '', start: 0, interval: 0, cost: '' }); }
@@ -37,7 +37,7 @@ let filling = false;
 function fillForm() {
   const l = leg.value; if (!l) return;
   filling = true;
-  Object.assign(form, { type: l.type, name: l.name, description: l.description, address: l.address, map_url: l.map_url, clue_text: l.clue_text, judge_criteria: l.judge_criteria, open_time: l.open_time, close_time: l.close_time, detour_a: l.detour_a, detour_b: l.detour_b, shop_open: !!l.shop_open, can_eliminate: !!l.can_eliminate, eliminate_count: l.eliminate_count || (l.type === 'PS' ? 2 : 1) });
+  Object.assign(form, { type: l.type, name: l.name, description: l.description, address: l.address, map_url: l.map_url, clue_text: l.clue_text, judge_criteria: l.judge_criteria, open_time: l.open_time, close_time: l.close_time, detour_a: l.detour_a, detour_b: l.detour_b, shop_open: !!l.shop_open, can_eliminate: !!l.can_eliminate, eliminate_count: l.eliminate_count || '' });
   cutoffs.value = (l.cutoffs ?? []).map((c) => ({ id: c.id, name: c.name, start: c.start_min, interval: c.interval_min, cost: c.cost ? String(c.cost) : '' }));
   dirty.value = false;
   setTimeout(() => { filling = false; }, 0);
@@ -47,6 +47,7 @@ watch(form, () => { if (!filling) dirty.value = true; }, { deep: true });
 watch(cutoffs, () => { if (!filling) dirty.value = true; }, { deep: true });
 async function saveLeg() {
   if (!leg.value) return;
+  if (form.can_eliminate && !(Number(form.eliminate_count) >= 1)) { ui.toast('勾选了可淘汰，请填写淘汰队数', 'error'); return; }
   const mins = (m: number) => Math.max(0, Math.round(Number(m) || 0));
   const body = { ...form };
   const items = cutoffs.value.map((c) => ({ id: c.id || undefined, name: c.name.trim(), start_min: mins(c.start), interval_min: mins(c.interval), cost: c.cost || 0 }));
@@ -108,10 +109,9 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
             </div>
             <label v-if="moneyMode() === 'coin'" class="check-row"><input v-model="form.shop_open" type="checkbox" :disabled="!race.structureEditable" /> 本环节开放商店<span class="text-gray text-sm">（队伍可在此用货币购买商品）</span></label>
           </div>
-          <div v-if="form.type !== 'BR'" class="edit-section">
+          <div v-if="form.type !== 'SQ'" class="edit-section">
             <div class="edit-section-title">淘汰</div>
-            <label class="check-row"><input v-model="form.can_eliminate" type="checkbox" :disabled="form.type === 'PS' || !race.structureEditable" /> 本环节可淘汰<span class="text-gray text-sm">（{{ form.type === 'PS' ? '中继站一定可淘汰' : '所有队伍到达后，最后到的几队自动淘汰' }}）</span></label>
-            <div class="form-group" style="max-width: 200px"><label>淘汰队数</label><input v-model.number="form.eliminate_count" type="number" min="1" step="1" inputmode="numeric" :disabled="(!form.can_eliminate && form.type !== 'PS') || !race.structureEditable" /></div>
+            <label class="check-row elim-row"><input v-model="form.can_eliminate" type="checkbox" :disabled="!race.structureEditable" /> 本环节可淘汰，淘汰<input v-model.number="form.eliminate_count" type="number" min="1" step="1" inputmode="numeric" class="elim-count" :disabled="!form.can_eliminate || !race.structureEditable" @click.prevent.stop /><span>队</span></label>
           </div>
           <div class="edit-section">
             <div class="edit-section-head"><span class="edit-section-title">熔断</span><button v-if="race.structureEditable" class="btn btn-text btn-sm" @click="addCutoff"><Icon name="add" size="16" />添加熔断</button></div>

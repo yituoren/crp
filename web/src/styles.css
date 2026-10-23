@@ -194,7 +194,7 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .tag-Trap { background: #1E293B; }                   /* 陷阱 */
 .tag-PS { background: #DB2777; }                     /* 中继站 */
 .tag-Shuffle { background: #6B7280; }                /* 洗牌 */
-.tag-BR { background: #0D9488; }                     /* 支线 */
+.tag-SQ { background: #0D9488; }                     /* 支线 */
 
 /* 赛段选择 */
 .ep-selector { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; scrollbar-width: none; }
@@ -240,6 +240,9 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .cutoff-row .btn-slot { min-width: 110px; }
 .check-row { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 0 0 10px; cursor: pointer; }
 .check-row input { margin: 0; }
+.elim-row { gap: 6px; margin-bottom: 12px; white-space: nowrap; flex-wrap: nowrap; }
+.elim-row .elim-count { width: 56px; height: 32px; text-align: center; padding: 0 6px; }
+.elim-row span { font-size: 13px; }
 /* 经费操作表单：两组固定槽位。选择项一组、金额/原因/按钮一组；窄屏时整组换行，组内不拆 */
 .ops { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 .ops-selects { display: flex; gap: 8px; flex: 0 0 auto; flex-wrap: wrap; }

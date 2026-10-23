@@ -12,7 +12,7 @@ export function legOrder(eventId: number): LegRow[] {
   return all<LegRow>(
     `SELECT l.id, l.episode_id, l.type, l.sort, l.can_eliminate, l.eliminate_count FROM legs l JOIN episodes e ON e.id = l.episode_id
      WHERE e.event_id = ? ORDER BY e.sort, e.id, l.sort, l.id`, eventId,
-  ).map((l) => (l.type === 'PS' ? { ...l, can_eliminate: 1, eliminate_count: l.eliminate_count > 0 ? l.eliminate_count : 2 } : l));
+  );
 }
 
 /** 某队在某环节的“到达时间”：中继站 = 签到（手工签到优先）+ 本赛段净罚时；其他 = 结束时间 */

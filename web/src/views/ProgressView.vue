@@ -14,8 +14,8 @@ const race = useRace();
 const ep = computed(() => race.currentEpisode);
 const allLegs = computed(() => ep.value?.legs ?? []);
 /** 矩阵的列组：支线不单独成组，并入它前面的主线组 */
-const legs = computed(() => allLegs.value.filter((l) => l.type !== 'BR'));
-const branchOf = (l: { id: number }) => { const i = allLegs.value.findIndex((x) => x.id === l.id); const n = allLegs.value[i + 1]; return n && n.type === 'BR' ? n : null; };
+const legs = computed(() => allLegs.value.filter((l) => l.type !== 'SQ'));
+const branchOf = (l: { id: number }) => { const i = allLegs.value.findIndex((x) => x.id === l.id); const n = allLegs.value[i + 1]; return n && n.type === 'SQ' ? n : null; };
 
 // 进行中的用时按当前时间计算，每 15 秒刷新一次
 const now = ref(Date.now() + auth.serverOffsetMs);
@@ -109,7 +109,7 @@ const orderedTeams = computed(() => {
             <th class="mx2-team" rowspan="2">队伍</th>
             <th v-for="l in legs" :key="l.id" :colspan="colspanOf(l)" class="mx2-leg mx2-first mx2-last">
               <span class="mx2-leg-title"><LegTag :type="l.type" /><span>{{ legName(l) }}</span></span>
-              <span v-if="branchOf(l)" class="mx2-leg-title mx2-leg-branch"><LegTag type="BR" /><span>{{ legName(branchOf(l)!) }}</span></span>
+              <span v-if="branchOf(l)" class="mx2-leg-title mx2-leg-branch"><LegTag type="SQ" /><span>{{ legName(branchOf(l)!) }}</span></span>
             </th>
           </tr>
           <tr>

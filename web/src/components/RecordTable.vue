@@ -27,7 +27,7 @@ const showTarget = computed(() => props.leg.type === 'UT' || props.leg.type === 
 const targetLabel = computed(() => (props.leg.type === 'Union' ? '合作队伍' : '施加对象'));
 const label = computed(() => endLabel(props.leg.type));
 const withStart = computed(() => hasStart(props.leg.type));
-const isBranch = computed(() => props.leg.type === 'BR');
+const isBranch = computed(() => props.leg.type === 'SQ');
 const stateOf = (p: Progress | null) => (isBranch.value ? (p?.completed_at ? '已完成' : p?.arrived_at ? '进行中' : '未进入') : p?.completed_at ? `已${label.value}` : withStart.value && p?.arrived_at ? '进行中' : withStart.value ? '未开始' : `未${label.value}`);
 /** 记录按钮不可用的原因：顺序未到 / 附加信息没填 */
 const disabledReason = (p: Progress | null, block: string | null, teamId: number) => block ?? race.extraMissing(props.leg, p, teamId);

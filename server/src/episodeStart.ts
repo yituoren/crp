@@ -54,7 +54,7 @@ export function departurePlan(ep: EpisodeRow): { teamId: number; at: string }[] 
 
 /** 自动发车：到点后给该队记录本赛段第一个环节的开始。起跑线 = 记录“出发”（完成）并联动下一环节；其他环节 = 记录开始时间。已有记录的不动 */
 export function recordDeparture(ep: EpisodeRow, teamId: number, at: string): boolean {
-  const first = get<{ id: number; sort: number; type: string }>("SELECT id, sort, type FROM legs WHERE episode_id = ? AND type != 'BR' ORDER BY sort, id LIMIT 1", ep.id);
+  const first = get<{ id: number; sort: number; type: string }>("SELECT id, sort, type FROM legs WHERE episode_id = ? AND type != 'SQ' ORDER BY sort, id LIMIT 1", ep.id);
   if (!first) return false;
   const cur = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', ep.id, teamId, first.id) ?? emptyProgress();
   if (first.type === 'SL') {

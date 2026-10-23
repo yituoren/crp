@@ -5,7 +5,7 @@ import { all, get, run, now } from './db.js';
 export function prevEndTime(episodeId: number, teamId: number, sort: number): string | null {
   return get(
     `SELECT p.completed_at FROM progress p JOIN legs l ON l.id = p.leg_id
-     WHERE p.episode_id = ? AND p.team_id = ? AND l.sort < ? AND l.type != 'BR' AND p.completed_at IS NOT NULL ORDER BY l.sort DESC, l.id DESC LIMIT 1`,
+     WHERE p.episode_id = ? AND p.team_id = ? AND l.sort < ? AND l.type != 'SQ' AND p.completed_at IS NOT NULL ORDER BY l.sort DESC, l.id DESC LIMIT 1`,
     episodeId, teamId, sort,
   )?.completed_at ?? null;
 }
@@ -18,8 +18,8 @@ export function emptyProgress() {
  *  - 中间被跳过的环节（只有自动填的开始时间、没有完成）把开始时间清掉
  */
 export function chainAfterComplete(episodeId: number, teamId: number, sort: number, endAt: string | null, userId: number, legType = '') {
-  if (!endAt || legType === 'BR') return; // 支线结束不触发下一环节
-  const nextLeg = get("SELECT id FROM legs WHERE episode_id = ? AND sort > ? AND type != 'BR' ORDER BY sort, id LIMIT 1", episodeId, sort);
+  if (!endAt || legType === 'SQ') return; // 支线结束不触发下一环节
+  const nextLeg = get("SELECT id FROM legs WHERE episode_id = ? AND sort > ? AND type != 'SQ' ORDER BY sort, id LIMIT 1", episodeId, sort);
   if (nextLeg) {
     const np = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, nextLeg.id) ?? emptyProgress();
     if (!np.completed_at) upsertProgress(episodeId, teamId, nextLeg.id, { ...np, arrived_at: endAt }, userId);
@@ -32,7 +32,7 @@ export function chainAfterComplete(episodeId: number, teamId: number, sort: numb
   const lower = prevDone?.sort ?? -1;
   for (const sk of all(
     `SELECT p.* FROM progress p JOIN legs l ON l.id = p.leg_id
-     WHERE p.episode_id = ? AND p.team_id = ? AND l.sort > ? AND l.sort < ? AND l.type != 'BR' AND p.arrived_at IS NOT NULL AND p.completed_at IS NULL`,
+     WHERE p.episode_id = ? AND p.team_id = ? AND l.sort > ? AND l.sort < ? AND l.type != 'SQ' AND p.arrived_at IS NOT NULL AND p.completed_at IS NULL`,
     episodeId, teamId, lower, sort,
   )) upsertProgress(episodeId, teamId, sk.leg_id, { ...sk, arrived_at: null }, userId);
 }

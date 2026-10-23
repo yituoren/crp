@@ -152,13 +152,13 @@ export const useRace = defineStore('race', () => {
   function parentOf(legId: number) {
     const ep = currentEpisode.value; if (!ep) return null;
     const i = ep.legs.findIndex((l) => l.id === legId);
-    return i > 0 && ep.legs[i]!.type === 'BR' ? ep.legs[i - 1]! : null;
+    return i > 0 && ep.legs[i]!.type === 'SQ' ? ep.legs[i - 1]! : null;
   }
   function branchOf(legId: number) {
     const ep = currentEpisode.value; if (!ep) return null;
     const i = ep.legs.findIndex((l) => l.id === legId);
     const n = i >= 0 ? ep.legs[i + 1] : undefined;
-    return n && n.type === 'BR' && ep.legs[i]!.type !== 'BR' ? n : null;
+    return n && n.type === 'SQ' && ep.legs[i]!.type !== 'SQ' ? n : null;
   }
   /** 支线对该队是否已锁定：主线记录完成后，普通幕后不能再改支线 */
   function branchLocked(teamId: number, legId: number) {
@@ -188,7 +188,7 @@ export const useRace = defineStore('race', () => {
     }
     const idx = ep.legs.findIndex((l) => l.id === legId);
     const self = ep.legs[idx];
-    if (self?.type === 'BR') {
+    if (self?.type === 'SQ') {
       // 支线：只要主线在进行中就能进入，不检查前面的必经环节
       const parent = parentOf(legId); const pp = parent ? progressOf(teamId, parent.id) : null;
       if (!pp?.arrived_at) return '主线还没有开始';
