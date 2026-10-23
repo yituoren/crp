@@ -488,6 +488,7 @@ html, body { overscroll-behavior: none; }
 .ms-item:hover { background: rgba(60, 64, 67, .08); }
 .ms-item input { margin: 0; }
 .ms-item .tag { margin-right: 2px; }
+.sched-leg { white-space: nowrap; line-height: 22px; } /* 排班表：站点的每个环节占一行 */
 .station-leg + .station-leg { border-top: 1px solid var(--gray-200); padding-top: 16px; margin-top: 4px; }
 /* 「我的」页不套外层卡片：状态行 + 无边框大表格，其余区块是灰底卡片 */
 .my-work { display: flex; flex-direction: column; gap: 16px; }

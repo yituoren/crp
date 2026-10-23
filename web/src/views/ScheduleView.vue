@@ -39,9 +39,9 @@ function assignOf(userId: number) {
 function assignText(userId: number) {
   const a = assignOf(userId);
   if (!a) return '-';
-  if (a.role === 'follow') return `跟队 → ${a.team_name ?? '?'}`;
-  if (a.role === 'live') return '直播员 → 全赛段（只读）';
-  return a.leg_ids?.length ? '站点 → ' : '站点 → ?';
+  if (a.role === 'follow') return a.team_name ?? '?';
+  if (a.role === 'live') return '全赛段（只读）';
+  return a.leg_ids?.length ? '' : '?';
 }
 /** 站点驻守的环节（带类型，供表格里显示 tag） */
 function stationLegs(userId: number) {
@@ -98,7 +98,7 @@ async function copyPrev() {
           <tr v-for="r in form.rows" :key="r.userId">
             <td><strong>{{ userById.get(r.userId)?.displayName }}</strong></td>
             <td class="c"><span class="badge" :class="displayRole(r.userId)[1]">{{ displayRole(r.userId)[0] }}</span></td>
-            <td class="wrap">{{ assignText(r.userId) }}<template v-for="(l, i) in stationLegs(r.userId)" :key="l.id"><template v-if="i">、</template><LegTag :type="l.type" /> {{ legName(l) }}</template></td>
+            <td class="wrap">{{ assignText(r.userId) }}<div v-for="l in stationLegs(r.userId)" :key="l.id" class="sched-leg"><LegTag :type="l.type" /> {{ legName(l) }}</div></td>
             <td v-if="auth.isHost" class="c">
               <div class="flex" style="gap: 6px">
                 <MSelect v-model="r.role" sm style="width: 96px; flex: none" :options="[{ value: 'crew', label: '机动' }, { value: 'follow', label: '跟队' }, { value: 'station', label: '站点' }, { value: 'live', label: '直播员' }]" />
