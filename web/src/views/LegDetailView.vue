@@ -29,8 +29,8 @@ const isFixed = computed(() => leg.value?.type === 'SL' || leg.value?.type === '
 const selectableTypes = LEG_TYPES.filter((t) => t !== 'SL' && t !== 'PS');
 const form = reactive({ type: 'TI' as LegType, name: '', description: '', address: '', map_url: '', clue_text: '', judge_criteria: '', open_time: '', close_time: '', detour_a: '', detour_b: '', shop_open: false, can_eliminate: false, eliminate_count: 1 });
 // 熔断种类列表：名称、起始时间、间隔（小时+分钟）、货币模式的消耗；随「保存修改」一起整表保存
-const cutoffs = ref<{ id: number; name: string; sh: number; sm: number; ih: number; im: number; cost: string }[]>([]);
-function addCutoff() { cutoffs.value.push({ id: 0, name: '', sh: 0, sm: 0, ih: 0, im: 0, cost: '' }); }
+const cutoffs = ref<{ id: number; name: string; start: number; interval: number; cost: string }[]>([]);
+function addCutoff() { cutoffs.value.push({ id: 0, name: '', start: 0, interval: 0, cost: '' }); }
 function removeCutoff(i: number) { cutoffs.value.splice(i, 1); }
 const dirty = ref(false);
 let filling = false;
@@ -38,7 +38,7 @@ function fillForm() {
   const l = leg.value; if (!l) return;
   filling = true;
   Object.assign(form, { type: l.type, name: l.name, description: l.description, address: l.address, map_url: l.map_url, clue_text: l.clue_text, judge_criteria: l.judge_criteria, open_time: l.open_time, close_time: l.close_time, detour_a: l.detour_a, detour_b: l.detour_b, shop_open: !!l.shop_open, can_eliminate: !!l.can_eliminate, eliminate_count: l.eliminate_count || (l.type === 'PS' ? 2 : 1) });
-  cutoffs.value = (l.cutoffs ?? []).map((c) => ({ id: c.id, name: c.name, sh: Math.floor(c.start_min / 60), sm: c.start_min % 60, ih: Math.floor(c.interval_min / 60), im: c.interval_min % 60, cost: c.cost ? String(c.cost) : '' }));
+  cutoffs.value = (l.cutoffs ?? []).map((c) => ({ id: c.id, name: c.name, start: c.start_min, interval: c.interval_min, cost: c.cost ? String(c.cost) : '' }));
   dirty.value = false;
   setTimeout(() => { filling = false; }, 0);
 }
@@ -47,9 +47,9 @@ watch(form, () => { if (!filling) dirty.value = true; }, { deep: true });
 watch(cutoffs, () => { if (!filling) dirty.value = true; }, { deep: true });
 async function saveLeg() {
   if (!leg.value) return;
-  const mins = (h: number, m: number) => Math.max(0, Number(h) || 0) * 60 + Math.max(0, Number(m) || 0);
+  const mins = (m: number) => Math.max(0, Math.round(Number(m) || 0));
   const body = { ...form };
-  const items = cutoffs.value.map((c) => ({ id: c.id || undefined, name: c.name.trim(), start_min: mins(c.sh, c.sm), interval_min: mins(c.ih, c.im), cost: c.cost || 0 }));
+  const items = cutoffs.value.map((c) => ({ id: c.id || undefined, name: c.name.trim(), start_min: mins(c.start), interval_min: mins(c.interval), cost: c.cost || 0 }));
   try {
     await api(`/legs/${leg.value.id}`, { method: 'PUT', body });
     if (race.structureEditable) await api(`/legs/${leg.value.id}/cutoffs`, { method: 'PUT', body: { items } });
@@ -121,12 +121,9 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
                 <input v-if="moneyMode() === 'coin'" v-model="c.cost" type="number" min="0" step="1" inputmode="numeric" placeholder="消耗（币）" class="cutoff-cost" :disabled="!race.structureEditable" />
                 <button v-if="race.structureEditable" class="icon-btn icon-btn-sm icon-btn-danger" title="删除" @click="removeCutoff(i)"><Icon name="delete" size="18" /></button>
               </div>
-              <div class="cutoff-edit-times">
-                <div class="hm-row" title="起始时间"><input v-model.number="c.sh" type="number" min="0" step="1" inputmode="numeric" :disabled="!race.structureEditable" /><span>h</span><input v-model.number="c.sm" type="number" min="0" max="59" step="1" inputmode="numeric" :disabled="!race.structureEditable" /><span>m 起</span></div>
-                <div class="hm-row" title="间隔时间"><input v-model.number="c.ih" type="number" min="0" step="1" inputmode="numeric" :disabled="!race.structureEditable" /><span>h</span><input v-model.number="c.im" type="number" min="0" max="59" step="1" inputmode="numeric" :disabled="!race.structureEditable" /><span>m 隔</span></div>
-              </div>
+              <div class="hm-row cutoff-edit-times"><input v-model.number="c.start" type="number" min="0" step="1" inputmode="numeric" title="开始时间（分钟）" :disabled="!race.structureEditable" /><span>m 开始，间隔</span><input v-model.number="c.interval" type="number" min="0" step="1" inputmode="numeric" title="间隔时间（分钟）" :disabled="!race.structureEditable" /><span>m</span></div>
             </div>
-            <div v-if="!cutoffs.length" class="text-sm text-gray">没有熔断</div>
+            <div v-if="!cutoffs.length" class="text-sm text-gray cutoff-empty">没有熔断</div>
           </div>
           <div class="edit-section">
             <div class="edit-section-title">地点与时间</div>

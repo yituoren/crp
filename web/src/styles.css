@@ -228,9 +228,9 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .cutoff-edit-top { display: flex; align-items: center; gap: 8px; }
 .cutoff-edit-top .cutoff-name { flex: 1; min-width: 0; }
 .cutoff-edit-top .cutoff-cost { width: 96px; flex: none; }
-.cutoff-edit-times { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
-.cutoff-edit .hm-row input { min-width: 36px; padding-left: 8px; padding-right: 8px; text-align: center; }
+.cutoff-edit .hm-row input { min-width: 48px; padding-left: 8px; padding-right: 8px; text-align: center; }
 .cutoff-edit .hm-row span { white-space: nowrap; }
+.cutoff-empty { margin-bottom: 12px; }
 .cutoff-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--gray-100); }
 .cutoff-row:last-child { border-bottom: none; }
 .cutoff-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -371,14 +371,14 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .pager { height: 100vh; height: 100dvh; overflow: hidden; }
 .pager-track { display: flex; align-items: stretch; height: 100%; transform: none !important; }
 /* 左栏：大屏幕 600px，窄一些的桌面按比例收窄，给右侧主区域留够宽度 */
-.pane-live { flex: none; width: clamp(400px, 38vw, 600px); height: 100%; overflow: auto; padding: 16px 0 16px 16px; display: flex; flex-direction: column; overscroll-behavior: contain; }
-.pane-main { flex: 1; min-width: 0; height: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; } /* 主区域永不横向滚动，宽表格在各自的 .scroll-table 里滚 */
+.pane-live { flex: none; width: clamp(400px, 38vw, 600px); height: 100%; overflow: auto; padding: 16px 0 16px 16px; display: flex; flex-direction: column; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.pane-main { flex: 1; min-width: 0; height: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-gutter: stable; } /* 预留滚动条位置：滚动条出现 / 消失不改变宽度，避免布局来回抖动 */ /* 主区域永不横向滚动，宽表格在各自的 .scroll-table 里滚 */
 html, body { overscroll-behavior: none; }
 .pager-dots { display: none; }
 .live-card { flex: 1; display: flex; flex-direction: column; min-height: 0; margin-bottom: 0; padding: 18px 18px 14px; }
 .live-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
 /* 表格区域撑满卡片；行高由组件按“12 行填满”算出（--row-h）：不足 12 支下方留白，多于 12 支表内滚动 */
-.live-grid { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: auto; }
+.live-grid { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; }
 .live-row { flex: none; height: var(--row-h, 44px); display: grid; grid-template-columns: minmax(90px, 1.2fr) minmax(110px, 1.5fr) minmax(96px, 1.4fr) 76px; gap: 10px; align-items: center; padding: 0 6px; border-bottom: 1px solid var(--gray-100); font-size: 13px; white-space: nowrap; }
 .live-row > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .live-row:last-child { border-bottom: none; }
@@ -561,14 +561,14 @@ html, body { overscroll-behavior: none; }
 .home-date { min-width: 72px; text-align: right; font-variant-numeric: tabular-nums; }
 /* 条目形式 */
 .home-list { display: flex; flex-direction: column; }
-.home-row { display: flex; align-items: center; gap: 14px; height: 40px; padding: 0 16px; border-bottom: 1px solid var(--gray-100); cursor: pointer; transition: box-shadow .12s; position: relative; }
-.home-row:hover { box-shadow: inset 1px 0 0 var(--gray-200), inset -1px 0 0 var(--gray-200), var(--shadow-1); z-index: 1; }
+.home-row { display: flex; align-items: center; gap: 14px; height: 40px; padding: 0 16px; border-bottom: 1px solid var(--gray-100); cursor: pointer; transition: background-color .12s; }
+.home-row:hover { background: var(--surface-2); }
 .home-row-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; color: var(--gray-900); }
 .home-row-snippet { color: var(--gray-600); }
 /* 卡片形式 */
 .home-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; padding: 8px 16px 12px; }
-.home-card { border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 16px; cursor: pointer; display: flex; flex-direction: column; gap: 8px; transition: box-shadow .15s, background-color .15s; background: var(--surface); }
-.home-card:hover { box-shadow: var(--shadow-1); background: var(--surface-2); }
+.home-card { border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 16px; cursor: pointer; display: flex; flex-direction: column; gap: 8px; transition: background-color .15s; background: var(--surface); }
+.home-card:hover { background: var(--surface-2); }
 .home-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 15px; color: var(--gray-900); }
 .home-card-head .home-row-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .home-card-snippet { font-size: 13px; color: var(--gray-600); }
