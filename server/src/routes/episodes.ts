@@ -5,6 +5,7 @@ import { all, get, run, tx, now, UPLOAD_DIR, fromCents } from '../db.js';
 import { hostOnly, canUploadToLeg, isAdminRole, type Env, type EventRow } from '../auth.js';
 import { audit, body, str, int, intParam, notify, bad, notFound, forbidden, money, isoOrNull } from '../util.js';
 import { startEpisodeNow, departurePlan, type EpisodeRow } from '../episodeStart.js';
+import { teamLabelMap } from './teams.js';
 import { recomputeEliminations, lockFromAfterLastRecord } from '../elimination.js';
 
 export const LEG_TYPES = ['SL', 'RI', 'TI', 'DT', 'RB', 'FF', 'Union', 'Shuffle', 'UT', 'YD', 'SB', 'FO', 'Trap', 'SQ', 'PS'] as const;
@@ -189,6 +190,18 @@ episodeRoutes.post('/episodes/:id/finish', hostOnly, (c) => {
   const id = intParam(c, 'id');
   const ep = episodeInEvent(c, id);
   if (ep.status !== 'running') throw bad('只有进行中的赛段可以结束');
+  // 中继站之前仍在比赛的队伍（未退赛、未在更早的环节被淘汰）必须全部到达中继站
+  const ps = get<{ id: number }>("SELECT id FROM legs WHERE episode_id = ? AND type = 'PS' ORDER BY sort DESC, id DESC LIMIT 1", id);
+  if (ps) {
+    const labels = teamLabelMap();
+    const missing = all<{ id: number; name: string }>(
+      `SELECT t.id, t.name FROM teams t WHERE t.event_id = ? AND t.status != 'withdrawn' AND (t.eliminated_leg_id IS NULL OR t.eliminated_leg_id = ?)
+         AND NOT EXISTS (SELECT 1 FROM pitstop_results r WHERE r.episode_id = ? AND r.team_id = t.id AND r.checkin_at IS NOT NULL)
+         AND NOT EXISTS (SELECT 1 FROM progress p WHERE p.episode_id = ? AND p.team_id = t.id AND p.leg_id = ? AND p.completed_at IS NOT NULL)
+       ORDER BY t.sort, t.id`, ep.event_id, ps.id, id, id, ps.id,
+    );
+    if (missing.length) throw bad(`还有队伍没有到达中继站：${missing.map((t) => labels.get(t.id) ?? t.name).join('、')}`);
+  }
   run("UPDATE episodes SET status = 'finished', finished_at = COALESCE(finished_at, ?) WHERE id = ?", now(), id);
   audit(c.get('user'), 'finish', 'episode', id, { status: ep.status });
   notify('episodes');
