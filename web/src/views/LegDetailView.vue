@@ -12,6 +12,7 @@ import { reactive } from 'vue';
 import { useAuth } from '@/stores/auth';
 import LegTag from '@/components/LegTag.vue';
 import RecordTable from '@/components/RecordTable.vue';
+import CutoffUsage from '@/components/CutoffUsage.vue';
 
 const route = useRoute();
 const race = useRace();
@@ -26,24 +27,34 @@ const auth = useAuth();
 // ---- 主办/管理员：页内编辑 ----
 const isFixed = computed(() => leg.value?.type === 'SL' || leg.value?.type === 'PS');
 const selectableTypes = LEG_TYPES.filter((t) => t !== 'SL' && t !== 'PS');
-// 熔断：开始时间（从赛段开始计）与间隔，都按小时+分钟填写，存为分钟
-const form = reactive({ type: 'TI' as LegType, name: '', description: '', address: '', map_url: '', clue_text: '', judge_criteria: '', open_time: '', close_time: '', detour_a: '', detour_b: '', cutoff_start_h: 0, cutoff_start_m: 0, cutoff_interval_h: 0, cutoff_interval_m: 0, shop_open: false, can_eliminate: false, eliminate_count: 1 });
+const form = reactive({ type: 'TI' as LegType, name: '', description: '', address: '', map_url: '', clue_text: '', judge_criteria: '', open_time: '', close_time: '', detour_a: '', detour_b: '', shop_open: false, can_eliminate: false, eliminate_count: 1 });
+// 熔断种类列表：名称、起始时间、间隔（小时+分钟）、货币模式的消耗；随「保存修改」一起整表保存
+const cutoffs = ref<{ id: number; name: string; sh: number; sm: number; ih: number; im: number; cost: string }[]>([]);
+function addCutoff() { cutoffs.value.push({ id: 0, name: '', sh: 0, sm: 0, ih: 0, im: 0, cost: '' }); }
+function removeCutoff(i: number) { cutoffs.value.splice(i, 1); }
 const dirty = ref(false);
 let filling = false;
 function fillForm() {
   const l = leg.value; if (!l) return;
   filling = true;
-  Object.assign(form, { type: l.type, name: l.name, description: l.description, address: l.address, map_url: l.map_url, clue_text: l.clue_text, judge_criteria: l.judge_criteria, open_time: l.open_time, close_time: l.close_time, detour_a: l.detour_a, detour_b: l.detour_b, cutoff_start_h: Math.floor((l.cutoff_start ?? 0) / 60), cutoff_start_m: (l.cutoff_start ?? 0) % 60, cutoff_interval_h: Math.floor((l.cutoff_interval ?? 0) / 60), cutoff_interval_m: (l.cutoff_interval ?? 0) % 60, shop_open: !!l.shop_open, can_eliminate: !!l.can_eliminate, eliminate_count: l.eliminate_count || (l.type === 'PS' ? 2 : 1) });
+  Object.assign(form, { type: l.type, name: l.name, description: l.description, address: l.address, map_url: l.map_url, clue_text: l.clue_text, judge_criteria: l.judge_criteria, open_time: l.open_time, close_time: l.close_time, detour_a: l.detour_a, detour_b: l.detour_b, shop_open: !!l.shop_open, can_eliminate: !!l.can_eliminate, eliminate_count: l.eliminate_count || (l.type === 'PS' ? 2 : 1) });
+  cutoffs.value = (l.cutoffs ?? []).map((c) => ({ id: c.id, name: c.name, sh: Math.floor(c.start_min / 60), sm: c.start_min % 60, ih: Math.floor(c.interval_min / 60), im: c.interval_min % 60, cost: c.cost ? String(c.cost) : '' }));
   dirty.value = false;
   setTimeout(() => { filling = false; }, 0);
 }
 watch(leg, () => { if (!dirty.value) fillForm(); }, { immediate: true });
 watch(form, () => { if (!filling) dirty.value = true; }, { deep: true });
+watch(cutoffs, () => { if (!filling) dirty.value = true; }, { deep: true });
 async function saveLeg() {
   if (!leg.value) return;
   const mins = (h: number, m: number) => Math.max(0, Number(h) || 0) * 60 + Math.max(0, Number(m) || 0);
-  const body = { ...form, cutoff_start: mins(form.cutoff_start_h, form.cutoff_start_m), cutoff_interval: mins(form.cutoff_interval_h, form.cutoff_interval_m) };
-  try { await api(`/legs/${leg.value.id}`, { method: 'PUT', body }); await race.loadEpisodes(); fillForm(); ui.toast('环节已保存'); } catch (e) { ui.error(e); }
+  const body = { ...form };
+  const items = cutoffs.value.map((c) => ({ id: c.id || undefined, name: c.name.trim(), start_min: mins(c.sh, c.sm), interval_min: mins(c.ih, c.im), cost: c.cost || 0 }));
+  try {
+    await api(`/legs/${leg.value.id}`, { method: 'PUT', body });
+    await api(`/legs/${leg.value.id}/cutoffs`, { method: 'PUT', body: { items } });
+    await race.loadEpisodes(); fillForm(); ui.toast('环节已保存');
+  } catch (e) { ui.error(e); }
 }
 const fileInput = ref<HTMLInputElement | null>(null);
 const uploading = ref(false);
@@ -105,15 +116,16 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
             <div class="form-group" style="max-width: 200px"><label>淘汰队数</label><input v-model.number="form.eliminate_count" type="number" min="1" step="1" inputmode="numeric" :disabled="!form.can_eliminate && form.type !== 'PS'" /></div>
           </div>
           <div class="edit-section">
-            <div class="edit-section-title">熔断</div>
-            <div class="field-row">
-              <div class="form-group"><label>开始时间<span class="text-gray">（从赛段开始计）</span></label>
-                <div class="hm-row"><input v-model.number="form.cutoff_start_h" type="number" min="0" step="1" inputmode="numeric" /><span>h</span><input v-model.number="form.cutoff_start_m" type="number" min="0" max="59" step="1" inputmode="numeric" /><span>m</span></div>
-              </div>
-              <div class="form-group"><label>间隔时间</label>
-                <div class="hm-row"><input v-model.number="form.cutoff_interval_h" type="number" min="0" step="1" inputmode="numeric" /><span>h</span><input v-model.number="form.cutoff_interval_m" type="number" min="0" max="59" step="1" inputmode="numeric" /><span>m</span></div>
-              </div>
+            <div class="flex-between" style="margin-bottom: 8px"><span class="edit-section-title" style="margin: 0">熔断</span><button class="btn btn-text btn-sm" @click="addCutoff"><Icon name="add" size="16" />添加熔断</button></div>
+            <p class="text-sm text-gray" style="margin: 0 0 10px">队伍进入本环节后，过了起始时间第一次可用；每次使用后再过间隔时间可再次使用。{{ moneyMode() === 'coin' ? '货币模式下每次使用按消耗扣币。' : '' }}</p>
+            <div v-for="(c, i) in cutoffs" :key="i" class="cutoff-edit">
+              <input v-model="c.name" placeholder="种类名称" class="cutoff-name" />
+              <div class="hm-row" title="起始时间"><input v-model.number="c.sh" type="number" min="0" step="1" inputmode="numeric" /><span>h</span><input v-model.number="c.sm" type="number" min="0" max="59" step="1" inputmode="numeric" /><span>m 起</span></div>
+              <div class="hm-row" title="间隔时间"><input v-model.number="c.ih" type="number" min="0" step="1" inputmode="numeric" /><span>h</span><input v-model.number="c.im" type="number" min="0" max="59" step="1" inputmode="numeric" /><span>m 隔</span></div>
+              <input v-if="moneyMode() === 'coin'" v-model="c.cost" type="number" min="0" step="1" inputmode="numeric" placeholder="消耗（币）" class="cutoff-cost" />
+              <button class="icon-btn icon-btn-sm" title="删除" @click="removeCutoff(i)"><Icon name="delete" size="18" /></button>
             </div>
+            <div v-if="!cutoffs.length" class="text-sm text-gray">没有熔断</div>
           </div>
           <div class="edit-section">
             <div class="edit-section-title">地点与时间</div>
@@ -155,7 +167,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
           <div v-if="leg.open_time || leg.close_time" class="mb-2">开放时间：{{ leg.open_time || '-' }} ~ {{ leg.close_time || '-' }}</div>
           <div v-if="leg.shop_open" class="mb-2"><span class="badge badge-info">开放商店</span></div>
           <div v-if="leg.can_eliminate" class="mb-2"><span class="badge badge-urgent">淘汰 {{ leg.eliminate_count }} 队</span><span class="text-gray text-sm"> 所有队伍到达后，最后到的 {{ leg.eliminate_count }} 队自动淘汰</span></div>
-          <div v-if="leg.cutoff_start || leg.cutoff_interval" class="mb-2">熔断：{{ fmtDurMs(leg.cutoff_start * 60000) }} 起，间隔 {{ fmtDurMs(leg.cutoff_interval * 60000) }}</div>
+          <div v-if="leg.cutoffs.length" class="mb-2">熔断：<span v-for="c in leg.cutoffs" :key="c.id" class="badge badge-info" style="margin-right: 6px">{{ c.name }} · {{ fmtDurMs(c.start_min * 60000) }} 起 · 每 {{ fmtDurMs(c.interval_min * 60000) }}{{ moneyMode() === 'coin' && c.cost ? ` · ${c.cost} 币` : '' }}</span></div>
           <div v-if="leg.type === 'DT'" class="mb-2">绕道：A「{{ leg.detour_a || '未填写' }}」 / B「{{ leg.detour_b || '未填写' }}」</div>
           <div class="section-title text-sm">环节说明</div>
           <div class="pre" :class="{ 'text-gray': !leg.description }">{{ leg.description || '暂无说明' }}</div>
@@ -194,4 +206,5 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
       <img :src="preview" style="max-width: 100%; max-height: 92vh; border-radius: 8px" />
     </div>
   </template>
+  <CutoffUsage v-if="leg" :leg="leg" />
 </template>

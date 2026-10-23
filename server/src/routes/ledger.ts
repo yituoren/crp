@@ -27,6 +27,37 @@ ledgerRoutes.get('/ledger', (c) => {
   return c.json({ ledger: rows.map((r) => ({ ...r, team_name: labels.get(r.team_id) ?? r.team_name, delta: fromCents(r.delta), balance_after: fromCents(r.balance_after) })) });
 });
 
+/** 内部记一笔流水（不做权限校验，调用方负责）：返回流水 id */
+export function addLedgerEntry(opts: { episodeId: number | null; teamId: number; delta: number; reason: string; legId: number | null; kind: 'shop' | 'cutoff' | 'other'; user: { id: number; displayName: string } }) {
+  const team = get<{ currency: number }>('SELECT currency FROM teams WHERE id = ?', opts.teamId);
+  if (!team) throw notFound('队伍不存在');
+  const balance = team.currency + opts.delta;
+  return tx(() => {
+    run('UPDATE teams SET currency = ? WHERE id = ?', balance, opts.teamId);
+    const r = run(
+      'INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at, leg_id, kind) VALUES (?,?,?,?,?,?,?,?,?,?)',
+      opts.episodeId, opts.teamId, opts.delta, balance, opts.reason, opts.user.id, opts.user.displayName, now(), opts.legId, opts.kind,
+    );
+    return Number(r.lastInsertRowid);
+  });
+}
+/** 内部反向一笔流水（不做权限校验）：已撤销过则忽略 */
+export function revertLedgerEntry(id: number, user: { id: number; displayName: string }) {
+  const orig = get('SELECT * FROM currency_ledger WHERE id = ?', id);
+  if (!orig || orig.reverted || orig.reverts_id) return;
+  const team = get<{ currency: number }>('SELECT currency FROM teams WHERE id = ?', orig.team_id);
+  if (!team) return;
+  const balance = team.currency - orig.delta;
+  tx(() => {
+    run('UPDATE teams SET currency = ? WHERE id = ?', balance, orig.team_id);
+    run('UPDATE currency_ledger SET reverted = 1 WHERE id = ?', id);
+    run(
+      'INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at, reverts_id, leg_id, kind, item_id, item_name) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      orig.episode_id, orig.team_id, -orig.delta, balance, `撤销：${orig.reason || '手动调整'}`, user.id, user.displayName, now(), id, orig.leg_id ?? null, orig.kind ?? 'other', orig.item_id ?? null, orig.item_name ?? null,
+    );
+  });
+}
+
 ledgerRoutes.post('/ledger', async (c) => {
   const user = c.get('user');
   const b = await body(c);

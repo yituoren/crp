@@ -2,8 +2,9 @@ import { Hono } from 'hono';
 import { all, get, run, tx, now } from '../db.js';
 import { hostOnly, canRecordProgress, canManagePenalty, isHostRole, type Env, isAdminRole } from '../auth.js';
 import { recomputeEliminations } from '../elimination.js';
-import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forbidden, editLockReason } from '../util.js';
+import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forbidden, editLockReason, currencyMode, fmtMoneyServer } from '../util.js';
 import { teamLabelMap } from './teams.js';
+import { addLedgerEntry, revertLedgerEntry } from './ledger.js';
 import { episodeInEvent } from './episodes.js';
 
 export const progressRoutes = new Hono<Env>();
@@ -31,6 +32,70 @@ export function missingPrerequisites(episodeId: number, teamId: number, legId: n
   return missing;
 }
 
+export function listCutoffUses(episodeId: number) {
+  return all('SELECT * FROM cutoff_uses WHERE episode_id = ? ORDER BY used_at, id', episodeId);
+}
+/** 某队某种熔断下次可用的时间（毫秒）；null = 该队不在此环节进行中 */
+function cutoffReadyAt(teamId: number, leg: { id: number; episode_id: number }, cf: { id: number; start_min: number; interval_min: number }): number | null {
+  const p = get<{ arrived_at: string | null; completed_at: string | null }>('SELECT arrived_at, completed_at FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', leg.episode_id, teamId, leg.id);
+  if (!p?.arrived_at || p.completed_at) return null;
+  let ready = new Date(p.arrived_at).getTime() + cf.start_min * 60000;
+  const last = get<{ used_at: string }>('SELECT used_at FROM cutoff_uses WHERE team_id = ? AND cutoff_id = ? ORDER BY used_at DESC, id DESC LIMIT 1', teamId, cf.id);
+  if (last) ready = Math.max(ready, new Date(last.used_at).getTime() + cf.interval_min * 60000);
+  return ready;
+}
+
+/** 使用一次熔断：主办任意队伍；跟队仅所跟队伍。队伍必须在该环节进行中且倒计时已到；货币模式按设置扣币 */
+progressRoutes.post('/cutoffs/:id/use', async (c) => {
+  const cutoffId = intParam(c, 'id');
+  const user = c.get('user');
+  const b = await body(c);
+  const teamId = int(b.teamId, 0);
+  const cf = get<any>('SELECT * FROM leg_cutoffs WHERE id = ?', cutoffId);
+  if (!cf) throw notFound('熔断不存在');
+  const leg = get<any>('SELECT * FROM legs WHERE id = ?', cf.leg_id);
+  if (!leg) throw notFound('环节不存在');
+  const episode = episodeInEvent(c, leg.episode_id);
+  const team = get<{ id: number; status: string; currency: number; event_id: number }>('SELECT * FROM teams WHERE id = ?', teamId);
+  if (!team || team.event_id !== c.get('event').id) throw notFound('队伍不存在');
+  if (!isAdminRole(user.role) && episode.status === 'pending') throw bad(`${episode.code} 尚未开始`);
+  { const r = editLockReason(user, episode as { status: string; code: string }, team); if (r) throw forbidden(r); }
+  if (!canRecordProgress(user, episode.id, teamId, leg.id)) throw forbidden('只有主办或该队伍的跟队可以使用熔断');
+  const ready = cutoffReadyAt(teamId, leg, cf);
+  if (ready === null) throw bad('该队伍不在此环节进行中');
+  const nowMs = Date.now();
+  if (nowMs < ready - 2000) throw bad(`熔断尚未就绪，还需 ${Math.ceil((ready - nowMs) / 1000)} 秒`);
+  let ledgerId: number | null = null;
+  if (cf.cost > 0 && currencyMode() === 'coin') {
+    if (team.currency < cf.cost) throw bad(`货币不足：需要 ${fmtMoneyServer(cf.cost)}，当前 ${fmtMoneyServer(team.currency)}`);
+    ledgerId = addLedgerEntry({ episodeId: episode.id, teamId, delta: -cf.cost, reason: `熔断：${cf.name}`, legId: leg.id, kind: 'cutoff', user });
+  }
+  const r = run(
+    'INSERT INTO cutoff_uses(episode_id, leg_id, team_id, cutoff_id, cutoff_name, used_at, used_by, used_by_name, ledger_id) VALUES (?,?,?,?,?,?,?,?,?)',
+    episode.id, leg.id, teamId, cf.id, cf.name, now(), user.id, user.displayName, ledgerId,
+  );
+  audit(user, 'cutoff_use', 'team', teamId, undefined, { cutoff: cf.name, leg: leg.name, ledgerId });
+  notify('progress', episode.id);
+  if (ledgerId) { notify('ledger', episode.id); notify('teams'); }
+  return c.json({ id: Number(r.lastInsertRowid) });
+});
+
+/** 删除一条熔断使用记录（主办）：扣过的币一并反向 */
+progressRoutes.delete('/cutoff-uses/:id', hostOnly, (c) => {
+  const id = intParam(c, 'id');
+  const user = c.get('user');
+  const u = get<any>('SELECT * FROM cutoff_uses WHERE id = ?', id);
+  if (!u) throw notFound('使用记录不存在');
+  const episode = episodeInEvent(c, u.episode_id);
+  { const r = editLockReason(user, episode as { status: string; code: string }, get<{ status: string }>('SELECT status FROM teams WHERE id = ?', u.team_id)); if (r) throw forbidden(r); }
+  if (u.ledger_id) revertLedgerEntry(u.ledger_id, user);
+  run('DELETE FROM cutoff_uses WHERE id = ?', id);
+  audit(user, 'cutoff_use_delete', 'team', u.team_id, u);
+  notify('progress', episode.id);
+  if (u.ledger_id) { notify('ledger', episode.id); notify('teams'); }
+  return c.json({ ok: true });
+});
+
 export function listProgress(episodeId: number) {
   return all('SELECT * FROM progress WHERE episode_id = ? ORDER BY id', episodeId);
 }
@@ -47,7 +112,7 @@ export function listPenalties(episodeId: number) {
 progressRoutes.get('/episodes/:id/progress', (c) => {
   const episodeId = intParam(c, 'id');
   episodeInEvent(c, episodeId);
-  return c.json({ progress: listProgress(episodeId), penalties: listPenalties(episodeId), pitstop: pitstopRows(episodeId) });
+  return c.json({ progress: listProgress(episodeId), penalties: listPenalties(episodeId), pitstop: pitstopRows(episodeId), cutoffUses: listCutoffUses(episodeId) });
 });
 
 /**

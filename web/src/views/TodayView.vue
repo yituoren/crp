@@ -11,6 +11,7 @@ import PenaltyPanel from '@/components/PenaltyPanel.vue';
 import LegExtraField from '@/components/LegExtraField.vue';
 import TeamCurrencyPanel from '@/components/TeamCurrencyPanel.vue';
 import CurrencyOps from '@/components/CurrencyOps.vue';
+import CutoffCard from '@/components/CutoffCard.vue';
 import ProgressEditModal from '@/components/ProgressEditModal.vue';
 import { type Leg, type Progress, legName } from '@/types';
 import { endLabel, hasStart } from '@/types';
@@ -110,6 +111,7 @@ const stats = computed(() => ({
           </tbody>
         </table>
       </div>
+      <div class="mt-3"><CutoffCard :team-id="myTeam.id" /></div>
       <div class="mt-3"><TeamCurrencyPanel :team-id="myTeam.id" /></div>
       <div class="mt-3"><PenaltyPanel :team-id="myTeam.id" /></div>
     </template>

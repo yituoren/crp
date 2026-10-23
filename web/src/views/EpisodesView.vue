@@ -5,7 +5,6 @@ import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { legName, endLabel, type Leg } from '@/types';
-import { fmtDurMs } from '@/utils/time';
 import { fmtMoney, moneyUnit, moneyLabel, moneyMode } from '@/utils/money';
 import { fmtDateTime } from '@/utils/time';
 import EpSelector from '@/components/EpSelector.vue';
@@ -137,7 +136,7 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
           · {{ leg.attachments.length }} 附件
           <template v-if="leg.shop_open"> · 开放商店</template>
           <template v-if="leg.can_eliminate"> · 淘汰 {{ leg.eliminate_count }} 队</template>
-          <template v-if="leg.cutoff_start || leg.cutoff_interval"> · 熔断 {{ fmtDurMs(leg.cutoff_start * 60000) }} 起，每 {{ fmtDurMs(leg.cutoff_interval * 60000) }}</template>
+          <template v-if="leg.cutoffs.length"> · 熔断 {{ leg.cutoffs.length }} 种</template>
         </div>
         <div v-if="auth.isHost" class="flex mt-2" @click.stop>
           <template v-if="!isFixed(leg)">

@@ -50,11 +50,16 @@ export function loadEpisodes(eventId: number) {
     if (!attByLeg.has(a.leg_id)) attByLeg.set(a.leg_id, []);
     attByLeg.get(a.leg_id)!.push({ ...a, url: `/api/files/${a.id}` });
   }
+  const cutoffsByLeg = new Map<number, any[]>();
+  for (const cf of all('SELECT c.* FROM leg_cutoffs c JOIN legs l ON l.id = c.leg_id JOIN episodes e ON e.id = l.episode_id WHERE e.event_id = ? ORDER BY c.sort, c.id', eventId)) {
+    if (!cutoffsByLeg.has(cf.leg_id)) cutoffsByLeg.set(cf.leg_id, []);
+    cutoffsByLeg.get(cf.leg_id)!.push({ id: cf.id, name: cf.name, start_min: cf.start_min, interval_min: cf.interval_min, cost: fromCents(cf.cost) });
+  }
   const legsByEp = new Map<number, any[]>();
   for (const l of legs) {
     if (!legsByEp.has(l.episode_id)) legsByEp.set(l.episode_id, []);
     const norm = l.type === 'PS' ? { can_eliminate: 1, eliminate_count: l.eliminate_count > 0 ? l.eliminate_count : 2 } : {};
-    legsByEp.get(l.episode_id)!.push({ ...l, ...norm, attachments: attByLeg.get(l.id) ?? [] });
+    legsByEp.get(l.episode_id)!.push({ ...l, ...norm, attachments: attByLeg.get(l.id) ?? [], cutoffs: cutoffsByLeg.get(l.id) ?? [] });
   }
   return episodes.map((e) => ({ ...e, budget: fromCents(e.budget), legs: legsByEp.get(e.id) ?? [] }));
 }
@@ -239,6 +244,33 @@ episodeRoutes.put('/legs/:id', hostOnly, async (c) => {
   audit(c.get('user'), 'update', 'leg', id, before, f);
   if (recomputeEliminations(c.get('event').id)) notify('teams');
   notify('episodes', before.episode_id);
+  return c.json({ ok: true });
+});
+
+/** 熔断设置整表保存：有 id 的更新，没有的新增，列表里没有的删除（使用记录里存了名字快照） */
+episodeRoutes.put('/legs/:id/cutoffs', hostOnly, async (c) => {
+  const id = intParam(c, 'id');
+  const leg = legInEvent(c, id);
+  const b = await body(c);
+  if (!Array.isArray(b.items)) throw bad('items 必须是数组');
+  const items = b.items.map((it: any, i: number) => ({ id: int(it.id, 0) || 0, name: str(it.name, 50), start_min: Math.max(0, int(it.start_min, 0)), interval_min: Math.max(0, int(it.interval_min, 0)), cost: it.cost ? money(it.cost, '消耗') : 0, sort: i }));
+  for (const it of items) { if (!it.name) throw bad('熔断种类名称不能为空'); if (it.cost < 0) throw bad('消耗不能为负数'); }
+  const before = all('SELECT * FROM leg_cutoffs WHERE leg_id = ? ORDER BY sort, id', id);
+  tx(() => {
+    const keep = new Set<number>();
+    for (const it of items) {
+      if (it.id && get('SELECT 1 FROM leg_cutoffs WHERE id = ? AND leg_id = ?', it.id, id)) {
+        run('UPDATE leg_cutoffs SET name = ?, start_min = ?, interval_min = ?, cost = ?, sort = ? WHERE id = ?', it.name, it.start_min, it.interval_min, it.cost, it.sort, it.id);
+        keep.add(it.id);
+      } else {
+        const r = run('INSERT INTO leg_cutoffs(leg_id, name, start_min, interval_min, cost, sort, created_at) VALUES (?,?,?,?,?,?,?)', id, it.name, it.start_min, it.interval_min, it.cost, it.sort, now());
+        keep.add(Number(r.lastInsertRowid));
+      }
+    }
+    for (const old of before) if (!keep.has(old.id)) run('DELETE FROM leg_cutoffs WHERE id = ?', old.id);
+  });
+  audit(c.get('user'), 'update', 'leg_cutoffs', id, before, items);
+  notify('episodes', leg.episode_id);
   return c.json({ ok: true });
 });
 

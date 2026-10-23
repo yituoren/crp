@@ -36,7 +36,6 @@ const legOptions = computed(() => {
 const kindOptions = computed(() => [
   { value: 'other', label: '其他' },
   ...(isCoin.value && race.shopItems.length ? [{ value: 'shop', label: '商店购买' }] : []),
-  { value: 'cutoff', label: '熔断' },
 ]);
 const item = computed(() => (form.itemId === '' ? null : race.shopItems.find((i) => i.id === Number(form.itemId)) ?? null));
 const itemOptions = computed(() => race.shopItems.map((i) => ({ value: i.id, label: `${i.name}（${fmtMoney(i.price)} ${moneyUnit()}）` })));

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { api } from '@/api';
 import { useAuth } from './auth';
-import { legName, type ShopItem, type Announcement, type Assignment, type Episode, type LedgerEntry, type Penalty, type PitstopRow, type Progress, type Team, type User } from '@/types';
+import { legName, type ShopItem, type CutoffUse, type Cutoff, type Announcement, type Assignment, type Episode, type LedgerEntry, type Penalty, type PitstopRow, type Progress, type Team, type User } from '@/types';
 
 
 export const useRace = defineStore('race', () => {
@@ -19,6 +19,7 @@ export const useRace = defineStore('race', () => {
   const pitstop = ref<PitstopRow[]>([]);
   const ledger = ref<LedgerEntry[]>([]);
   const shopItems = ref<ShopItem[]>([]);
+  const cutoffUses = ref<CutoffUse[]>([]);
   const loaded = ref(false);
 
   const currentEpisode = computed(() => episodes.value.find((e) => e.id === currentEpisodeId.value) ?? episodes.value[0] ?? null);
@@ -133,6 +134,18 @@ export const useRace = defineStore('race', () => {
     for (const v of [saved, selected]) if (v && !ok.includes(v)) ok.push(v); // 已存/已选的值始终可见
     return ok;
   }
+  /** 熔断：某队某种熔断的使用次数 / 下次可用时间（毫秒）；null = 该队不在此环节进行中（与服务端同一规则） */
+  function cutoffUseCount(teamId: number, cutoffId: number) {
+    return cutoffUses.value.filter((u) => u.team_id === teamId && u.cutoff_id === cutoffId).length;
+  }
+  function cutoffReadyAt(teamId: number, leg: { id: number }, cf: Cutoff): number | null {
+    const p = progressOf(teamId, leg.id);
+    if (!p?.arrived_at || p.completed_at) return null;
+    let ready = new Date(p.arrived_at).getTime() + cf.start_min * 60000;
+    const last = cutoffUses.value.filter((u) => u.team_id === teamId && u.cutoff_id === cf.id).map((u) => new Date(u.used_at).getTime()).sort((a, b) => b - a)[0];
+    if (last !== undefined) ready = Math.max(ready, last + cf.interval_min * 60000);
+    return ready;
+  }
   /** 支线紧跟在主线之后：主线 = 前一个环节；支线 = 后一个环节（若是支线） */
   function parentOf(legId: number) {
     const ep = currentEpisode.value; if (!ep) return null;
@@ -232,7 +245,7 @@ export const useRace = defineStore('race', () => {
   async function loadProgress() {
     if (!currentEpisode.value) return;
     const d = await api(`/episodes/${currentEpisode.value.id}/progress`);
-    progress.value = d.progress; penalties.value = d.penalties; pitstop.value = d.pitstop;
+    progress.value = d.progress; penalties.value = d.penalties; pitstop.value = d.pitstop; cutoffUses.value = d.cutoffUses ?? [];
   }
   async function loadLedger() {
     if (!currentEpisode.value) return;
@@ -277,7 +290,7 @@ export const useRace = defineStore('race', () => {
 
   return {
     episodes, teams, users, announcements, shopItems, loadShopItems, unreadAnnouncements, markAnnouncementsRead, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
-    aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, isLocked, teamLocked, lockReason, parentOf, branchOf, branchLocked, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, currencyLegIds, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
+    aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, isLocked, teamLocked, lockReason, cutoffUses, cutoffUseCount, cutoffReadyAt, parentOf, branchOf, branchLocked, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, currencyLegIds, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
     loadAll, reset, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
   };
 });

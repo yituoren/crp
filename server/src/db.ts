@@ -142,6 +142,29 @@ CREATE TABLE IF NOT EXISTS currency_ledger (
   leg_id INTEGER                              -- 在哪个环节发生，可空（其他）
 );
 CREATE INDEX IF NOT EXISTS idx_ledger_ep ON currency_ledger(episode_id, created_at);
+CREATE TABLE IF NOT EXISTS leg_cutoffs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  leg_id INTEGER NOT NULL REFERENCES legs(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  start_min INTEGER NOT NULL DEFAULT 0,        -- 第一次可用：队伍进入环节后多少分钟
+  interval_min INTEGER NOT NULL DEFAULT 0,     -- 每次使用后多少分钟再次可用
+  cost INTEGER NOT NULL DEFAULT 0,             -- 货币模式下每次消耗（以分存）
+  sort INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS cutoff_uses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  episode_id INTEGER NOT NULL,
+  leg_id INTEGER NOT NULL,
+  team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  cutoff_id INTEGER NOT NULL,
+  cutoff_name TEXT NOT NULL DEFAULT '',
+  used_at TEXT NOT NULL,
+  used_by INTEGER,
+  used_by_name TEXT NOT NULL DEFAULT '',
+  ledger_id INTEGER                            -- 扣币对应的流水，撤销使用时一并反向
+);
+CREATE INDEX IF NOT EXISTS idx_cutoff_uses_ep ON cutoff_uses(episode_id, team_id);
 CREATE TABLE IF NOT EXISTS shop_items (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   event_id INTEGER NOT NULL,
