@@ -57,7 +57,7 @@ const conflicts = computed(() => {
 });
 const unassignedTeams = computed(() => race.aliveTeams.filter((t) => !form.rows.some((r) => r.role === 'follow' && Number(r.teamId) === t.id)).map((t) => t.label));
 
-const legOptions = computed(() => (ep.value?.legs ?? []).filter((x) => x.needs_staff).map((l) => ({ value: l.id, label: legName(l) })));
+const legOptions = computed(() => (ep.value?.legs ?? []).filter((x) => x.needs_staff).map((l) => ({ value: l.id, label: legName(l), tag: l.type })));
 async function save() {
   if (!ep.value) return;
   for (const r of form.rows) {

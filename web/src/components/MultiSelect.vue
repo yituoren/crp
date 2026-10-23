@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import LegTag from './LegTag.vue';
+import type { LegType } from '@/types';
 
 // 下拉多选：按钮显示已选摘要，点开后是勾选列表，点击外部关闭
-const props = defineProps<{ modelValue: number[]; options: { value: number; label: string }[]; placeholder?: string }>();
+const props = defineProps<{ modelValue: number[]; options: { value: number; label: string; tag?: string }[]; placeholder?: string }>();
 const emit = defineEmits<{ 'update:modelValue': [number[]] }>();
 const open = ref(false);
 const root = ref<HTMLElement | null>(null);
@@ -41,7 +43,7 @@ onUnmounted(() => { document.removeEventListener('click', onDocClick); window.re
     </button>
     <Teleport to="body"><div v-if="open" ref="menu" class="ms-menu" :style="menuStyle">
       <label v-for="o in options" :key="o.value" class="ms-item">
-        <input type="checkbox" :checked="modelValue.includes(o.value)" @change="toggle(o.value)" /> {{ o.label }}
+        <input type="checkbox" :checked="modelValue.includes(o.value)" @change="toggle(o.value)" /><LegTag v-if="o.tag" :type="o.tag as LegType" /> {{ o.label }}
       </label>
       <div v-if="!options.length" class="text-xs text-gray" style="padding: 6px 10px">本赛段没有需要站点的环节</div>
     </div></Teleport>

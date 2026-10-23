@@ -49,15 +49,12 @@ const legRows = computed(() => {
   <div v-if="race.episodePending" class="alert alert-warning">{{ ep?.code }} 尚未开始。主办点「开始赛段」后才能记录时间、操作经费和罚时。</div>
   <div v-else-if="race.episodeFinished" class="alert alert-info">{{ ep?.code }} 已结束，所有记录已锁定，只有管理员可以修改。</div>
 
-  <!-- 跟队：本队熔断放最上面 -->
-  <CutoffCard v-if="my?.role === 'follow' && myTeam" :team-id="myTeam.id" />
-
-  <!-- 我的分工（按排班，主办也可能被排为跟队/站点） -->
-  <div class="card">
-    <div class="card-header">我的分工</div>
+  <!-- 我的分工：不再套卡片框。跟队 = 状态行 + 无边框大表格 + 灰底卡片（熔断 / 背包 / 货币 / 罚时）；站点 = 每个环节一段，横线分隔 -->
+  <div class="my-work">
     <template v-if="my?.role === 'follow' && myTeam">
-      <p><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.label }}</strong>，当前余额 <strong class="text-warning">{{ fmtMoney(myTeam.currency) }} {{ moneyUnit() }}</strong></p>
-      <div class="scroll-table">
+      <p class="my-work-head"><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.label }}</strong>，当前余额 <strong class="text-warning">{{ fmtMoney(myTeam.currency) }} {{ moneyUnit() }}</strong></p>
+      <CutoffCard :team-id="myTeam.id" />
+      <div class="scroll-table my-work-table">
         <table class="table record-table">
           <thead><tr><th class="col-first">环节</th><th class="col-status">状态</th><th class="col-time">开始</th><th class="col-time">结束</th><th class="col-extra c">记录信息</th><th class="col-action c">操作</th></tr></thead>
           <tbody>
@@ -90,11 +87,14 @@ const legRows = computed(() => {
           </tbody>
         </table>
       </div>
+      <BagCard :team-id="myTeam.id" />
+      <TeamCurrencyPanel :team-id="myTeam.id" />
+      <PenaltyPanel :team-id="myTeam.id" />
     </template>
 
     <template v-else-if="my?.role === 'station' && myLegs.length">
-      <p><span class="badge badge-station">站点</span> 你本赛段驻守 {{ myLegs.length }} 个环节：{{ myLegs.map((l) => legName(l)).join('、') }}</p>
-      <div v-for="(l, i) in myLegs" :key="l.id" class="station-leg" :class="{ 'mt-3': i > 0 }">
+      <p class="my-work-head"><span class="badge badge-station">站点</span> 你本赛段驻守 {{ myLegs.length }} 个环节：{{ myLegs.map((l) => legName(l)).join('、') }}</p>
+      <div v-for="l in myLegs" :key="l.id" class="station-leg">
         <div class="flex-between mb-1">
           <span class="section-title"><LegTag :type="l.type" full /> {{ legName(l) }}</span>
           <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: l.id } }" class="btn btn-text btn-sm">环节详情 / 附件<Icon name="open_in_new" size="16" /></router-link>
@@ -103,13 +103,13 @@ const legRows = computed(() => {
         <p v-if="l.open_time || l.close_time" class="text-sm text-gray">开放时间：{{ l.open_time || '-' }} ~ {{ l.close_time || '-' }}</p>
         <div v-if="l.judge_criteria" class="alert alert-info pre">判定标准：{{ l.judge_criteria }}</div>
         <RecordTable :leg="l" />
-        <div class="mt-2"><PenaltyPanel :leg-id="l.id" /></div>
-        <div class="mt-2"><CurrencyOps :leg-id="l.id" /></div>
+        <PenaltyPanel :leg-id="l.id" />
+        <CurrencyOps :leg-id="l.id" />
       </div>
     </template>
 
     <template v-else-if="my?.role === 'live'">
-      <p><span class="badge badge-live">直播员</span> 本赛段只读</p>
+      <p class="my-work-head"><span class="badge badge-live">直播员</span> 本赛段只读</p>
       <div class="flex">
         <router-link :to="{ name: 'progress' }" class="btn">查看进度</router-link>
         <router-link :to="{ name: 'episodes' }" class="btn btn-tonal">赛段与环节</router-link>
@@ -122,12 +122,6 @@ const legRows = computed(() => {
       <template v-else>本赛段你没有跟队或站点任务（机动幕后）。<br /><span class="text-sm">可以在「赛段信息」查看环节安排，排班有变动会实时更新。</span></template>
     </div>
   </div>
-
-  <template v-if="my?.role === 'follow' && myTeam">
-    <BagCard :team-id="myTeam.id" />
-    <TeamCurrencyPanel :team-id="myTeam.id" />
-    <PenaltyPanel :team-id="myTeam.id" />
-  </template>
 
   <ProgressEditModal v-if="editing && myTeam" :leg="editing.leg" :team="myTeam" :progress="editing.progress" @close="editing = null" />
 </template>
