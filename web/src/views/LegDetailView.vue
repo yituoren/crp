@@ -182,11 +182,16 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
       <div v-if="!leg.attachments.length" class="text-gray text-sm">暂无附件</div>
       <div v-else class="grid grid-4">
         <div v-for="att in leg.attachments" :key="att.id" class="att-item">
-          <div class="text-xs text-gray mb-1" style="word-break: break-all">{{ att.filename }} · {{ fmtSize(att.size) }}</div>
-          <img v-if="att.mime.startsWith('image/')" :src="att.url" loading="lazy" style="cursor: zoom-in" @click="preview = att.url" />
-          <a v-else :href="att.url" target="_blank" class="btn btn-text btn-sm"><Icon name="open_in_new" size="16" />打开文件</a>
-          <div class="text-xs text-gray mt-1">{{ fmtDateTime(att.created_at) }}</div>
-          <button v-if="canUpload" class="btn btn-text btn-text-danger btn-sm mt-1" @click="removeAttachment(att.id)"><Icon name="delete" size="16" />删除</button>
+          <div class="att-head">
+            <div class="att-name" :title="att.filename">{{ att.filename }}</div>
+            <div class="text-xs text-gray">{{ fmtSize(att.size) }} · {{ fmtDateTime(att.created_at) }}</div>
+          </div>
+          <img v-if="att.mime.startsWith('image/')" :src="att.url" loading="lazy" class="att-thumb" @click="preview = att.url" />
+          <div v-else class="att-thumb att-thumb-file"><Icon name="description" size="32" /></div>
+          <div class="att-actions">
+            <a :href="att.url" target="_blank" class="btn btn-text btn-sm"><Icon name="open_in_new" size="16" />打开</a>
+            <button v-if="canUpload" class="btn btn-text btn-text-danger btn-sm" @click="removeAttachment(att.id)"><Icon name="delete" size="16" />删除</button>
+          </div>
         </div>
       </div>
       <div v-if="canUpload" class="upload-area" @click="fileInput?.click()">

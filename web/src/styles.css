@@ -267,8 +267,14 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .log-negative { color: var(--danger); font-weight: 600; }
 .upload-area { border: 1.5px dashed var(--gray-300); border-radius: var(--radius-sm); padding: 18px; text-align: center; color: var(--gray-500); cursor: pointer; margin-top: 10px; background: var(--surface-2); transition: border-color .15s, color .15s, background-color .15s; }
 .upload-area:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
-.att-item { border: 1px solid var(--gray-200); border-radius: var(--radius-sm); padding: 8px; background: var(--surface-2); }
-.att-item img { max-width: 100%; border-radius: 8px; display: block; }
+/* 附件卡片：上方文件名，中间缩略图，下方打开 / 删除 */
+.att-item { border-radius: var(--radius-sm); padding: 10px 12px; background: var(--surface-2); display: flex; flex-direction: column; gap: 8px; }
+.att-head { min-width: 0; }
+.att-name { font-size: 14px; font-weight: 500; color: var(--gray-900); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.att-thumb { display: block; width: 100%; height: 120px; object-fit: cover; border-radius: 8px; cursor: zoom-in; background: var(--gray-100); }
+.att-thumb-file { display: flex; align-items: center; justify-content: center; color: var(--gray-400); cursor: default; }
+.att-actions { display: flex; justify-content: space-between; align-items: center; margin: 0 -6px; }
+.att-actions > :only-child { margin-left: auto; }
 .alert { padding: 10px 14px 10px 40px; border-radius: 12px; margin-bottom: 10px; font-size: 13px; border: none; position: relative; line-height: 1.5; }
 .alert::before { content: ''; position: absolute; left: 14px; top: 10px; width: 18px; height: 18px; background: currentColor; -webkit-mask: var(--alert-icon) center / contain no-repeat; mask: var(--alert-icon) center / contain no-repeat; opacity: .9; }
 .alert-warning { background: #fef7e0; color: var(--warning-on-light); --alert-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z'/></svg>"); }
