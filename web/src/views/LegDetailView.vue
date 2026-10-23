@@ -58,7 +58,6 @@ async function saveLeg() {
 }
 const fileInput = ref<HTMLInputElement | null>(null);
 const uploading = ref(false);
-const preview = ref<string | null>(null);
 
 // 进入详情页时把当前赛段切到该环节所属赛段，保证记录/排班数据一致
 watch(episodeId, (id) => { if (id && id !== race.currentEpisodeId) race.selectEpisode(id); }, { immediate: true });
@@ -107,7 +106,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
               </div>
               <div class="form-group"><label>{{ isDestinationLeg(form.type) ? '目的地' : '名称' }}</label><input v-model="form.name" :placeholder="form.type === 'RI' ? '目的地名称，显示时自动加箭头' : form.type === 'PS' ? '中继站所在地' : ''" /></div>
             </div>
-            <label v-if="moneyMode() === 'coin'" class="check-row"><input v-model="form.shop_open" type="checkbox" /> 本环节开放商店<span class="text-gray text-sm">（队伍可在此用货币购买商品）</span></label>
+            <label v-if="moneyMode() === 'coin'" class="check-row"><input v-model="form.shop_open" type="checkbox" :disabled="!race.structureEditable" /> 本环节开放商店<span class="text-gray text-sm">（队伍可在此用货币购买商品）</span></label>
           </div>
           <div v-if="form.type !== 'BR'" class="edit-section">
             <div class="edit-section-title">淘汰</div>
@@ -186,8 +185,6 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
             <div class="att-name" :title="att.filename">{{ att.filename }}</div>
             <div class="text-xs text-gray">{{ fmtSize(att.size) }} · {{ fmtDateTime(att.created_at) }}</div>
           </div>
-          <img v-if="att.mime.startsWith('image/')" :src="att.url" loading="lazy" class="att-thumb" @click="preview = att.url" />
-          <div v-else class="att-thumb att-thumb-file"><Icon name="description" size="32" /></div>
           <div class="att-actions">
             <a :href="att.url" target="_blank" class="btn btn-text btn-sm"><Icon name="open_in_new" size="16" />打开</a>
             <button v-if="canUpload" class="btn btn-text btn-text-danger btn-sm" @click="removeAttachment(att.id)"><Icon name="delete" size="16" />删除</button>
@@ -205,9 +202,6 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
       <RecordTable :leg="leg" />
     </div>
 
-    <div v-if="preview" class="modal-overlay" @click="preview = null">
-      <img :src="preview" style="max-width: 100%; max-height: 92vh; border-radius: 8px" />
-    </div>
   </template>
   <CutoffUsage v-if="leg" :leg="leg" />
 </template>

@@ -243,7 +243,7 @@ episodeRoutes.put('/legs/:id', hostOnly, async (c) => {
   const fixed = before.type === 'SL' || before.type === 'PS';
   if (b.type !== undefined && b.type !== before.type && (fixed || b.type === 'SL' || b.type === 'PS')) throw bad('Starting Line 与中继站的类型固定，不能改成或改自其他类型');
   const f = legFields(b, before);
-  if (f.type !== before.type || !!f.can_eliminate !== !!before.can_eliminate || f.eliminate_count !== before.eliminate_count) assertStructureEditable(c, before.episode_id);
+  if (f.type !== before.type || !!f.can_eliminate !== !!before.can_eliminate || f.eliminate_count !== before.eliminate_count || !!f.shop_open !== !!before.shop_open) assertStructureEditable(c, before.episode_id);
   tx(() => {
   run(
     `UPDATE legs SET type=?, name=?, description=?, address=?, map_url=?, clue_text=?, judge_criteria=?, open_time=?, close_time=?, detour_a=?, detour_b=?, needs_staff=?, record_mode=?, cutoff_start=?, cutoff_interval=?, shop_open=?, can_eliminate=?, eliminate_count=? WHERE id=?`,
