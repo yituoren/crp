@@ -525,14 +525,17 @@ html, body { overscroll-behavior: none; }
 .home-search:focus-within { background: var(--surface); box-shadow: var(--shadow-1); }
 .home-search input { flex: 1; height: 100%; border: none; background: transparent; padding: 0; font-size: 16px; color: var(--gray-900); box-shadow: none; min-width: 0; }
 .home-search input:focus { box-shadow: none; outline: none; }
-/* 账号：点击展开菜单 */
-.home-account { margin-left: auto; position: relative; }
-.home-account-btn { height: 40px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px 0 8px; border: none; border-radius: 20px; background: transparent; color: var(--gray-800); font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer; transition: background-color .15s; }
-.home-account-btn:hover, .home-account-btn.open { background: rgba(60, 64, 67, .08); }
-.home-account-btn .icon { color: var(--gray-600); }
-.home-menu { position: absolute; right: 0; top: 46px; min-width: 180px; }
-.home-menu .sel-item { text-decoration: none; }
-.home-menu .sel-item:hover { text-decoration: none; }
+/* 右上角账号：点击展开菜单（主页与比赛内共用） */
+.acct { position: relative; flex: none; }
+.home-top .acct { margin-left: auto; }
+.acct-btn { height: 40px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px 0 8px; border: none; border-radius: 20px; background: transparent; color: var(--gray-800); font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer; transition: background-color .15s; }
+.acct-btn:hover, .acct-btn.open { background: rgba(60, 64, 67, .08); }
+.acct-btn .icon { color: var(--gray-600); }
+.acct-menu { position: absolute; right: 0; top: 46px; min-width: 180px; z-index: 420; }
+.acct-menu .sel-item { text-decoration: none; }
+.acct-menu .sel-item:hover { text-decoration: none; }
+.sel-item-danger { color: var(--danger); }
+.sel-item-danger:hover { background: var(--danger-light); }
 /* 列表面板 */
 .home-panel { flex: 1; background: var(--surface); border-radius: 16px; padding: 12px 0 8px; display: flex; flex-direction: column; min-height: 0; }
 .home-chips { display: flex; align-items: center; gap: 8px; padding: 0 12px 12px 16px; border-bottom: 1px solid var(--gray-200); }
@@ -583,8 +586,8 @@ html, body { overscroll-behavior: none; }
   .home-top { height: 56px; gap: 6px; }
   .home-menu-btn { display: inline-flex; margin-left: -8px; }
   .home-search { max-width: none; height: 44px; padding-left: 12px; }
-  .home-account-btn { padding: 0 6px; }
-  .home-account-name { display: none; }
+  .home-top .acct-btn { padding: 0 6px; }
+  .home-top .acct-name { display: none; }
   /* 手机：三个筛选条固定一行，放不下时横向滑动；展示切换固定在右侧 */
   .home-chips { padding: 0 6px 10px 8px; gap: 4px; }
   .home-chips-row { flex: 1; flex-wrap: nowrap; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-bottom: 1px; }

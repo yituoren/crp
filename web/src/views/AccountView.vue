@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useUi } from '@/stores/ui';
@@ -7,7 +7,21 @@ import { fmtDateTime } from '@/utils/time';
 
 const auth = useAuth();
 const ui = useUi();
-const tab = ref<'users' | 'audit' | 'backup'>('users');
+// 管理员：账号管理 / 我的账号 / 全部日志 / 备份与重置；其他人只有修改密码
+const tab = ref<'users' | 'me' | 'audit' | 'backup'>(auth.isAdmin ? 'users' : 'me');
+
+// 修改自己的密码（所有人）
+const pw = reactive({ oldPassword: '', newPassword: '', newPassword2: '' });
+const pwMsg = ref('');
+async function changePassword() {
+  pwMsg.value = '';
+  if (pw.newPassword !== pw.newPassword2) { pwMsg.value = '两次新密码不一致'; return; }
+  try {
+    await api('/auth/change-password', { method: 'POST', body: { oldPassword: pw.oldPassword, newPassword: pw.newPassword } });
+    Object.assign(pw, { oldPassword: '', newPassword: '', newPassword2: '' });
+    ui.toast('密码修改成功');
+  } catch (e) { pwMsg.value = e instanceof Error ? e.message : String(e); }
+}
 
 // 账号
 const users = ref<any[]>([]);
@@ -76,14 +90,27 @@ async function resetAll(includeAccounts: boolean) {
   try { await api('/system/reset', { method: 'POST', body: { includeAccounts } }); ui.toast('已重置'); window.location.reload(); } catch (e) { ui.error(e); }
 }
 
-onMounted(() => { loadUsers(); if (auth.isAdmin) loadAudit(); });
+onMounted(() => { if (auth.isAdmin) { loadUsers(); loadAudit(); } });
 </script>
 
 <template>
-  <div class="nav">
+  <div v-if="auth.isAdmin" class="nav">
     <a href="#" :class="{ 'router-link-active': tab === 'users' }" @click.prevent="tab = 'users'">账号管理</a>
-    <a v-if="auth.isAdmin" href="#" :class="{ 'router-link-active': tab === 'audit' }" @click.prevent="tab = 'audit'; loadAudit()">全部日志</a>
-    <a v-if="auth.isAdmin" href="#" :class="{ 'router-link-active': tab === 'backup' }" @click.prevent="tab = 'backup'">备份与重置</a>
+    <a href="#" :class="{ 'router-link-active': tab === 'me' }" @click.prevent="tab = 'me'">我的账号</a>
+    <a href="#" :class="{ 'router-link-active': tab === 'audit' }" @click.prevent="tab = 'audit'; loadAudit()">全部日志</a>
+    <a href="#" :class="{ 'router-link-active': tab === 'backup' }" @click.prevent="tab = 'backup'">备份与重置</a>
+  </div>
+
+  <!-- 修改密码：所有人；忘记密码只能找管理员重置 -->
+  <div v-if="tab === 'me'" class="card" style="max-width: 420px; margin: 0 auto">
+    <div class="card-header"><span>修改密码</span><span class="text-sm text-gray">{{ auth.user?.displayName }}</span></div>
+    <form @submit.prevent="changePassword">
+      <div class="form-group"><label>当前密码</label><input v-model="pw.oldPassword" type="password" autocomplete="current-password" /></div>
+      <div class="form-group"><label>新密码</label><input v-model="pw.newPassword" type="password" autocomplete="new-password" /></div>
+      <div class="form-group"><label>确认新密码</label><input v-model="pw.newPassword2" type="password" autocomplete="new-password" /></div>
+      <button class="btn btn-block" type="submit">修改密码</button>
+      <div class="form-error">{{ pwMsg }}</div>
+    </form>
   </div>
 
   <div v-if="tab === 'users'" class="card">
@@ -98,12 +125,9 @@ onMounted(() => { loadUsers(); if (auth.isAdmin) loadAudit(); });
             <td class="c"><span :class="u.disabled ? 'status-eliminated' : 'status-alive'">{{ u.disabled ? '已停用' : '正常' }}</span></td>
             <td>{{ fmtDateTime(u.created_at) }}</td>
             <td class="flex c" style="gap: 6px">
-              <template v-if="u.role !== 'admin' || auth.isAdmin">
-                <button class="btn btn-text btn-sm" @click="resetPassword(u)"><Icon name="key" size="16" />重置密码</button>
-                <button v-if="u.id !== auth.user?.id" class="btn btn-text btn-sm" @click="toggleDisabled(u)">{{ u.disabled ? '启用' : '停用' }}</button>
-                <button v-if="u.id !== auth.user?.id" class="btn btn-text btn-text-danger btn-sm" @click="deleteUser(u)"><Icon name="delete" size="16" />删除</button>
-              </template>
-              <span v-else class="text-xs text-gray">仅管理员可操作</span>
+              <button class="btn btn-text btn-sm" @click="resetPassword(u)"><Icon name="key" size="16" />重置密码</button>
+              <button v-if="u.id !== auth.user?.id" class="btn btn-text btn-sm" @click="toggleDisabled(u)">{{ u.disabled ? '启用' : '停用' }}</button>
+              <button v-if="u.id !== auth.user?.id" class="btn btn-text btn-text-danger btn-sm" @click="deleteUser(u)"><Icon name="delete" size="16" />删除</button>
             </td>
           </tr>
         </tbody>

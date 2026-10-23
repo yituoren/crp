@@ -11,8 +11,8 @@ export const router = createRouter({
       component: () => import('@/components/PlainLayout.vue'),
       children: [
         { path: '', name: 'home', component: () => import('@/views/HomeView.vue') },
-        { path: 'account', name: 'account', component: () => import('@/views/AccountView.vue'), meta: { account: true } },
-        { path: 'password', name: 'password', component: () => import('@/views/ChangePasswordView.vue') },
+        { path: 'account', name: 'account', component: () => import('@/views/AccountView.vue') },
+        { path: 'password', redirect: '/account' },
       ],
     },
     // 比赛内：/e/<hash>/...
@@ -40,6 +40,5 @@ router.beforeEach(async (to) => {
   if (!auth.ready) await auth.fetchMe();
   if (to.meta.public) return auth.user ? '/' : true;
   if (!auth.user) return { path: '/login', query: { redirect: to.fullPath } };
-  if (to.meta.account && !(auth.isAdmin || auth.hostAnywhere)) return '/';
   return true;
 });

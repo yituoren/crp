@@ -7,6 +7,7 @@ import { useUi } from '@/stores/ui';
 import { connectRealtime, disconnectRealtime } from '@/realtime';
 import { setUnauthorizedHandler } from '@/api';
 import TeamPositions from './TeamPositions.vue';
+import AccountMenu from './AccountMenu.vue';
 import { ref, computed } from 'vue';
 
 const auth = useAuth();
@@ -115,11 +116,6 @@ onUnmounted(() => {
   }
 });
 
-async function logout() {
-  disconnectRealtime();
-  await auth.logout();
-  router.replace('/login');
-}
 </script>
 
 <template>
@@ -140,9 +136,7 @@ async function logout() {
       </div>
       <div class="user-bar">
         <span v-if="!ui.online" class="sync-status offline" title="与服务器的实时连接已断开，正在重连"><span class="sync-dot"></span>连接中断</span>
-        <span class="user-name">{{ auth.user?.displayName }}</span>
-        <router-link to="/password" class="icon-btn" title="修改密码" aria-label="修改密码"><Icon name="key" /></router-link>
-        <button class="icon-btn" title="退出登录" aria-label="退出登录" @click="logout"><Icon name="logout" /></button>
+        <AccountMenu :before-logout="disconnectRealtime" />
       </div>
     </header>
     <nav class="nav">

@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { api, setUnauthorizedHandler } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useUi } from '@/stores/ui';
 import { fmtDate } from '@/utils/time';
 import Modal from '@/components/Modal.vue';
+import AccountMenu from '@/components/AccountMenu.vue';
 import type { EventSummary } from '@/types';
 
 const auth = useAuth();
@@ -88,18 +89,11 @@ async function create() {
   } catch (e) { ui.error(e); }
 }
 
-// 账号菜单：点用户名展开（账号管理 / 修改密码 / 退出）
-const menuOpen = ref(false);
-const accountEl = ref<HTMLElement | null>(null);
-function onDocClick(e: MouseEvent) { if (accountEl.value && !accountEl.value.contains(e.target as Node)) menuOpen.value = false; }
-async function logout() { await auth.logout(); router.replace('/login'); }
 onMounted(() => {
   auth.leaveEvent();
   setUnauthorizedHandler(() => { auth.user = null; router.replace('/login'); });
-  document.addEventListener('click', onDocClick);
   load();
 });
-onUnmounted(() => document.removeEventListener('click', onDocClick));
 </script>
 
 <template>
@@ -122,14 +116,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick));
           <input v-model="q" placeholder="搜索比赛名称或主办" />
           <button v-if="q" class="icon-btn" title="清除" aria-label="清除" @click="q = ''"><Icon name="close" size="20" /></button>
         </label>
-        <div ref="accountEl" class="home-account">
-          <button class="home-account-btn" :class="{ open: menuOpen }" @click="menuOpen = !menuOpen"><Icon name="account_circle" size="26" /><span class="home-account-name">{{ auth.user?.displayName }}</span></button>
-          <div v-if="menuOpen" class="sel-menu home-menu">
-            <router-link v-if="auth.isAdmin || auth.hostAnywhere" to="/account" class="sel-item"><Icon name="group" size="20" />账号管理</router-link>
-            <router-link to="/password" class="sel-item"><Icon name="key" size="20" />修改密码</router-link>
-            <button class="sel-item" @click="logout"><Icon name="logout" size="20" />退出登录</button>
-          </div>
-        </div>
+        <AccountMenu />
       </div>
 
       <section class="home-panel">

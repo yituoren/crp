@@ -3,6 +3,7 @@ import { onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '@/stores/auth';
 import { setUnauthorizedHandler } from '@/api';
+import AccountMenu from './AccountMenu.vue';
 
 const auth = useAuth();
 const router = useRouter();
@@ -10,9 +11,9 @@ onMounted(() => {
   auth.leaveEvent();
   setUnauthorizedHandler(() => { auth.user = null; router.replace('/login'); });
 });
-async function logout() {
-  await auth.logout();
-  router.replace('/login');
+/** 返回：回到进入这个页面之前的地方（主页或比赛内），没有历史时回主页 */
+function goBack() {
+  if (window.history.state?.back) router.back(); else router.push('/');
 }
 </script>
 
@@ -22,15 +23,10 @@ async function logout() {
     <div class="container">
       <header class="page-header">
         <div class="appbar-left">
-          <router-link v-if="$route.name !== 'home'" to="/" class="icon-btn" title="回到主页" aria-label="回到主页"><Icon name="arrow_back" size="22" /></router-link>
+          <button class="icon-btn" title="返回" aria-label="返回" @click="goBack"><Icon name="arrow_back" size="22" /></button>
           <h1><router-link to="/" class="plain-title">城市飞奔 幕后指挥系统</router-link></h1>
         </div>
-        <div class="user-bar">
-          <span class="user-name">{{ auth.user?.displayName }}</span>
-          <router-link v-if="auth.isAdmin || auth.hostAnywhere" to="/account" class="btn btn-text btn-sm"><Icon name="group" size="18" />账号管理</router-link>
-          <router-link to="/password" class="icon-btn" title="修改密码" aria-label="修改密码"><Icon name="key" /></router-link>
-          <button class="icon-btn" title="退出登录" aria-label="退出登录" @click="logout"><Icon name="logout" /></button>
-        </div>
+        <AccountMenu />
       </header>
       <div class="page-body"><router-view /></div>
     </div>
