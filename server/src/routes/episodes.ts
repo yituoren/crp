@@ -1,11 +1,11 @@
 import { Hono, type Context } from 'hono';
-import { recomputeEliminations } from '../elimination.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { all, get, run, tx, now, UPLOAD_DIR, fromCents } from '../db.js';
 import { hostOnly, canUploadToLeg, isAdminRole, type Env, type EventRow } from '../auth.js';
-import { audit, body, str, int, intParam, notify, bad, notFound, forbidden, money } from '../util.js';
-import { teamLabelMap } from './teams.js';
+import { audit, body, str, int, intParam, notify, bad, notFound, forbidden, money, isoOrNull } from '../util.js';
+import { startEpisodeNow, departurePlan, type EpisodeRow } from '../episodeStart.js';
+import { recomputeEliminations, lockFromAfterLastRecord } from '../elimination.js';
 
 export const LEG_TYPES = ['SL', 'RI', 'TI', 'DT', 'RB', 'FF', 'Union', 'Shuffle', 'UT', 'YD', 'SB', 'FO', 'Trap', 'BR', 'PS'] as const;
 export type RecordMode = 'none' | 'single' | 'full';
@@ -119,8 +119,13 @@ episodeRoutes.put('/episodes/:id', hostOnly, async (c) => {
     status: ['pending', 'running', 'finished'].includes(b.status) ? b.status : before.status,
     notes: b.notes === undefined ? before.notes : str(b.notes),
     sort: b.sort === undefined ? before.sort : int(b.sort, before.sort),
+    start_at: b.startAt === undefined ? before.start_at : isoOrNull(b.startAt),
+    inherit_rank: b.inheritRank === undefined ? before.inherit_rank : (b.inheritRank ? 1 : 0),
+    start_gap_min: b.startGapMin === undefined ? before.start_gap_min : Math.max(0, int(b.startGapMin, 0)),
   };
-  run('UPDATE episodes SET name=?, budget=?, status=?, notes=?, sort=? WHERE id=?', next.name, next.budget, next.status, next.notes, next.sort, id);
+  if (b.startAt && !next.start_at) throw bad('自动开始时间格式不正确');
+  run('UPDATE episodes SET name=?, budget=?, status=?, notes=?, sort=?, start_at=?, inherit_rank=?, start_gap_min=? WHERE id=?',
+    next.name, next.budget, next.status, next.notes, next.sort, next.start_at, next.inherit_rank, next.start_gap_min, id);
   audit(c.get('user'), 'update', 'episode', id, before, next);
   notify('episodes');
   return c.json({ ok: true });
@@ -145,30 +150,41 @@ episodeRoutes.post('/episodes/:id/start', hostOnly, (c) => {
   if (running) throw bad(`${running.code} 仍在进行中，请先结束它再开始新的赛段`);
   const unfinished = all("SELECT code FROM episodes WHERE event_id = ? AND (sort < ? OR (sort = ? AND id < ?)) AND status != 'finished' ORDER BY sort, id", ep.event_id, ep.sort, ep.sort, id);
   if (unfinished.length) throw bad(`前面的赛段还没有结束：${unfinished.map((e) => e.code).join('、')}`);
-  const user = c.get('user');
-  const t = now();
-  const issued: string[] = [];
-  const labels = teamLabelMap();
-  tx(() => {
-    run("UPDATE episodes SET status = 'running', started_at = COALESCE(started_at, ?) WHERE id = ?", t, id);
-    if (!ep.started_at && ep.budget > 0) {
-      for (const team of all("SELECT id, name, currency FROM teams WHERE status = 'alive' AND event_id = ? ORDER BY sort, id", ep.event_id)) {
-        const balance = team.currency + ep.budget;
-        run('UPDATE teams SET currency = ? WHERE id = ?', balance, team.id);
-        run(
-          'INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at) VALUES (?,?,?,?,?,?,?,?)',
-          id, team.id, ep.budget, balance, `${ep.code} 补充经费`, user.id, user.displayName, t,
-        );
-        issued.push(labels.get(team.id) ?? team.name);
-      }
-    }
-  });
-  audit(user, 'start', 'episode', id, { status: ep.status, started_at: ep.started_at }, { issuedBudgetTo: issued });
-  notify('episodes'); notify('teams'); notify('ledger', id);
+  const issued = startEpisodeNow(ep as EpisodeRow, c.get('user'), now());
   return c.json({ ok: true, issuedBudgetTo: issued, alreadyStarted: !!ep.started_at });
 });
 
 /** 结束赛段：状态改为已结束，记录结束时间 */
+/** 发车计划：每支队伍的自动出发时间（设置了自动开始时间才有） */
+episodeRoutes.get('/episodes/:id/departures', (c) => {
+  const ep = episodeInEvent(c, intParam(c, 'id'));
+  return c.json({ departures: departurePlan(ep as EpisodeRow) });
+});
+
+/** 重置赛段（测试用）：清掉本赛段及之后所有赛段的记录数据，赛段回到未开始；环节设置、排班、附件不动 */
+episodeRoutes.post('/episodes/:id/reset', hostOnly, (c) => {
+  const id = intParam(c, 'id');
+  const ep = episodeInEvent(c, id);
+  const eventId = ep.event_id;
+  const ids = all<{ id: number; code: string }>('SELECT id, code FROM episodes WHERE event_id = ? AND (sort > ? OR (sort = ? AND id >= ?)) ORDER BY sort, id', eventId, ep.sort, ep.sort, id);
+  tx(() => {
+    for (const e of ids) {
+      for (const table of ['progress', 'penalties', 'pitstop_results', 'cutoff_uses', 'currency_ledger']) run(`DELETE FROM ${table} WHERE episode_id = ?`, e.id);
+      run("UPDATE episodes SET status = 'pending', started_at = NULL, finished_at = NULL WHERE id = ?", e.id);
+    }
+    // 余额按剩余流水重算（经费发放、购买、熔断都在流水里）
+    for (const t of all<{ id: number }>('SELECT id FROM teams WHERE event_id = ?', eventId)) {
+      const sum = get<{ s: number | null }>('SELECT SUM(delta) AS s FROM currency_ledger WHERE team_id = ?', t.id)?.s ?? 0;
+      run('UPDATE teams SET currency = ? WHERE id = ?', sum, t.id);
+    }
+    recomputeEliminations(eventId);
+    for (const t of all<{ id: number }>("SELECT id FROM teams WHERE event_id = ? AND status = 'withdrawn'", eventId)) run('UPDATE teams SET locked_from_leg_id = ? WHERE id = ?', lockFromAfterLastRecord(eventId, t.id), t.id);
+  });
+  audit(c.get('user'), 'reset', 'episode', id, undefined, { episodes: ids.map((e) => e.code) });
+  notify('episodes'); notify('teams'); notify('progress'); notify('ledger'); notify('pitstop');
+  return c.json({ ok: true, episodes: ids.map((e) => e.code) });
+});
+
 episodeRoutes.post('/episodes/:id/finish', hostOnly, (c) => {
   const id = intParam(c, 'id');
   const ep = episodeInEvent(c, id);

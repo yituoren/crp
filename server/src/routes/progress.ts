@@ -6,6 +6,7 @@ import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forb
 import { teamLabelMap } from './teams.js';
 import { addLedgerEntry, revertLedgerEntry } from './ledger.js';
 import { episodeInEvent } from './episodes.js';
+import { prevEndTime, emptyProgress, chainAfterComplete, upsertProgress } from '../progressCore.js';
 
 export const progressRoutes = new Hono<Env>();
 
@@ -269,40 +270,6 @@ function branchLegOf(leg: { id: number; episode_id: number; sort: number; type: 
   const next = get<{ id: number; type: string }>('SELECT id, type FROM legs WHERE episode_id = ? AND sort > ? ORDER BY sort, id LIMIT 1', leg.episode_id, leg.sort);
   return next?.type === 'BR' ? next : null;
 }
-function prevEndTime(episodeId: number, teamId: number, sort: number): string | null {
-  return get(
-    `SELECT p.completed_at FROM progress p JOIN legs l ON l.id = p.leg_id
-     WHERE p.episode_id = ? AND p.team_id = ? AND l.sort < ? AND l.type != 'BR' AND p.completed_at IS NOT NULL ORDER BY l.sort DESC, l.id DESC LIMIT 1`,
-    episodeId, teamId, sort,
-  )?.completed_at ?? null;
-}
-function emptyProgress() {
-  return { arrived_at: null, completed_at: null, detour_choice: null, roadblock_by: null, ff_result: null, target_team_id: null, note: '' };
-}
-/**
- * 记录完成后的自动联动：
- *  - 下一个环节（尚未完成）的开始时间 = 本环节结束时间
- *  - 中间被跳过的环节（只有自动填的开始时间、没有完成）把开始时间清掉
- */
-function chainAfterComplete(episodeId: number, teamId: number, sort: number, endAt: string | null, userId: number, legType = '') {
-  if (!endAt || legType === 'BR') return; // 支线结束不触发下一环节
-  const nextLeg = get("SELECT id FROM legs WHERE episode_id = ? AND sort > ? AND type != 'BR' ORDER BY sort, id LIMIT 1", episodeId, sort);
-  if (nextLeg) {
-    const np = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, nextLeg.id) ?? emptyProgress();
-    if (!np.completed_at) upsertProgress(episodeId, teamId, nextLeg.id, { ...np, arrived_at: endAt }, userId);
-  }
-  const prevDone = get(
-    `SELECT l.sort FROM progress p JOIN legs l ON l.id = p.leg_id
-     WHERE p.episode_id = ? AND p.team_id = ? AND l.sort < ? AND p.completed_at IS NOT NULL ORDER BY l.sort DESC LIMIT 1`,
-    episodeId, teamId, sort,
-  );
-  const lower = prevDone?.sort ?? -1;
-  for (const sk of all(
-    `SELECT p.* FROM progress p JOIN legs l ON l.id = p.leg_id
-     WHERE p.episode_id = ? AND p.team_id = ? AND l.sort > ? AND l.sort < ? AND l.type != 'BR' AND p.arrived_at IS NOT NULL AND p.completed_at IS NULL`,
-    episodeId, teamId, lower, sort,
-  )) upsertProgress(episodeId, teamId, sk.leg_id, { ...sk, arrived_at: null }, userId);
-}
 /** 撤销完成后：下一个环节若只是自动带上了这个开始时间，也一并清掉 */
 function unchainAfterUndo(episodeId: number, teamId: number, sort: number, oldEnd: string, userId: number, legType = '') {
   if (legType === 'BR') return;
@@ -320,18 +287,6 @@ function rechainAfterEdit(episodeId: number, teamId: number, sort: number, oldEn
   if (np.completed_at) return;
   if (np.arrived_at && np.arrived_at !== oldEnd) return; // 下一环节的开始时间被人手动改过，不动
   upsertProgress(episodeId, teamId, nextLeg.id, { ...np, arrived_at: newEnd }, userId);
-}
-
-function upsertProgress(episodeId: number, teamId: number, legId: number, p: any, userId: number) {
-  run(
-    `INSERT INTO progress(episode_id, team_id, leg_id, arrived_at, completed_at, detour_choice, roadblock_by, ff_result, target_team_id, note, recorded_by, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
-     ON CONFLICT(episode_id, team_id, leg_id) DO UPDATE SET
-       arrived_at = excluded.arrived_at, completed_at = excluded.completed_at, detour_choice = excluded.detour_choice,
-       roadblock_by = excluded.roadblock_by, ff_result = excluded.ff_result, target_team_id = excluded.target_team_id, note = excluded.note,
-       recorded_by = excluded.recorded_by, updated_at = excluded.updated_at`,
-    episodeId, teamId, legId, p.arrived_at, p.completed_at, p.detour_choice, p.roadblock_by, p.ff_result, p.target_team_id ?? null, p.note ?? '', userId, now(),
-  );
 }
 
 /** 修改记录：主办任意；跟队可改所跟队伍在进行中赛段的已有记录（不能清空时间、不能填未来） */

@@ -197,7 +197,8 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .tag-BR { background: #0D9488; }                     /* 支线 */
 
 /* 赛段选择 */
-.ep-selector { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; scrollbar-width: none; }
+.ep-selector { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; scrollbar-width: none; }
+.ep-selector-right { margin-left: auto; flex: none; padding-left: 8px; }
 .ep-selector::-webkit-scrollbar { display: none; }
 .ep-btn { flex: 0 0 auto; padding: 0 16px; min-height: 32px; border-radius: 8px; border: 1px solid var(--gray-300); background: transparent; color: var(--gray-700); cursor: pointer; font-size: 14px; font-weight: 500; font-family: inherit; transition: background-color .15s, border-color .15s, color .15s; }
 .ep-btn:hover { background: rgba(60, 64, 67, .06); }

@@ -10,6 +10,7 @@ import { authRequired, eventContext, type Env } from './auth.js';
 import { HttpError } from './util.js';
 import { attachRealtime } from './realtime.js';
 import { seed } from './seed.js';
+import { startScheduler } from './scheduler.js';
 import { authRoutes } from './routes/auth.js';
 import { episodeRoutes } from './routes/episodes.js';
 import { teamRoutes } from './routes/teams.js';
@@ -87,3 +88,4 @@ const server = serve({ fetch: app.fetch, port: PORT, hostname: '0.0.0.0' }, (inf
   console.log(`[server] listening on http://0.0.0.0:${info.port} (static: ${fs.existsSync(PUBLIC_DIR) ? PUBLIC_DIR : 'none, dev mode'})`);
 });
 attachRealtime(server as any);
+startScheduler();

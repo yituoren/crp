@@ -34,7 +34,7 @@ export interface Leg {
   id: number; episode_id: number; sort: number; type: LegType; name: string; description: string; address: string; map_url: string;
   clue_text: string; judge_criteria: string; open_time: string; close_time: string; detour_a: string; detour_b: string; needs_staff: number; record_mode: RecordMode; cutoff_start: number; cutoff_interval: number; shop_open: number; can_eliminate: number; eliminate_count: number; attachments: Attachment[]; cutoffs: Cutoff[];
 }
-export interface Episode { id: number; code: string; name: string; budget: number; sort: number; status: 'pending' | 'running' | 'finished'; notes: string; started_at: string | null; finished_at: string | null; legs: Leg[] }
+export interface Episode { id: number; code: string; name: string; budget: number; sort: number; status: 'pending' | 'running' | 'finished'; notes: string; started_at: string | null; finished_at: string | null; start_at: string | null; inherit_rank: number; start_gap_min: number; legs: Leg[] }
 export interface Team { id: number; code: string; name: string; members: string[]; label: string; status: 'alive' | 'eliminated' | 'withdrawn'; currency: number; sort: number; rbCounts: Record<string, number>; inventory: { name: string; count: number }[]; eliminated_leg_id: number | null; locked_from_leg_id: number | null }
 export interface Assignment { id: number; episode_id: number; user_id: number; role: 'follow' | 'station' | 'live'; team_id: number | null; leg_id: number | null; leg_ids: number[]; leg_names: string[]; username: string; display_name: string; team_name: string | null }
 export interface Progress {

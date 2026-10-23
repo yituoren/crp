@@ -9,5 +9,6 @@ const statusIcon: Record<string, string> = { pending: '', running: '●', finish
     <button v-for="ep in race.episodes" :key="ep.id" class="ep-btn" :class="{ active: ep.id === race.currentEpisode?.id }" @click="race.selectEpisode(ep.id)">
       {{ ep.code }}<span v-if="statusIcon[ep.status]" class="sub">{{ statusIcon[ep.status] }}</span>
     </button>
+    <div v-if="$slots.right" class="ep-selector-right"><slot name="right" /></div>
   </div>
 </template>

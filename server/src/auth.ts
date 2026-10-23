@@ -34,6 +34,8 @@ export type Env = { Variables: { user: AuthUser; event: EventRow } };
 /** 当前请求所在的比赛，放在 AsyncLocalStorage 里，金额格式、审计日志等处不用层层传参 */
 const eventStore = new AsyncLocalStorage<EventRow>();
 export const currentEvent = () => eventStore.getStore() ?? null;
+/** 在某个比赛的上下文里执行（定时任务等没有请求的场景） */
+export const withEvent = <T>(ev: EventRow, fn: () => T): T => eventStore.run(ev, fn);
 /** 用户在某个比赛里的角色：管理员恒为 admin；创建者 host；成员表里标了 host 的为 host；其余 crew */
 export function roleIn(user: { id: number; username: string; role: string }, ev: EventRow): 'admin' | 'host' | 'crew' {
   if (user.role === 'admin') return 'admin';

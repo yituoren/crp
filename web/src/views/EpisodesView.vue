@@ -7,7 +7,7 @@ import { useUi } from '@/stores/ui';
 import { legName, endLabel, type Leg } from '@/types';
 import { useDragSort } from '@/composables/dragSort';
 import { fmtMoney, moneyUnit, moneyLabel, moneyMode } from '@/utils/money';
-import { fmtDateTime } from '@/utils/time';
+import { fmtDateTime, toLocalInput, fromLocalInput } from '@/utils/time';
 import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
 import Modal from '@/components/Modal.vue';
@@ -23,15 +23,25 @@ const arrivedCount = (legId: number) => race.aliveTeams.filter((t) => { const p 
 
 // ---- 赛段编辑 ----
 const epEditing = ref(false);
-const epForm = reactive({ name: '', budget: 0, status: 'pending', notes: '' });
+const epForm = reactive({ name: '', budget: 0, status: 'pending', notes: '', startAt: '', inheritRank: false, startGapMin: 0 });
+/** 是否第一个赛段（没有上一赛段可以继承名次） */
+const isFirstEp = computed(() => !!ep.value && race.episodes[0]?.id === ep.value.id);
 function openEpEdit() {
   if (!ep.value) return;
-  Object.assign(epForm, { name: ep.value.name, budget: ep.value.budget, status: ep.value.status, notes: ep.value.notes });
+  Object.assign(epForm, { name: ep.value.name, budget: ep.value.budget, status: ep.value.status, notes: ep.value.notes, startAt: toLocalInput(ep.value.start_at).slice(0, 16), inheritRank: !!ep.value.inherit_rank, startGapMin: ep.value.start_gap_min || 0 });
   epEditing.value = true;
 }
 async function saveEp() {
-  try { await api(`/episodes/${ep.value!.id}`, { method: 'PUT', body: epForm }); await race.loadEpisodes(); epEditing.value = false; ui.toast('赛段已保存'); } catch (e) { ui.error(e); }
+  const body = { ...epForm, startAt: epForm.startAt ? fromLocalInput(epForm.startAt) : null, inheritRank: !isFirstEp.value && epForm.inheritRank };
+  if (epForm.startAt && !body.startAt) { ui.toast('自动开始时间格式不正确', 'error'); return; }
+  try { await api(`/episodes/${ep.value!.id}`, { method: 'PUT', body }); await race.loadEpisodes(); epEditing.value = false; ui.toast('赛段已保存'); } catch (e) { ui.error(e); }
 }
+/** 自动开始的说明文字 */
+const autoStartText = computed(() => {
+  const e = ep.value; if (!e?.start_at) return '';
+  const stagger = e.inherit_rank && !isFirstEp.value && e.start_gap_min > 0;
+  return `${fmtDateTime(e.start_at)} 自动开始${stagger ? `，按上一赛段名次每隔 ${e.start_gap_min} m 发车` : '，各队同时出发'}`;
+});
 async function startEpisode() {
   if (!ep.value) return;
   const alive = race.aliveTeams.length;
@@ -40,7 +50,7 @@ async function startEpisode() {
     : ep.value.budget > 0
       ? `将 ${ep.value.code} 标记为进行中，并给 ${alive} 支存活队伍各补充 ${fmtMoney(ep.value.budget)} ${moneyUnit()}（加到现有余额上，写入流水）。确定？`
       : `${ep.value.code} 未设置补充${moneyLabel()}，只把状态标记为进行中。确定？`;
-  if (!(await ui.confirm('开始赛段', msg))) return;
+  if (!(await ui.confirm('开始赛段（仅供测试）', `手动开始只供测试使用，正式比赛请在「编辑赛段」里设置自动开始时间，到点后系统会自动开始并记录各队出发。\n\n${msg}`))) return;
   try {
     const d = await api(`/episodes/${ep.value.id}/start`, { method: 'POST' });
     await Promise.all([race.loadEpisodes(), race.loadTeams(), race.loadLedger()]);
@@ -51,6 +61,16 @@ async function finishEpisode() {
   if (!ep.value) return;
   if (!(await ui.confirm('结束赛段', `将 ${ep.value.code} 标记为已结束？不影响任何记录，之后仍可修改。`))) return;
   try { await api(`/episodes/${ep.value.id}/finish`, { method: 'POST' }); await race.loadEpisodes(); ui.toast('赛段已结束'); } catch (e) { ui.error(e); }
+}
+async function resetEpisode() {
+  if (!ep.value) return;
+  const later = race.episodes.filter((e) => race.episodes.indexOf(e) >= race.episodes.indexOf(ep.value!)).map((e) => e.code).join('、');
+  if (!(await ui.confirm('重置赛段（仅供测试）', `只供测试使用。将清空 ${later} 的全部记录数据（时间记录、罚时补时、签到、熔断使用、经费流水），这些赛段回到未开始；环节设置、排班、附件保持不变。确定？`, { danger: true, okText: '重置' }))) return;
+  try {
+    const d = await api(`/episodes/${ep.value.id}/reset`, { method: 'POST' });
+    await Promise.all([race.loadEpisodes(), race.loadTeams(), race.loadLedger(), race.loadProgress()]);
+    ui.toast(`已重置 ${d.episodes.join('、')}`);
+  } catch (e) { ui.error(e); }
 }
 async function addEpisode() {
   try { await api('/episodes', { method: 'POST', body: {} }); await race.loadEpisodes(); ui.toast('已新增赛段'); } catch (e) { ui.error(e); }
@@ -89,7 +109,9 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
 </script>
 
 <template>
-  <EpSelector />
+  <EpSelector>
+    <template v-if="auth.isHost" #right><button class="btn btn-text btn-sm" @click="addEpisode"><Icon name="add" size="16" />新增赛段</button></template>
+  </EpSelector>
   <div v-if="!ep" class="empty-state">暂无赛段<button v-if="auth.isHost" class="btn" style="margin-left: 8px" @click="addEpisode"><Icon name="add" size="18" />新增赛段</button></div>
   <template v-else>
     <div class="card">
@@ -99,14 +121,14 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
           <button v-if="ep.status !== 'running'" class="btn btn-sm" @click="startEpisode"><Icon name="play_arrow" size="18" />开始赛段</button>
           <button v-else class="btn btn-tonal btn-sm" @click="finishEpisode"><Icon name="flag" size="16" />结束赛段</button>
           <button class="btn btn-text btn-sm" @click="openEpEdit"><Icon name="edit" size="16" />编辑赛段</button>
-          <button class="btn btn-text btn-sm" @click="addEpisode"><Icon name="add" size="16" />新增赛段</button>
+          <button class="btn btn-text btn-text-danger btn-sm" @click="resetEpisode"><Icon name="restart_alt" size="16" />重置赛段</button>
           <button class="btn btn-text btn-text-danger btn-sm" @click="deleteEpisode"><Icon name="delete" size="16" />删除赛段</button>
         </div>
       </div>
       <div class="text-sm text-gray">
         补充{{ moneyLabel() }}：{{ ep.budget ? `${fmtMoney(ep.budget)} ${moneyUnit()}/队` : '本赛段不发' }}
         <template v-if="ep.started_at"> · 开始于 {{ fmtDateTime(ep.started_at) }}{{ ep.budget ? '（已补充到各队余额）' : '' }}</template>
-        <template v-else-if="ep.budget"> · 点「开始赛段」时加到每支存活队伍的现有余额上</template>
+        <template v-else-if="autoStartText"> · {{ autoStartText }}</template>
         <template v-if="ep.finished_at"> · 结束于 {{ fmtDateTime(ep.finished_at) }}</template>
       </div>
       <div v-if="ep.notes" class="pre mt-1">{{ ep.notes }}</div>
@@ -141,7 +163,12 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
 
   <Modal v-if="epEditing" title="编辑赛段" small @close="epEditing = false">
     <div class="form-group"><label>名称</label><input v-model="epForm.name" /></div>
-    <div class="form-group"><label>本赛段补充{{ moneyLabel() }}（{{ moneyUnit() }}/队）</label><input v-model.number="epForm.budget" type="number" min="0" step="1" :inputmode="moneyMode() === 'coin' ? 'numeric' : 'decimal'" /><div class="info-text">点「开始赛段」时，在每支存活队伍现有余额上增加这笔数，不清零、不重置；上赛段剩余会累积。{{ moneyMode() === 'coin' ? '必须是整数' : '最多两位小数' }}，填 0 表示本赛段不发。</div></div>
+    <div class="form-group"><label>本赛段补充{{ moneyLabel() }}（{{ moneyUnit() }}/队）</label><input v-model.number="epForm.budget" type="number" min="0" step="1" :inputmode="moneyMode() === 'coin' ? 'numeric' : 'decimal'" /></div>
+    <div class="form-group"><label>自动开始时间<span class="text-gray text-sm">（留空则不自动开始）</span></label><input v-model="epForm.startAt" type="datetime-local" /></div>
+    <template v-if="!isFirstEp">
+      <label class="check-row"><input v-model="epForm.inheritRank" type="checkbox" /> 按上一赛段名次先后发车</label>
+      <div v-if="epForm.inheritRank" class="form-group" style="max-width: 200px"><label>发车间隔（m）</label><input v-model.number="epForm.startGapMin" type="number" min="0" step="1" inputmode="numeric" /></div>
+    </template>
     <div class="form-group"><label>状态（一般用「开始赛段 / 结束赛段」按钮切换，这里可手工修正）</label><MSelect v-model="epForm.status" outlined :options="[{ value: 'pending', label: '未开始' }, { value: 'running', label: '进行中' }, { value: 'finished', label: '已结束' }]" /></div>
     <div class="form-group"><label>赛段说明（所有幕后可见）</label><textarea v-model="epForm.notes" /></div>
     <div class="modal-actions"><button class="btn btn-text" @click="epEditing = false">取消</button><button class="btn" @click="saveEp">保存</button></div>
