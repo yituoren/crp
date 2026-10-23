@@ -51,6 +51,8 @@ journalctl -u crp -f            # 实时日志
 bash /opt/crp/deploy/update.sh  # 拉取最新代码、重建、重启
 bash /opt/crp/deploy/backup.sh  # 立即备份到 /opt/crp/backups
 ```
+> 本地若用 npmmirror 镜像装包，提交前先运行 `npm run lock:fix`，把 package-lock.json 里的下载地址改回官方源。npm 11.10 起会拒绝安装与配置源不一致的“remote”包，服务器上会报 EALLOWREMOTE。
+
 
 数据都在 `/opt/crp/data/`（`crp.db` 数据库、`uploads/` 附件、`jwt-secret.txt`）。迁移服务器只需复制这个目录。
 

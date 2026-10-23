@@ -3,14 +3,20 @@
   "private": true,
   "version": "0.1.0",
   "description": "城市飞奔 BJ20 全明星赛 · 幕后指挥系统",
-  "workspaces": ["server", "web"],
+  "workspaces": [
+    "server",
+    "web"
+  ],
   "scripts": {
     "dev": "PORT=3000 npm run dev --workspace=server & npm run dev --workspace=web & wait",
     "dev:server": "npm run dev --workspace=server",
     "dev:web": "npm run dev --workspace=web",
     "build": "npm run build --workspace=web && rm -rf server/public && cp -r web/dist server/public && npm run build --workspace=server",
     "start": "npm run start --workspace=server",
-    "typecheck": "npm run typecheck --workspace=server && npm run typecheck --workspace=web"
+    "typecheck": "npm run typecheck --workspace=server && npm run typecheck --workspace=web",
+    "lock:fix": "sed -i.bak 's|https://registry.npmmirror.com/|https://registry.npmjs.org/|g' package-lock.json && rm -f package-lock.json.bak"
   },
-  "engines": { "node": ">=22.13" }
+  "engines": {
+    "node": ">=22.13"
+  }
 }
