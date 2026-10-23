@@ -96,12 +96,17 @@ p { margin: 0 0 8px; }
 /* 主区域最后一张卡片不再留下边距，滚到底时与左栏的 16px 边距一致 */
 .page-body > .card:last-child { margin-bottom: 0; }
 .fill-card .scroll-y { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-.ann-compose { display: flex; gap: 8px; align-items: stretch; }
-.ann-compose textarea { flex: 1 1 auto; min-height: 0; height: auto; resize: none; }
+/* 发公告：Gmail 式写信框。灰底圆角面板，左边无边框输入区，右边一列（对象胶囊下拉 + 蓝色发送按钮），输入区高度对齐右列 */
+.ann-compose { display: flex; gap: 12px; align-items: stretch; background: var(--surface-3); border-radius: 16px; padding: 10px 10px 10px 16px; }
+.ann-compose textarea { flex: 1 1 auto; min-height: 0; height: auto; resize: none; border: none; background: transparent; padding: 8px 0; font-size: 15px; line-height: 1.5; color: var(--gray-900); box-shadow: none; }
+.ann-compose textarea:focus { box-shadow: none; outline: none; }
+.ann-compose textarea::placeholder { color: var(--gray-500); }
 .ann-side { display: flex; flex-direction: column; gap: 8px; width: 132px; flex: none; }
 .ann-side .sel { width: 100%; }
+.ann-side .sel-btn { background: var(--surface); }
+.ann-side .sel-btn:hover { background: var(--surface); }
 .ann-send { margin-top: auto; height: 40px; }
-@media (max-width: 640px) { .ann-compose { flex-wrap: wrap; } .ann-compose textarea { flex-basis: 100%; height: 86px; } .ann-side { flex-direction: row; width: 100%; } .ann-side .sel { flex: 1; } .ann-send { margin-top: 0; flex: none; } }
+@media (max-width: 640px) { .ann-compose { flex-wrap: wrap; padding: 10px 12px 12px; } .ann-compose textarea { flex-basis: 100%; height: 86px; } .ann-side { flex-direction: row; width: 100%; } .ann-side .sel { flex: 1; } .ann-send { margin-top: 0; flex: none; } }
 .card { background: var(--surface); border: none; border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; box-shadow: none; }
 .card-header { font-weight: 600; font-size: 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--gray-900); min-height: 32px; }
 .grid { display: grid; gap: 12px; }
