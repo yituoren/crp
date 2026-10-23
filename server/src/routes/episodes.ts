@@ -94,7 +94,7 @@ episodeRoutes.get('/episodes', (c) => {
   for (const a of all<{ episode_id: number; leg_id: number | null; leg_ids: string | null }>("SELECT episode_id, leg_id, leg_ids FROM assignments WHERE user_id = ? AND role = 'station'", user.id)) {
     mine.set(a.episode_id, new Set(parseLegIds(a)));
   }
-  for (const ep of episodes as { id: number; legs: { id: number; judge_criteria: string | null }[] }[]) for (const l of ep.legs) if (!mine.get(ep.id)?.has(l.id)) l.judge_criteria = null;
+  for (const ep of episodes as any[]) for (const l of ep.legs) if (!mine.get(ep.id)?.has(l.id)) l.judge_criteria = null;
   return c.json({ episodes });
 });
 
