@@ -11,7 +11,7 @@ import PenaltyPanel from '@/components/PenaltyPanel.vue';
 import LegExtraField from '@/components/LegExtraField.vue';
 import TeamCurrencyPanel from '@/components/TeamCurrencyPanel.vue';
 import CurrencyOps from '@/components/CurrencyOps.vue';
-import CutoffCard from '@/components/CutoffCard.vue';
+import CurrentLegCard from '@/components/CurrentLegCard.vue';
 import BagCard from '@/components/BagCard.vue';
 import ProgressEditModal from '@/components/ProgressEditModal.vue';
 import { type Leg, type Progress, legName } from '@/types';
@@ -53,7 +53,7 @@ const legRows = computed(() => {
   <div class="my-work">
     <template v-if="my?.role === 'follow' && myTeam">
       <p class="my-work-head"><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.label }}</strong>，当前余额 <strong class="text-warning">{{ fmtMoney(myTeam.currency) }} {{ moneyUnit() }}</strong></p>
-      <CutoffCard :team-id="myTeam.id" />
+      <CurrentLegCard :team-id="myTeam.id" />
       <div class="scroll-table my-work-table">
         <table class="table record-table">
           <thead><tr><th class="col-first">环节</th><th class="col-status">状态</th><th class="col-time">开始</th><th class="col-time">结束</th><th class="col-extra c">记录信息</th><th class="col-action c">操作</th></tr></thead>

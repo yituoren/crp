@@ -8,7 +8,7 @@ import { fmtMoney, moneyMode, moneyUnit } from '@/utils/money';
 import { legName, type Leg } from '@/types';
 
 /** 跟队「我的」页：所跟队伍当前环节可用的熔断。未就绪显示倒计时，就绪可点击使用（货币模式显示消耗） */
-const props = defineProps<{ teamId: number }>();
+const props = withDefaults(defineProps<{ teamId: number; plain?: boolean }>(), { plain: false });
 const auth = useAuth();
 const race = useRace();
 const ui = useUi();
@@ -43,8 +43,8 @@ async function use(leg: Leg, cf: Leg['cutoffs'][number], cost: number) {
 </script>
 
 <template>
-  <div class="card">
-    <div class="card-header"><span>本队熔断</span></div>
+  <div :class="plain ? '' : 'card'">
+    <div v-if="!plain" class="card-header"><span>本队熔断</span></div>
     <div v-if="!currentLegs.length" class="empty-rows">当前环节暂无可用熔断</div>
     <div v-for="leg in currentLegs" :key="leg.id" class="cutoff-group">
       <div class="text-sm text-gray mb-1"><LegTag :type="leg.type" /> {{ legName(leg) }}</div>

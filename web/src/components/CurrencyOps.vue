@@ -90,7 +90,7 @@ async function apply(sign: 1 | -1) {
     <div v-else class="ops">
       <!-- 选择项：类型（货币模式）/ 环节，固定宽度 -->
       <div class="ops-selects">
-        <MSelect v-model="form.kind" outlined class="ops-kind" :options="kindOptions" />
+        <MSelect v-if="props.teamId === undefined" v-model="form.kind" outlined class="ops-kind" :options="kindOptions" />
         <MSelect v-if="props.legId === undefined" v-model="form.legId" outlined class="ops-leg" :placeholder="form.kind === 'shop' ? '开放商店的环节' : '选择环节'" :options="legOptions" />
       </div>
       <!-- 金额 / 原因（或商品）/ 按钮，槽位不随类型变化 -->

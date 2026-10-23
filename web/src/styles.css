@@ -661,3 +661,16 @@ html, body { overscroll-behavior: none; }
 .bag-tile-count { font-size: 12px; color: var(--gray-500); font-variant-numeric: tabular-nums; }
 .bag-tile.on .bag-tile-count { color: var(--primary-on-light); }
 .bag-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+
+/* ---------- 当前环节卡：交通 / 商店 / 熔断 三段，横线隔开 ---------- */
+.cl-section { padding: 12px 0; border-top: 1px solid var(--gray-200); }
+.cl-section:first-of-type { border-top: none; padding-top: 0; }
+.cl-section:last-child { padding-bottom: 0; }
+.cl-label { font-size: 13px; font-weight: 500; color: var(--gray-600); margin-bottom: 8px; }
+.cl-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cl-tiles { display: flex; gap: 8px; flex: 1 1 320px; min-width: 0; flex-wrap: wrap; }
+.cl-tile { flex: 1 1 0; min-width: 72px; height: 40px; padding: 0 10px; justify-content: space-between; }
+.cl-tile .bag-tile-name { flex: none; }
+.cl-amount { width: 110px; flex: none; height: 38px; }
+.cl-confirm { flex: none; min-width: 64px; }
+@media (max-width: 640px) { .cl-tiles { flex-basis: 100%; } .cl-amount { flex: 1; width: auto; } }
