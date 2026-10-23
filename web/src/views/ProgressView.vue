@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { fmtTime, fmtTimeSec, fmtDurMs } from '@/utils/time';
-import { legName, endLabel, hasStart, type LegType } from '@/types';
+import { legName, endLabel, startLabel, hasStart, type LegType } from '@/types';
 import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
 import PenaltyPanel from '@/components/PenaltyPanel.vue';
@@ -87,12 +87,34 @@ function lastAgo(teamId: number): string {
   return `${m} 分钟前`;
 }
 
-// ---- 进度结算：矩阵行按实时名次排列（有名次的在前，其余按队伍顺序） ----
-const rankOf = computed(() => new Map(race.pitstop.map((r) => [r.team_id, r.rank])));
+// ---- 进度结算：实时名次 ----
+// 已到中继站的队伍按签到 + 净罚时（服务端算好的名次）排在最前；其余按进度深度（走到第几个环节、是开始还是完成）排序，深度相同的看最近一次记录时间，早的在前；没出发的按队伍顺序；退赛的不排名放最后
+const finalRank = computed(() => new Map(race.pitstop.map((r) => [r.team_id, r.rank])));
+function progressKey(teamId: number): { depth: number; t: number } {
+  let depth = 0, t = 0;
+  legs.value.forEach((l, i) => {
+    const p = race.progressOf(teamId, l.id);
+    if (p?.completed_at && 2 * i + 2 > depth) { depth = 2 * i + 2; t = new Date(p.completed_at).getTime(); }
+    if (p?.arrived_at && 2 * i + 1 > depth) { depth = 2 * i + 1; t = new Date(p.arrived_at).getTime(); }
+  });
+  return { depth, t };
+}
 const orderedTeams = computed(() => {
   const idx = new Map(race.teams.map((t, i) => [t.id, i]));
-  return [...race.teams].sort((a, b) => (rankOf.value.get(a.id) ?? 999) - (rankOf.value.get(b.id) ?? 999) || (idx.get(a.id)! - idx.get(b.id)!));
+  const key = new Map(race.teams.map((t) => [t.id, progressKey(t.id)]));
+  return [...race.teams].sort((a, b) => {
+    const wa = a.status === 'withdrawn' ? 1 : 0, wb = b.status === 'withdrawn' ? 1 : 0;
+    if (wa !== wb) return wa - wb;
+    const ra = finalRank.value.get(a.id) ?? null, rb = finalRank.value.get(b.id) ?? null;
+    if (ra && rb) return ra - rb;
+    if (ra || rb) return ra ? -1 : 1;
+    const ka = key.get(a.id)!, kb = key.get(b.id)!;
+    if (ka.depth !== kb.depth) return kb.depth - ka.depth;
+    if (ka.t !== kb.t) return ka.t - kb.t;
+    return idx.get(a.id)! - idx.get(b.id)!;
+  });
 });
+const rankOf = computed(() => { const m = new Map<number, number>(); let n = 0; for (const t of orderedTeams.value) if (t.status !== 'withdrawn') m.set(t.id, ++n); return m; });
 </script>
 
 <template>
@@ -116,7 +138,7 @@ const orderedTeams = computed(() => {
             <template v-for="l in legs" :key="l.id">
               <th v-if="isSingleCol(l)" class="mx2-sub mx2-first" :class="{ 'mx2-last': !extraCol(l) }">{{ endLabel(l.type) }}</th>
               <template v-else>
-                <th class="mx2-sub mx2-first">开始</th>
+                <th class="mx2-sub mx2-first">{{ startLabel(l.type) }}</th>
                 <template v-if="branchOf(l)"><th class="mx2-sub mx2-branch" :title="legName(branchOf(l)!)">支线开始</th><th class="mx2-sub mx2-branch">支线结束</th><th class="mx2-sub mx2-branch">支线用时</th></template>
                 <th class="mx2-sub">{{ endLabel(l.type) }}</th><th class="mx2-sub" :class="{ 'mx2-last': !extraCol(l) }">用时</th>
               </template>

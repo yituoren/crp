@@ -150,7 +150,7 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
         <div class="text-sm text-gray">站点：<template v-if="leg.needs_staff">{{ staffOf(leg.id).join('、') || '未分配' }}</template><span v-else>无需站点</span></div>
         <div v-if="leg.address" class="text-sm text-gray">地址：{{ leg.address }}</div>
         <div class="text-xs text-gray mt-1">
-          {{ doneCount(leg.id) }} 已{{ endLabel(leg.type) }}<template v-if="leg.type !== 'SL'"> · {{ arrivedCount(leg.id) }} 进行中</template>
+          {{ doneCount(leg.id) }} 已{{ endLabel(leg.type) }} · {{ arrivedCount(leg.id) }} 进行中
           · {{ leg.attachments.length }} 附件
           <template v-if="leg.shop_open"> · 开放商店</template>
           <template v-if="leg.can_eliminate"> · 淘汰 {{ leg.eliminate_count }} 队</template>

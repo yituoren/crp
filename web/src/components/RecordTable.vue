@@ -4,7 +4,7 @@ import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useRecord } from '@/composables/record';
 import { fmtTime, fmtTimeSec } from '@/utils/time';
-import { endLabel, hasStart, type Leg, type Progress, type Team } from '@/types';
+import { endLabel, startLabel, hasStart, type Leg, type Progress, type Team } from '@/types';
 import TeamStatus from './TeamStatus.vue';
 import ProgressEditModal from './ProgressEditModal.vue';
 
@@ -44,7 +44,7 @@ function detourOptions(): string[] {
       <thead>
         <tr>
           <th class="col-first">队伍</th><th class="col-status">状态</th>
-          <th v-if="withStart" class="col-time">{{ isBranch ? '开始支线' : '开始' }}</th><th class="col-time">{{ isBranch ? '结束支线' : label }}</th>
+          <th v-if="withStart" class="col-time">{{ isBranch ? '开始支线' : startLabel(leg.type) }}</th><th class="col-time">{{ isBranch ? '结束支线' : label }}</th>
           <th v-if="showTarget" class="col-extra c">{{ targetLabel }}</th>
           <th v-if="leg.type === 'DT'" class="col-extra c">绕道选择</th>
           <th v-if="leg.type === 'RB'" class="col-extra c">路障完成人</th>

@@ -271,6 +271,8 @@ ensureColumn('currency_ledger', 'item_name', 'TEXT');
 ensureColumn('legs', 'shop_open', 'INTEGER NOT NULL DEFAULT 0');
 // 自动淘汰：环节可淘汰 + 淘汰人数；队伍记录在哪个环节被淘汰、从哪个环节起锁定（淘汰/退赛后不可再记录）
 run("UPDATE legs SET type = 'SQ' WHERE type = 'BR'"); // 支线简称 BR → SQ（side quest）
+// 起跑线改为“出发（开始）+ 完成”两个时间：旧记录只有出发（存在 completed_at），把它同时作为开始时间
+run("UPDATE progress SET arrived_at = completed_at WHERE arrived_at IS NULL AND completed_at IS NOT NULL AND leg_id IN (SELECT id FROM legs WHERE type = 'SL')");
 const addedCanElim = ensureColumn('legs', 'can_eliminate', 'INTEGER NOT NULL DEFAULT 0');
 const addedElimCount = ensureColumn('legs', 'eliminate_count', 'INTEGER NOT NULL DEFAULT 1');
 if (addedCanElim || addedElimCount) {

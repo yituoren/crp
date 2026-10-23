@@ -18,10 +18,12 @@ export const TYPE_DEFAULTS: Record<LegType, { staff: boolean; mode: RecordMode }
   YD: { staff: true, mode: 'full' }, SB: { staff: true, mode: 'full' }, FO: { staff: true, mode: 'full' }, Trap: { staff: true, mode: 'full' }, SQ: { staff: true, mode: 'full' }, PS: { staff: true, mode: 'full' },
 };
 /** 每个环节只手动记一次“结束”时间，按类型叫法不同：起跑线=出发，路线信息=到达，中继站=签到，其余=完成 */
-export const END_LABEL: Partial<Record<LegType, string>> = { SL: '出发', RI: '到达', PS: '签到', SQ: '结束' };
+export const END_LABEL: Partial<Record<LegType, string>> = { RI: '到达', PS: '签到', SQ: '结束' };
+/** 开始列的叫法：起跑线叫“出发”（由系统按发车时间自动记录），其余叫“开始” */
+export const startLabel = (t: LegType) => (t === 'SL' ? '出发' : '开始');
 export const endLabel = (t: LegType) => END_LABEL[t] ?? '完成';
 /** 首个环节（起跑线）没有开始时间 */
-export const hasStart = (t: LegType) => t !== 'SL';
+export const hasStart = (_t: LegType) => true; // 所有环节都有开始与结束两个时间（起跑线的开始 = 出发）
 /** 路线信息和中继站的“名称”栏填的是目的地：RI 显示时自动加箭头，PS 直接显示 */
 export const isDestinationLeg = (t: LegType) => t === 'RI' || t === 'PS';
 /** 类型名：中继站在最后一个赛段里叫“终点” */

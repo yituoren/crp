@@ -1,8 +1,8 @@
-import { all, get, run, tx, now } from './db.js';
+import { all, get, run, tx } from './db.js';
 import { audit, notify } from './util.js';
 import type { AuthUser } from './auth.js';
 import { teamLabelMap } from './routes/teams.js';
-import { chainAfterComplete, emptyProgress, finalRanking, upsertProgress } from './progressCore.js';
+import { emptyProgress, finalRanking, upsertProgress } from './progressCore.js';
 
 export const SYSTEM_USER: AuthUser = { id: 0, username: 'system', displayName: '系统', role: 'admin' };
 
@@ -54,21 +54,13 @@ export function departurePlan(ep: EpisodeRow): { teamId: number; at: string }[] 
   return order.map((teamId, i) => ({ teamId, at: new Date(base + i * ep.start_gap_min * 60000).toISOString() }));
 }
 
-/** 自动发车：到点后给该队记录本赛段第一个环节的开始。起跑线 = 记录“出发”（完成）并联动下一环节；其他环节 = 记录开始时间。已有记录的不动 */
+/** 自动发车：到点后给该队记录本赛段第一个环节的开始时间（起跑线的开始 = 出发，任务完成后由跟队记录完成）。已有记录的不动 */
 export function recordDeparture(ep: EpisodeRow, teamId: number, at: string): boolean {
   const first = get<{ id: number; sort: number; type: string }>("SELECT id, sort, type FROM legs WHERE episode_id = ? AND type != 'SQ' ORDER BY sort, id LIMIT 1", ep.id);
   if (!first) return false;
   const cur = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', ep.id, teamId, first.id) ?? emptyProgress();
-  if (first.type === 'SL') {
-    if (cur.completed_at) return false;
-    tx(() => {
-      upsertProgress(ep.id, teamId, first.id, { ...cur, completed_at: at }, SYSTEM_USER.id);
-      chainAfterComplete(ep.id, teamId, first.sort, at, SYSTEM_USER.id, first.type);
-    });
-  } else {
-    if (cur.arrived_at) return false;
-    upsertProgress(ep.id, teamId, first.id, { ...cur, arrived_at: at }, SYSTEM_USER.id);
-  }
+  if (cur.arrived_at) return false;
+  upsertProgress(ep.id, teamId, first.id, { ...cur, arrived_at: at }, SYSTEM_USER.id);
   audit(SYSTEM_USER, 'progress:auto_start', 'progress', `${ep.id}/${teamId}/${first.id}`, cur, { at });
   return true;
 }
