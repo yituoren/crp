@@ -97,8 +97,11 @@ p { margin: 0 0 8px; }
 .page-body > .card:last-child { margin-bottom: 0; }
 .fill-card .scroll-y { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .ann-compose { display: flex; gap: 8px; align-items: stretch; }
-.ann-compose textarea { flex: 1 1 auto; min-height: 0; }
-@media (max-width: 640px) { .ann-compose { flex-wrap: wrap; } .ann-compose textarea { flex-basis: 100%; order: -1; } .ann-compose select { flex: 1; } }
+.ann-compose textarea { flex: 1 1 auto; min-height: 0; height: auto; resize: none; }
+.ann-side { display: flex; flex-direction: column; gap: 8px; width: 132px; flex: none; }
+.ann-side .sel { width: 100%; }
+.ann-send { margin-top: auto; height: 40px; }
+@media (max-width: 640px) { .ann-compose { flex-wrap: wrap; } .ann-compose textarea { flex-basis: 100%; height: 86px; } .ann-side { flex-direction: row; width: 100%; } .ann-side .sel { flex: 1; } .ann-send { margin-top: 0; flex: none; } }
 .card { background: var(--surface); border: none; border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; box-shadow: none; }
 .card-header { font-weight: 600; font-size: 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--gray-900); min-height: 32px; }
 .grid { display: grid; gap: 12px; }
