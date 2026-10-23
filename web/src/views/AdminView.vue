@@ -55,7 +55,7 @@ onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
     <div class="card-header">赛事设置</div>
     <div class="form-group"><label>赛事名称</label><input v-model="settings.name" /></div>
     <div class="form-group"><label>邀请码（所有人在主页输入后加入本比赛，管理员和创建者除外；留空则无法加入）</label><input v-model="settings.inviteCode" placeholder="如 bj20" /></div>
-    <div class="form-group"><label>经费类型</label><MSelect v-model="settings.currencyMode" :options="[{ value: 'yuan', label: '经费（以元计，精确到小数点后两位）' }, { value: 'coin', label: '货币（以币计，精确到个位）' }]" /></div>
+    <div class="form-group"><label>经费类型</label><MSelect v-model="settings.currencyMode" outlined :options="[{ value: 'yuan', label: '经费（以元计，精确到小数点后两位）' }, { value: 'coin', label: '货币（以币计，精确到个位）' }]" /></div>
     <div class="form-group"><label>每队人数（大于等于 1 的整数；决定队伍编辑页有几个成员栏）</label><input v-model.number="settings.teamSize" type="number" min="1" max="20" step="1" inputmode="numeric" /></div>
     <div class="form-group"><label>路障限制（同队成员完成路障次数之差不能超过的整数，默认 2）</label><input v-model.number="settings.rbGap" type="number" min="0" max="99" step="1" inputmode="numeric" /></div>
     <button class="btn" @click="saveSettings">保存设置</button>

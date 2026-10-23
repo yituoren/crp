@@ -98,13 +98,13 @@ async function copyPrev() {
           <tr v-for="r in form.rows" :key="r.userId">
             <td><strong>{{ userById.get(r.userId)?.displayName }}</strong> <span v-if="userById.get(r.userId)?.role === 'admin'" class="badge badge-host">管理员</span><span v-else-if="userById.get(r.userId)?.role === 'host'" class="badge badge-host">主办</span></td>
             <td><span class="badge" :class="displayRole(r.userId)[1]">{{ displayRole(r.userId)[0] }}</span></td>
-            <td>{{ assignText(r.userId) }}<template v-for="(l, i) in stationLegs(r.userId)" :key="l.id"><template v-if="i">、</template><LegTag :type="l.type" /> {{ legName(l) }}</template></td>
+            <td class="wrap">{{ assignText(r.userId) }}<template v-for="(l, i) in stationLegs(r.userId)" :key="l.id"><template v-if="i">、</template><LegTag :type="l.type" /> {{ legName(l) }}</template></td>
             <td v-if="auth.isHost">
-              <div class="flex" style="gap: 6px; flex-wrap: nowrap">
+              <div class="flex" style="gap: 6px">
                 <MSelect v-model="r.role" sm style="width: 96px; flex: none" :options="[{ value: 'crew', label: '机动' }, { value: 'follow', label: '跟队' }, { value: 'station', label: '站点' }, { value: 'live', label: '直播员' }]" />
-                <MSelect v-if="r.role === 'follow'" v-model="r.teamId" sm style="width: 180px; flex: none" placeholder="选择队伍" :options="race.teams.map((t) => ({ value: t.id, label: `${t.label}${t.status !== 'alive' ? '（已淘汰）' : ''}` }))" />
-                <MultiSelect v-else-if="r.role === 'station'" v-model="r.legIds" :options="legOptions" placeholder="选择环节（可多选）" style="width: 180px; flex: none" />
-                <span v-else class="text-xs text-gray" style="width: 180px; flex: none">{{ r.role === 'live' ? '全赛段只读' : '无需分配' }}</span>
+                <MSelect v-if="r.role === 'follow'" v-model="r.teamId" sm style="width: 160px; max-width: 100%; flex: none" placeholder="选择队伍" :options="race.teams.map((t) => ({ value: t.id, label: `${t.label}${t.status !== 'alive' ? '（已淘汰）' : ''}` }))" />
+                <MultiSelect v-else-if="r.role === 'station'" v-model="r.legIds" :options="legOptions" placeholder="选择环节（可多选）" style="width: 160px; max-width: 100%; flex: none" />
+                <span v-else class="text-xs text-gray" style="width: 160px; flex: none">{{ r.role === 'live' ? '全赛段只读' : '无需分配' }}</span>
               </div>
             </td>
           </tr>

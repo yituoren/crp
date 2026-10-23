@@ -100,6 +100,7 @@ p { margin: 0 0 8px; }
 .card { background: var(--surface); border: none; border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; box-shadow: none; }
 .card-header { font-weight: 600; font-size: 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--gray-900); min-height: 32px; }
 .grid { display: grid; gap: 12px; }
+.grid > * { min-width: 0; } /* 卡片可以比内容窄，内容自行换行，不把主区域撑出横向滚动 */
 .grid-2 { grid-template-columns: repeat(2, 1fr); }
 .grid-3 { grid-template-columns: repeat(3, 1fr); }
 .grid-4 { grid-template-columns: repeat(4, 1fr); }
@@ -189,6 +190,7 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .leg-item { background: var(--surface); border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 16px; cursor: pointer; transition: background-color .15s, box-shadow .15s; }
 .leg-item:hover { background: var(--surface-2); box-shadow: var(--shadow-1); }
 .team-card { background: var(--surface); border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 16px; }
+.team-card .btn-sm.btn-text { padding: 0 8px; }
 .team-card.team-eliminated { opacity: .55; background: var(--surface-3); }
 .team-card.team-withdrawn { opacity: .5; background: var(--surface-3); }
 .currency-box { font-size: 24px; font-weight: 600; color: var(--warning); letter-spacing: 0; font-variant-numeric: tabular-nums; }
@@ -287,14 +289,15 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 /* ---------- 左右两屏 / 左栏 ---------- */
 .pager { height: 100vh; height: 100dvh; overflow: hidden; }
 .pager-track { display: flex; align-items: stretch; height: 100%; transform: none !important; }
-.pane-live { flex: none; width: 600px; height: 100%; overflow: auto; padding: 16px 0 16px 16px; display: flex; flex-direction: column; overscroll-behavior: contain; }
-.pane-main { flex: 1; min-width: 0; height: 100%; overflow-y: auto; overscroll-behavior: contain; }
+/* 左栏：大屏幕 600px，窄一些的桌面按比例收窄，给右侧主区域留够宽度 */
+.pane-live { flex: none; width: clamp(440px, 42vw, 600px); height: 100%; overflow: auto; padding: 16px 0 16px 16px; display: flex; flex-direction: column; overscroll-behavior: contain; }
+.pane-main { flex: 1; min-width: 0; height: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; } /* 主区域永不横向滚动，宽表格在各自的 .scroll-table 里滚 */
 html, body { overscroll-behavior: none; }
 .pager-dots { display: none; }
 .live-card { flex: 1; display: flex; flex-direction: column; min-height: 0; margin-bottom: 0; padding: 18px 18px 14px; }
 .live-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
 .live-grid { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: auto; }
-.live-row { flex: 1 1 0; min-height: 44px; display: grid; grid-template-columns: minmax(110px, 1.2fr) minmax(140px, 1.5fr) minmax(140px, 1.4fr) 88px; gap: 10px; align-items: center; padding: 0 6px; border-bottom: 1px solid var(--gray-100); font-size: 13px; white-space: nowrap; }
+.live-row { flex: 1 1 0; min-height: 44px; display: grid; grid-template-columns: minmax(90px, 1.2fr) minmax(110px, 1.5fr) minmax(96px, 1.4fr) 76px; gap: 10px; align-items: center; padding: 0 6px; border-bottom: 1px solid var(--gray-100); font-size: 13px; white-space: nowrap; }
 .live-row > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .live-row:last-child { border-bottom: none; }
 .live-row-head { flex: 0 0 auto; min-height: 34px; font-size: 12px; font-weight: 500; color: var(--gray-500); background: var(--surface-3); border-radius: 8px; border-bottom: none; }
@@ -355,25 +358,33 @@ html, body { overscroll-behavior: none; }
 .record-table .extra-ctl { width: 100%; max-width: 140px; }
 .block-hint { display: block; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--gray-400); }
 
-/* 下拉（MSelect）与多选（MultiSelect）：Material 菜单，按钮为描边字段，菜单为浮动白面带阴影 */
+/* 下拉（MSelect）与多选（MultiSelect）：参考 Gemini 的模型选择器
+   触发器默认是无边框的灰色胶囊，悬停加深；放在输入框旁边或表单里时用 outlined 变体与输入框对齐
+   菜单是大圆角白色卡片 + 阴影，选项为圆角块，当前项左侧打勾 */
 .sel, .ms { position: relative; display: inline-block; vertical-align: middle; max-width: 100%; }
-.sel-btn, .ms-btn { width: 100%; height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 8px 0 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-xs); background: var(--surface); color: var(--gray-800); cursor: pointer; text-align: left; font-family: inherit; font-size: 14px; transition: border-color .15s, background-color .15s, box-shadow .15s; }
-.sel-sm .sel-btn, .ms-btn.input-sm { height: 32px; font-size: 13px; padding: 0 6px 0 10px; }
-.sel-btn:hover, .ms-btn:hover { background: var(--surface-2); border-color: var(--gray-400); }
-.sel-open .sel-btn, .sel-btn:focus-visible { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); outline: none; }
-.sel-btn.sel-empty, .ms-btn.ms-empty { color: var(--gray-500); }
+.sel-btn, .ms-btn { width: 100%; height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 10px 0 16px; border: none; border-radius: 999px; background: var(--surface-3); color: var(--gray-800); cursor: pointer; text-align: left; font-family: inherit; font-size: 14px; font-weight: 500; transition: background-color .15s, box-shadow .15s; }
+.sel-sm .sel-btn, .ms-btn.input-sm { height: 32px; font-size: 13px; padding: 0 8px 0 12px; }
+.sel-btn:hover, .ms-btn:hover { background: var(--gray-200); }
+.sel-open .sel-btn { background: var(--gray-200); }
+.sel-btn:focus-visible, .ms-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.sel-btn.sel-empty, .ms-btn.ms-empty { color: var(--gray-600); font-weight: 400; }
 .sel-disabled .sel-btn { opacity: .5; cursor: not-allowed; }
+/* outlined：与输入框同高同圆角，放在输入框旁边不突兀 */
+.sel-outlined .sel-btn { background: var(--surface); border: 1px solid var(--gray-300); border-radius: var(--radius-xs); font-weight: 400; padding: 0 8px 0 12px; }
+.sel-outlined .sel-btn:hover { background: var(--surface); border-color: var(--gray-400); }
+.sel-outlined.sel-open .sel-btn { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); background: var(--surface); }
 .sel-text, .ms-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.sel-caret, .ms-caret { color: var(--gray-600); flex: none; display: inline-flex; }
+.sel-caret, .ms-caret { color: var(--gray-700); flex: none; display: inline-flex; transition: transform .15s; }
 .sel-open .sel-caret { transform: rotate(180deg); }
-.sel-menu, .ms-menu { z-index: 400; max-height: 280px; overflow-y: auto; background: var(--surface); border: none; border-radius: 8px; box-shadow: var(--shadow-3); padding: 8px 0; animation: menu-in .12s ease; }
+.sel-menu, .ms-menu { z-index: 400; max-height: 320px; overflow-y: auto; background: var(--surface); border: none; border-radius: 20px; box-shadow: var(--shadow-3); padding: 8px; animation: menu-in .12s ease; }
 @keyframes menu-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-.sel-item { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 0 16px 0 8px; font-size: 14px; color: var(--gray-800); background: transparent; border: none; cursor: pointer; white-space: nowrap; text-align: left; font-family: inherit; }
+.sel-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 0 20px 0 10px; font-size: 14px; color: var(--gray-800); background: transparent; border: none; border-radius: 12px; cursor: pointer; white-space: nowrap; text-align: left; font-family: inherit; }
 .sel-item:hover { background: rgba(60, 64, 67, .08); }
-.sel-item.active { color: var(--primary-on-light); background: var(--primary-light); }
+.sel-item.active { font-weight: 500; }
+.sel-item.active:hover { background: rgba(60, 64, 67, .08); }
 .sel-item.disabled { opacity: .4; cursor: not-allowed; }
-.sel-item-check { width: 20px; display: inline-flex; justify-content: center; color: var(--primary); flex: none; }
-.ms-item { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 16px 0 12px; font-size: 14px; cursor: pointer; white-space: nowrap; }
+.sel-item-check { width: 20px; display: inline-flex; justify-content: center; color: var(--gray-800); flex: none; }
+.ms-item { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 20px 0 12px; font-size: 14px; cursor: pointer; white-space: nowrap; border-radius: 12px; }
 .ms-item:hover { background: rgba(60, 64, 67, .08); }
 .ms-item input { margin: 0; }
 .station-leg + .station-leg { border-top: 1px solid var(--gray-200); padding-top: 14px; }

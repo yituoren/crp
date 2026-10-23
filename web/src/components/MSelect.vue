@@ -9,8 +9,10 @@ const props = withDefaults(defineProps<{
   placeholder?: string;
   disabled?: boolean;
   sm?: boolean;
+  /** 描边字段样式：放在文本输入框旁边或表单里时用，与输入框对齐；默认是 Gemini 式的无边框灰色胶囊 */
+  outlined?: boolean;
   title?: string;
-}>(), { placeholder: '请选择', disabled: false, sm: false });
+}>(), { placeholder: '请选择', disabled: false, sm: false, outlined: false });
 const emit = defineEmits<{ 'update:modelValue': [string | number]; change: [string | number] }>();
 const open = ref(false);
 const root = ref<HTMLElement | null>(null);
@@ -44,7 +46,7 @@ onUnmounted(() => { document.removeEventListener('click', onDocClick); document.
 </script>
 
 <template>
-  <div ref="root" class="sel" :class="{ 'sel-sm': sm, 'sel-open': open, 'sel-disabled': disabled }" :title="title">
+  <div ref="root" class="sel" :class="{ 'sel-sm': sm, 'sel-open': open, 'sel-disabled': disabled, 'sel-outlined': outlined }" :title="title">
     <button type="button" class="sel-btn" :class="{ 'sel-empty': isEmpty }" :disabled="disabled" @click="toggleOpen">
       <span class="sel-text">{{ label }}</span><Icon name="expand_more" :size="sm ? 18 : 20" class="sel-caret" />
     </button>

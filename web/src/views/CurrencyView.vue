@@ -59,8 +59,8 @@ async function revert(l: LedgerEntry) {
       <div class="flex-between"><strong>{{ t.label }}</strong><span v-if="t.status !== 'alive'" class="status-eliminated">{{ t.status === 'eliminated' ? '已淘汰' : '已退赛' }}</span></div>
       <div class="currency-box">{{ fmtMoney(t.currency) }} <span class="text-sm text-gray">{{ moneyUnit() }}</span></div>
       <div v-if="race.canAdjustCurrencyFor(t.id) && t.status === 'alive' && !race.episodePending" class="mt-1">
-        <div class="flex" style="gap: 6px; flex-wrap: nowrap">
-          <input v-model="get(t.id).amount" type="number" :inputmode="moneyMode() === 'coin' ? 'numeric' : 'decimal'" min="0" step="1" class="input-sm" :placeholder="moneyUnit() === '币' ? '数量' : '金额'" style="width: 90px" />
+        <div class="flex" style="gap: 6px; flex-wrap: nowrap; min-width: 0">
+          <input v-model="get(t.id).amount" type="number" :inputmode="moneyMode() === 'coin' ? 'numeric' : 'decimal'" min="0" step="1" class="input-sm" :placeholder="moneyUnit() === '币' ? '数量' : '金额'" style="width: 80px; min-width: 0; flex: 0 1 80px" />
           <input v-model="get(t.id).reason" class="input-sm" placeholder="原因" style="flex: 1; min-width: 60px" />
         </div>
         <div class="flex mt-1" style="gap: 6px">

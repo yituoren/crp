@@ -91,7 +91,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
             <div class="field-row">
               <div class="form-group"><label>类型</label>
                 <input v-if="isFixed" :value="`${typeCode(form.type)} · ${legTypeLabel(form.type, race.isLastEpisode(episodeId))}（固定）`" disabled />
-                <MSelect v-else v-model="form.type" :options="selectableTypes.map((t) => ({ value: t, label: `${typeCode(t)} · ${LEG_TYPE_LABEL[t]}` }))" />
+                <MSelect v-else v-model="form.type" outlined :options="selectableTypes.map((t) => ({ value: t, label: `${typeCode(t)} · ${LEG_TYPE_LABEL[t]}` }))" />
               </div>
               <div class="form-group"><label>{{ isDestinationLeg(form.type) ? '目的地' : '名称' }}</label><input v-model="form.name" :placeholder="form.type === 'RI' ? '目的地名称，显示时自动加箭头' : form.type === 'PS' ? '中继站所在地' : ''" /></div>
             </div>

@@ -61,7 +61,7 @@ async function resetAll() {
         <TeamStatus :status="t.status" />
       </div>
       <div class="currency-box mt-1">{{ fmtMoney(t.currency) }} <span class="text-sm text-gray">{{ moneyUnit() }}</span></div>
-      <div v-if="auth.isHost" class="flex mt-2" style="gap: 6px; flex-wrap: nowrap">
+      <div v-if="auth.isHost" class="flex mt-2" style="gap: 2px 4px">
         <button class="btn btn-text btn-sm" @click="open(t)"><Icon name="edit" size="16" />编辑</button>
         <button v-if="t.status !== 'alive'" class="btn btn-tonal btn-sm" @click="setStatus(t, 'alive')">恢复</button>
         <template v-else>

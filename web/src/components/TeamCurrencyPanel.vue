@@ -48,7 +48,7 @@ async function revert(l: LedgerEntry) {
     <div v-else-if="race.episodeFinished && !race.canAdjustCurrencyFor(team.id)" class="alert alert-info">赛段已结束，经费记录已锁定，只有主办可以修改。</div>
     <div v-else class="flex mb-2">
       <input v-model="form.amount" type="number" :inputmode="moneyMode() === 'coin' ? 'numeric' : 'decimal'" min="0" step="1" class="input-inline" :placeholder="moneyUnit() === '币' ? '数量' : '金额'" style="width: 110px" />
-      <MSelect v-model="legSel" style="width: 160px" :options="[{ value: '', label: '环节：其他' }, ...(ep?.legs ?? []).map((l) => ({ value: l.id, label: `环节：${legName(l)}` }))]" />
+      <MSelect v-model="legSel" outlined style="width: 160px" :options="[{ value: '', label: '环节：其他' }, ...(ep?.legs ?? []).map((l) => ({ value: l.id, label: `环节：${legName(l)}` }))]" />
       <input v-model="form.reason" class="input-inline" placeholder="原因（如：任务奖励、买线索）" style="flex: 1; min-width: 160px" />
       <button class="btn btn-tonal" @click="apply(1)"><Icon name="add" size="18" />增加</button>
       <button class="btn btn-tonal btn-tonal-danger" @click="apply(-1)">扣除</button>
