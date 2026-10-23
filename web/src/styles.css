@@ -389,7 +389,9 @@ html, body { overscroll-behavior: none; }
 .mx2 tbody tr:last-child td { border-bottom: none; }
 .mx2 .mx2-team { position: sticky; left: 0; z-index: 2; background: var(--surface); text-align: left; min-width: 150px; border-left: 2px solid var(--gray-300); }
 .mx2 thead .mx2-team { background: var(--surface-2); z-index: 3; }
-.mx2 .mx2-leg { background: var(--surface-2); }
+.mx2 .mx2-leg { background: var(--surface-2); padding: 8px 12px; }
+.mx2 .mx2-leg-title { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.mx2 .mx2-leg-branch { margin-left: 16px; padding-left: 16px; border-left: 1px solid var(--gray-300); }
 .mx2 .mx2-sub { background: var(--surface-2); font-weight: 500; color: var(--gray-500); }
 .mx2 .mx2-cell { min-width: 64px; font-variant-numeric: tabular-nums; }
 .mx2 .mx2-extra { font-family: inherit; min-width: 72px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }

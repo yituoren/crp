@@ -107,7 +107,10 @@ const orderedTeams = computed(() => {
         <thead>
           <tr>
             <th class="mx2-team" rowspan="2">队伍</th>
-            <th v-for="l in legs" :key="l.id" :colspan="colspanOf(l)" class="mx2-leg mx2-first mx2-last"><LegTag :type="l.type" /> {{ legName(l) }}<template v-if="branchOf(l)"> <LegTag type="BR" /> {{ legName(branchOf(l)!) }}</template></th>
+            <th v-for="l in legs" :key="l.id" :colspan="colspanOf(l)" class="mx2-leg mx2-first mx2-last">
+              <span class="mx2-leg-title"><LegTag :type="l.type" /><span>{{ legName(l) }}</span></span>
+              <span v-if="branchOf(l)" class="mx2-leg-title mx2-leg-branch"><LegTag type="BR" /><span>{{ legName(branchOf(l)!) }}</span></span>
+            </th>
           </tr>
           <tr>
             <template v-for="l in legs" :key="l.id">
