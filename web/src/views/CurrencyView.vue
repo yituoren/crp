@@ -47,10 +47,9 @@ async function revert(l: LedgerEntry) {
   </div>
 
   <!-- 操作：与跟队「我的」页相同的表单，主办多一个队伍选择 -->
-  <div class="card">
-    <div class="card-header"><span>{{ moneyLabel() }}操作</span><span v-if="moneyMode() === 'coin' && !race.shopItems.length && auth.isHost" class="text-xs text-gray">在「后台 → 赛事设置」添加商品后可记录商店购买</span></div>
-    <CurrencyOps :team-id="fixedTeam" />
-  </div>
+  <CurrencyOps :team-id="fixedTeam">
+    <template #header><span v-if="moneyMode() === 'coin' && !race.shopItems.length && auth.isHost" class="text-xs text-gray">在「后台 → 赛事设置」添加商品后可记录商店购买</span></template>
+  </CurrencyOps>
 
   <div class="card">
     <div class="card-header">

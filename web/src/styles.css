@@ -215,7 +215,7 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 /* 经费操作表单：两组固定槽位。选择项一组、金额/原因/按钮一组；窄屏时整组换行，组内不拆 */
 .ops { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 .ops-selects { display: flex; gap: 8px; flex: 0 0 auto; flex-wrap: wrap; }
-.ops-team { width: 170px; } .ops-kind { width: 120px; } .ops-leg { width: 170px; }
+.ops-kind { width: 120px; } .ops-leg { width: 170px; }
 .ops-main { display: flex; gap: 8px; flex: 1 1 420px; min-width: 0; align-items: center; }
 .ops-amount { width: 96px; flex: none; }
 .ops-reason { flex: 1 1 160px; min-width: 120px; }

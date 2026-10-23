@@ -24,11 +24,8 @@ async function revert(l: LedgerEntry) {
 </script>
 
 <template>
-  <div v-if="team" class="card">
-    <div class="card-header">
-      <span>{{ moneyLabel() }}操作 <span class="text-gray text-sm">当前余额 {{ fmtMoney(team.currency) }} {{ moneyUnit() }}</span></span>
-    </div>
-    <CurrencyOps :team-id="props.teamId" />
+  <CurrencyOps v-if="team" :team-id="props.teamId">
+    <template #title><span class="text-gray text-sm">当前余额 {{ fmtMoney(team.currency) }} {{ moneyUnit() }}</span></template>
     <div v-if="!rows.length" class="text-gray text-sm">本赛段暂无变动</div>
     <div v-else class="scroll-table">
       <table class="table table-dense">
@@ -43,5 +40,5 @@ async function revert(l: LedgerEntry) {
         </tbody>
       </table>
     </div>
-  </div>
+  </CurrencyOps>
 </template>
