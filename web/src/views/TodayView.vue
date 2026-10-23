@@ -62,7 +62,7 @@ const stats = computed(() => ({
       </div>
       <div class="flex mt-2">
         <router-link :to="{ name: 'progress' }" class="btn">查看进度</router-link>
-        <router-link :to="{ name: 'schedule' }" class="btn btn-outline">去排班</router-link>
+        <router-link :to="{ name: 'schedule' }" class="btn btn-tonal">去排班</router-link>
         
       </div>
     </template>
@@ -85,12 +85,12 @@ const stats = computed(() => ({
               <td><LegExtraField :leg="leg" :team-id="myTeam!.id" :progress="p" :can="!!p?.arrived_at && !p?.completed_at && !race.episodeFinished" /></td>
               <td>
                 <template v-if="race.episodeFinished">
-                  <button v-if="race.canEdit(myTeam!.id)" class="btn btn-outline btn-sm btn-slot" @click="editing = { leg, progress: p }">修改记录</button>
+                  <button v-if="race.canEdit(myTeam!.id)" class="btn btn-text btn-sm btn-slot" @click="editing = { leg, progress: p }">修改记录</button>
                   <span v-else class="text-gray text-sm">已锁定</span>
                 </template>
                 <template v-else>
                   <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.complete(myTeam!.id, leg.id)">记录{{ label }}</button>
-                  <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { leg, progress: p }">修改记录</button>
+                  <button v-else class="btn btn-text btn-sm btn-slot" @click="editing = { leg, progress: p }">修改记录</button>
                 </template>
                 <div v-if="block && !p?.completed_at" class="block-hint" :title="block">{{ block }}</div>
               </td>
@@ -107,7 +107,7 @@ const stats = computed(() => ({
       <div v-for="(l, i) in myLegs" :key="l.id" class="station-leg" :class="{ 'mt-3': i > 0 }">
         <div class="flex-between mb-1">
           <span class="section-title"><LegTag :type="l.type" full /> {{ legName(l) }}</span>
-          <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: l.id } }" class="btn btn-outline btn-sm">环节详情 / 附件</router-link>
+          <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: l.id } }" class="btn btn-text btn-sm">环节详情 / 附件<Icon name="open_in_new" size="16" /></router-link>
         </div>
         <p v-if="l.address" class="text-sm text-gray">地址：{{ l.address }} <a v-if="l.map_url" :href="l.map_url" target="_blank">地图</a></p>
         <p v-if="l.open_time || l.close_time" class="text-sm text-gray">开放时间：{{ l.open_time || '-' }} ~ {{ l.close_time || '-' }}</p>
@@ -121,8 +121,8 @@ const stats = computed(() => ({
       <p><span class="badge badge-live">直播员</span> 你本赛段负责直播跟进，可以查看所有队伍、环节、经费与罚时数据，但不做记录。</p>
       <div class="flex">
         <router-link :to="{ name: 'progress' }" class="btn">查看进度</router-link>
-        <router-link :to="{ name: 'episodes' }" class="btn btn-outline">赛段与环节</router-link>
-        <router-link :to="{ name: 'announcements' }" class="btn btn-outline">公告</router-link>
+        <router-link :to="{ name: 'episodes' }" class="btn btn-tonal">赛段与环节</router-link>
+        <router-link :to="{ name: 'announcements' }" class="btn btn-tonal">公告</router-link>
       </div>
     </template>
 

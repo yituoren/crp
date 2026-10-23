@@ -99,9 +99,9 @@ onMounted(() => { loadUsers(); if (auth.isAdmin) loadAudit(); });
             <td>{{ fmtDateTime(u.created_at) }}</td>
             <td class="flex" style="gap: 6px">
               <template v-if="u.role !== 'admin' || auth.isAdmin">
-                <button class="btn btn-outline btn-sm" @click="resetPassword(u)">重置密码</button>
-                <button v-if="u.id !== auth.user?.id" class="btn btn-outline btn-sm" @click="toggleDisabled(u)">{{ u.disabled ? '启用' : '停用' }}</button>
-                <button v-if="u.id !== auth.user?.id" class="btn btn-danger btn-sm" @click="deleteUser(u)">删除</button>
+                <button class="btn btn-text btn-sm" @click="resetPassword(u)"><Icon name="key" size="16" />重置密码</button>
+                <button v-if="u.id !== auth.user?.id" class="btn btn-text btn-sm" @click="toggleDisabled(u)">{{ u.disabled ? '启用' : '停用' }}</button>
+                <button v-if="u.id !== auth.user?.id" class="btn btn-text btn-text-danger btn-sm" @click="deleteUser(u)"><Icon name="delete" size="16" />删除</button>
               </template>
               <span v-else class="text-xs text-gray">仅管理员可操作</span>
             </td>
@@ -113,7 +113,7 @@ onMounted(() => { loadUsers(); if (auth.isAdmin) loadAudit(); });
   </div>
 
   <div v-if="tab === 'audit'" class="card">
-    <div class="card-header"><span>全部操作日志（最近 200 条 / 共 {{ auditTotal }}）</span><button class="btn btn-outline btn-sm" @click="loadAudit">刷新</button></div>
+    <div class="card-header"><span>全部操作日志（最近 200 条 / 共 {{ auditTotal }}）</span><button class="btn btn-text btn-sm" @click="loadAudit"><Icon name="refresh" size="16" />刷新</button></div>
     <div class="scroll-table">
       <table class="table">
         <thead><tr><th>时间</th><th>比赛</th><th>操作人</th><th>动作</th><th>对象</th><th>变更前</th><th>变更后</th></tr></thead>

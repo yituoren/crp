@@ -36,7 +36,7 @@ onUnmounted(() => { document.removeEventListener('click', onDocClick); window.re
 <template>
   <div ref="root" class="ms">
     <button type="button" class="ms-btn input-sm" :class="{ 'ms-empty': !modelValue.length }" @click="toggleOpen">
-      <span class="ms-text">{{ summary }}</span><span class="ms-caret">▾</span>
+      <span class="ms-text">{{ summary }}</span><span class="ms-caret"><Icon name="expand_more" size="18" /></span>
     </button>
     <div v-if="open" class="ms-menu" :style="menuStyle">
       <label v-for="o in options" :key="o.value" class="ms-item">

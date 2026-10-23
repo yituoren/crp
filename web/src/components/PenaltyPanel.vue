@@ -72,8 +72,8 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
       </select>
       <input v-model="form.minutes" type="number" inputmode="numeric" min="1" step="1" class="input-inline" placeholder="分钟" style="width: 90px" />
       <input v-model="form.reason" class="input-inline" placeholder="原因（如：打车超预算 / 站点失误耽误）" style="flex: 1; min-width: 160px" />
-      <button class="btn btn-danger" @click="apply(1)">增加罚时</button>
-      <button class="btn btn-success" @click="apply(-1)">补充时间</button>
+      <button class="btn btn-tonal btn-tonal-danger" @click="apply(1)">增加罚时</button>
+      <button class="btn btn-tonal" @click="apply(-1)">补充时间</button>
     </div>
     <div v-if="!visible.length" class="text-gray text-sm">本赛段暂无罚时或补时记录</div>
     <div v-else class="scroll-table">
@@ -89,7 +89,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
             <td>{{ totals.get(p.team_id) ?? 0 }}</td>
             <td>{{ p.applied_by_name ?? '-' }}</td>
             <td>{{ p.reason || '-' }}</td>
-            <td><span v-if="p.reverted" class="text-gray text-sm">{{ revertedBy(p.id) }}撤销</span><button v-else-if="race.canRevert(p.applied_by)" class="btn btn-outline btn-sm" @click="revert(p)">撤销</button></td>
+            <td><span v-if="p.reverted" class="text-gray text-sm">{{ revertedBy(p.id) }}撤销</span><button v-else-if="race.canRevert(p.applied_by)" class="btn btn-text btn-sm" @click="revert(p)"><Icon name="undo" size="16" />撤销</button></td>
           </tr>
         </tbody>
       </table>

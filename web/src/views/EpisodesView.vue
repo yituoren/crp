@@ -96,17 +96,17 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
 
 <template>
   <EpSelector />
-  <div v-if="!ep" class="empty-state">暂无赛段<button v-if="auth.isHost" class="btn" style="margin-left: 8px" @click="addEpisode">+ 新增赛段</button></div>
+  <div v-if="!ep" class="empty-state">暂无赛段<button v-if="auth.isHost" class="btn" style="margin-left: 8px" @click="addEpisode"><Icon name="add" size="18" />新增赛段</button></div>
   <template v-else>
     <div class="card">
       <div class="card-header">
         <span>{{ ep.name }} <span class="badge" :class="ep.status === 'running' ? 'badge-station' : ep.status === 'finished' ? 'badge-crew' : 'badge-info'">{{ statusLabel[ep.status] }}</span></span>
         <div v-if="auth.isHost" class="flex">
-          <button v-if="ep.status !== 'running'" class="btn btn-success btn-sm" @click="startEpisode">开始赛段</button>
-          <button v-else class="btn btn-secondary btn-sm" @click="finishEpisode">结束赛段</button>
-          <button class="btn btn-outline btn-sm" @click="openEpEdit">编辑赛段</button>
-          <button class="btn btn-outline btn-sm" @click="addEpisode">+ 新增赛段</button>
-          <button class="btn btn-danger btn-sm" @click="deleteEpisode">删除赛段</button>
+          <button v-if="ep.status !== 'running'" class="btn btn-sm" @click="startEpisode"><Icon name="play_arrow" size="18" />开始赛段</button>
+          <button v-else class="btn btn-tonal btn-sm" @click="finishEpisode"><Icon name="flag" size="16" />结束赛段</button>
+          <button class="btn btn-text btn-sm" @click="openEpEdit"><Icon name="edit" size="16" />编辑赛段</button>
+          <button class="btn btn-text btn-sm" @click="addEpisode"><Icon name="add" size="16" />新增赛段</button>
+          <button class="btn btn-text btn-text-danger btn-sm" @click="deleteEpisode"><Icon name="delete" size="16" />删除赛段</button>
         </div>
       </div>
       <div class="text-sm text-gray">
@@ -120,7 +120,7 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
 
     <div class="flex-between mb-2">
       <div class="section-title">环节列表（{{ ep.legs.length }}）</div>
-      <button v-if="auth.isHost" class="btn" @click="addLeg">+ 添加环节</button>
+      <button v-if="auth.isHost" class="btn" @click="addLeg"><Icon name="add" size="18" />添加环节</button>
     </div>
     <div v-if="!ep.legs.length" class="empty-state">暂无环节，{{ auth.isHost ? '请点击右上角添加' : '请等待主办添加' }}</div>
     <div class="grid grid-3">
@@ -129,7 +129,7 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
           <LegTag :type="leg.type" :episode-id="ep.id" full />
           <span class="text-xs text-gray">#{{ i + 1 }}</span>
         </div>
-        <div style="font-weight: 700; font-size: 15px">{{ legName(leg) }}</div>
+        <div style="font-weight: 500; font-size: 15px">{{ legName(leg) }}</div>
         <div class="text-sm text-gray">站点：<template v-if="leg.needs_staff">{{ staffOf(leg.id).join('、') || '未分配' }}</template><span v-else>无需站点</span></div>
         <div v-if="leg.address" class="text-sm text-gray">地址：{{ leg.address }}</div>
         <div class="text-xs text-gray mt-1">
@@ -139,9 +139,9 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
         </div>
         <div v-if="auth.isHost" class="flex mt-2" @click.stop>
           <template v-if="!isFixed(leg)">
-            <button class="btn btn-outline btn-sm" :disabled="!canMove(i, -1)" @click="move(leg, -1)">↑</button>
-            <button class="btn btn-outline btn-sm" :disabled="!canMove(i, 1)" @click="move(leg, 1)">↓</button>
-            <button class="btn btn-danger btn-sm" @click="deleteLeg(leg)">删除</button>
+            <button class="icon-btn icon-btn-sm" title="上移" :disabled="!canMove(i, -1)" @click="move(leg, -1)"><Icon name="arrow_upward" size="18" /></button>
+            <button class="icon-btn icon-btn-sm" title="下移" :disabled="!canMove(i, 1)" @click="move(leg, 1)"><Icon name="arrow_downward" size="18" /></button>
+            <button class="btn btn-text btn-text-danger btn-sm" @click="deleteLeg(leg)"><Icon name="delete" size="16" />删除</button>
           </template>
           <span v-else class="text-xs text-gray">固定环节</span>
         </div>
@@ -154,7 +154,7 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
     <div class="form-group"><label>本赛段补充{{ moneyLabel() }}（{{ moneyUnit() }}/队）</label><input v-model.number="epForm.budget" type="number" min="0" step="1" :inputmode="moneyMode() === 'coin' ? 'numeric' : 'decimal'" /><div class="info-text">点「开始赛段」时，在每支存活队伍现有余额上增加这笔数，不清零、不重置；上赛段剩余会累积。{{ moneyMode() === 'coin' ? '必须是整数' : '最多两位小数' }}，填 0 表示本赛段不发。</div></div>
     <div class="form-group"><label>状态（一般用「开始赛段 / 结束赛段」按钮切换，这里可手工修正）</label><select v-model="epForm.status"><option value="pending">未开始</option><option value="running">进行中</option><option value="finished">已结束</option></select></div>
     <div class="form-group"><label>赛段说明（所有幕后可见）</label><textarea v-model="epForm.notes" /></div>
-    <div class="modal-actions"><button class="btn btn-secondary" @click="epEditing = false">取消</button><button class="btn" @click="saveEp">保存</button></div>
+    <div class="modal-actions"><button class="btn btn-text" @click="epEditing = false">取消</button><button class="btn" @click="saveEp">保存</button></div>
   </Modal>
 
 </template>

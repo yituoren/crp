@@ -73,7 +73,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
   <div v-if="!leg || !ep" class="empty-state">环节不存在 <router-link :to="{ name: 'episodes' }">返回赛段列表</router-link></div>
   <template v-else>
     <div class="flex-between mb-2">
-      <div><router-link :to="{ name: 'episodes' }" class="text-sm">← {{ ep.code }} 环节列表</router-link></div>
+      <div><router-link :to="{ name: 'episodes' }" class="text-sm"><Icon name="arrow_back" size="16" />{{ ep.code }} 环节列表</router-link></div>
     </div>
     <!-- 主办/管理员：页内编辑 -->
     <div v-if="auth.isHost" class="card leg-edit">
@@ -165,9 +165,9 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
         <div v-for="att in leg.attachments" :key="att.id" class="att-item">
           <div class="text-xs text-gray mb-1" style="word-break: break-all">{{ att.filename }} · {{ fmtSize(att.size) }}</div>
           <img v-if="att.mime.startsWith('image/')" :src="att.url" loading="lazy" style="cursor: zoom-in" @click="preview = att.url" />
-          <a v-else :href="att.url" target="_blank" class="btn btn-outline btn-sm">打开文件</a>
+          <a v-else :href="att.url" target="_blank" class="btn btn-text btn-sm"><Icon name="open_in_new" size="16" />打开文件</a>
           <div class="text-xs text-gray mt-1">{{ fmtDateTime(att.created_at) }}</div>
-          <button v-if="canUpload" class="btn btn-danger btn-sm mt-1" @click="removeAttachment(att.id)">删除</button>
+          <button v-if="canUpload" class="btn btn-text btn-text-danger btn-sm mt-1" @click="removeAttachment(att.id)"><Icon name="delete" size="16" />删除</button>
         </div>
       </div>
       <div v-if="canUpload" class="upload-area" @click="fileInput?.click()">

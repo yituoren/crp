@@ -127,16 +127,19 @@ async function logout() {
     <!-- 右屏 / 电脑端主区域 -->
     <section class="pane pane-main">
   <div class="container" :class="{ 'container-fixed': $route.meta.fillPage }">
-    <div class="page-header">
-      <h1><router-link to="/" class="btn btn-outline btn-sm back-btn" title="返回主页">返回</router-link> {{ auth.event.name }}</h1>
-      <div class="user-bar">
-        <span class="sync-status" :class="ui.online ? 'online' : 'offline'">● {{ ui.online ? '实时同步中' : '连接中断' }}</span>
-        <span class="badge" :class="auth.isHost ? 'badge-host' : 'badge-crew'">{{ auth.isAdmin ? '管理员' : auth.isHost ? '主办' : '幕后' }}</span>
-        <strong>{{ auth.user?.displayName }}</strong>
-        <router-link to="/password" class="btn btn-outline btn-sm">改密</router-link>
-        <button class="btn btn-outline btn-outline-danger btn-sm" @click="logout">退出</button>
+    <header class="page-header">
+      <div class="appbar-left">
+        <router-link to="/" class="icon-btn" title="返回主页" aria-label="返回主页"><Icon name="arrow_back" size="22" /></router-link>
+        <h1>{{ auth.event.name }}</h1>
       </div>
-    </div>
+      <div class="user-bar">
+        <span class="sync-status" :class="ui.online ? 'online' : 'offline'"><span class="sync-dot"></span>{{ ui.online ? '实时同步中' : '连接中断' }}</span>
+        <span class="badge" :class="auth.isHost ? 'badge-host' : 'badge-crew'">{{ auth.isAdmin ? '管理员' : auth.isHost ? '主办' : '幕后' }}</span>
+        <span class="user-name">{{ auth.user?.displayName }}</span>
+        <router-link to="/password" class="icon-btn" title="修改密码" aria-label="修改密码"><Icon name="key" /></router-link>
+        <button class="icon-btn" title="退出登录" aria-label="退出登录" @click="logout"><Icon name="logout" /></button>
+      </div>
+    </header>
     <nav class="nav">
       <router-link :to="{ name: 'today' }" active-class="" exact-active-class="router-link-active">我的</router-link>
       <router-link :to="{ name: 'announcements' }" class="nav-dot-wrap">公告<span v-if="race.unreadAnnouncements" class="nav-dot" :title="`${race.unreadAnnouncements} 条未读`"></span></router-link>
@@ -157,7 +160,7 @@ async function logout() {
   </div>
   <!-- 手机端页码指示 -->
   <div class="pager-dots">
-    <button :class="{ active: page === 0 }" @click="goPage(0)"><span class="dot"></span>大屏</button>
-    <button :class="{ active: page === 1 }" @click="goPage(1)"><span class="dot"></span>页面</button>
+    <button :class="{ active: page === 0 }" @click="goPage(0)"><Icon name="tv" size="18" />大屏</button>
+    <button :class="{ active: page === 1 }" @click="goPage(1)"><Icon name="dashboard" size="18" />页面</button>
   </div>
 </template>

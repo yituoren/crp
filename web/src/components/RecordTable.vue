@@ -83,15 +83,15 @@ function detourOptions(): string[] {
           <td>
             <div class="flex" style="gap: 6px; flex-wrap: nowrap">
               <template v-if="race.episodeFinished">
-                <button v-if="edit" class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
+                <button v-if="edit" class="btn btn-text btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
                 <span v-else class="text-gray text-sm">已锁定</span>
               </template>
               <template v-else-if="can">
                 <button v-if="!p?.completed_at" class="btn btn-sm btn-slot" :disabled="!!disabledReason(p, block)" :title="disabledReason(p, block) ?? ''" @click="rec.complete(team.id, leg.id)">记录{{ label }}</button>
-                <button v-else class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
+                <button v-else class="btn btn-text btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
               </template>
               <template v-else-if="edit && p?.completed_at">
-                <button class="btn btn-outline btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
+                <button class="btn btn-text btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
               </template>
               <span v-if="can && !p?.completed_at && disabledReason(p, block)" class="block-hint" :title="disabledReason(p, block) ?? ''">{{ disabledReason(p, block) }}</span>
             </div>

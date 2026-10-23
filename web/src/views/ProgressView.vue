@@ -175,8 +175,8 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
             <td class="wrap">{{ r.note }}</td>
             <td v-if="race.canEliminate">
               <div class="flex" style="gap: 6px; flex-wrap: nowrap">
-                <button class="btn btn-sm btn-slot" :class="r.eliminated ? 'btn-success' : 'btn-danger'" @click="toggleEliminate(r)">{{ r.eliminated ? '取消淘汰' : '淘汰' }}</button>
-                <button v-if="auth.isHost" class="btn btn-outline btn-sm" @click="open(r)">编辑</button>
+                <button class="btn btn-sm btn-slot" :class="r.eliminated ? 'btn-tonal' : 'btn-tonal btn-tonal-danger'" @click="toggleEliminate(r)">{{ r.eliminated ? '取消淘汰' : '淘汰' }}</button>
+                <button v-if="auth.isHost" class="btn btn-text btn-sm" @click="open(r)"><Icon name="edit" size="16" />编辑</button>
               </div>
             </td>
           </tr>
@@ -189,6 +189,6 @@ watch(() => race.currentEpisodeId, () => { editing.value = null; });
     <div class="form-group"><label>签到时间（留空则采用中继站的签到时间）</label><input v-model="form.checkinAt" type="datetime-local" step="1" /></div>
     <div class="form-group"><label><input v-model="form.eliminated" type="checkbox" /> 本赛段淘汰（会同步修改队伍状态）</label></div>
     <div class="form-group"><label>备注</label><input v-model="form.note" /></div>
-    <div class="modal-actions"><button class="btn btn-secondary" @click="editing = null">取消</button><button class="btn" @click="save">保存</button></div>
+    <div class="modal-actions"><button class="btn btn-text" @click="editing = null">取消</button><button class="btn" @click="save">保存</button></div>
   </Modal>
 </template>

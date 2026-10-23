@@ -72,8 +72,8 @@ onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
             <td><span class="badge" :class="u.role === 'crew' ? 'badge-crew' : 'badge-host'">{{ roleText(u.role) }}</span></td>
             <td>
               <template v-if="u.role !== 'admin' && u.id !== auth.user?.id && u.id !== auth.event.ownerId">
-                <button v-if="u.role === 'crew'" class="btn btn-outline btn-sm" @click="setRole(u, 'host')">设为主办</button>
-                <button v-else class="btn btn-outline btn-sm" @click="setRole(u, 'crew')">取消主办</button>
+                <button v-if="u.role === 'crew'" class="btn btn-text btn-sm" @click="setRole(u, 'host')">设为主办</button>
+                <button v-else class="btn btn-text btn-sm" @click="setRole(u, 'crew')">取消主办</button>
               </template>
               <span v-else class="text-xs text-gray">{{ u.role === 'admin' ? '管理员' : u.id === auth.event.ownerId ? '创建者' : '' }}</span>
             </td>
@@ -84,7 +84,7 @@ onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
   </div>
 
   <div v-if="tab === 'audit'" class="card">
-    <div class="card-header"><span>本比赛操作日志（最近 200 条 / 共 {{ auditTotal }}）</span><button class="btn btn-outline btn-sm" @click="loadAudit">刷新</button></div>
+    <div class="card-header"><span>本比赛操作日志（最近 200 条 / 共 {{ auditTotal }}）</span><button class="btn btn-text btn-sm" @click="loadAudit"><Icon name="refresh" size="16" />刷新</button></div>
     <div class="scroll-table">
       <table class="table">
         <thead><tr><th>时间</th><th>操作人</th><th>动作</th><th>对象</th><th>变更前</th><th>变更后</th></tr></thead>

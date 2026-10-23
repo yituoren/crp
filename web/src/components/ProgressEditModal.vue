@@ -57,7 +57,7 @@ async function save() {
     </div>
     <div class="form-group"><label>备注</label><textarea v-model="form.note" style="min-height: 60px" /></div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" @click="emit('close')">取消</button>
+      <button class="btn btn-text" @click="emit('close')">取消</button>
       <button class="btn" @click="save">保存</button>
     </div>
   </Modal>

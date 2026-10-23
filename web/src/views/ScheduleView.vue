@@ -86,7 +86,7 @@ async function copyPrev() {
     <div class="card-header">
       <span>排班表</span>
       <div v-if="auth.isHost" class="flex">
-        <button class="btn btn-outline" @click="copyPrev">复制上一赛段跟队</button>
+        <button class="btn btn-tonal" @click="copyPrev"><Icon name="content_copy" size="18" />复制上一赛段跟队</button>
         <button class="btn" @click="save">保存排班</button>
       </div>
     </div>

@@ -12,7 +12,7 @@ const ui = useUi();
       <h3>{{ ui.confirmState.title }}</h3>
       <p class="text-gray" style="white-space: pre-wrap; line-height: 1.6">{{ ui.confirmState.message }}</p>
       <div class="modal-actions">
-        <button class="btn btn-secondary" @click="ui.closeConfirm(false)">取消</button>
+        <button class="btn btn-text" @click="ui.closeConfirm(false)">取消</button>
         <button class="btn" :class="ui.confirmState.danger ? 'btn-danger' : ''" @click="ui.closeConfirm(true)">{{ ui.confirmState.okText }}</button>
       </div>
     </div>
@@ -28,7 +28,7 @@ const ui = useUi();
         <input v-model="ui.timeState.value" type="datetime-local" step="1" />
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" @click="ui.closeTime(false)">取消</button>
+        <button class="btn btn-text" @click="ui.closeTime(false)">取消</button>
         <button class="btn" @click="ui.closeTime(true)">确认记录</button>
       </div>
     </div>

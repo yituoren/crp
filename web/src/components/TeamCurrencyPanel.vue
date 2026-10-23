@@ -53,8 +53,8 @@ async function revert(l: LedgerEntry) {
         <option v-for="l in ep?.legs ?? []" :key="l.id" :value="l.id">环节：{{ legName(l) }}</option>
       </select>
       <input v-model="form.reason" class="input-inline" placeholder="原因（如：任务奖励、买线索）" style="flex: 1; min-width: 160px" />
-      <button class="btn btn-success" @click="apply(1)">增加</button>
-      <button class="btn btn-danger" @click="apply(-1)">扣除</button>
+      <button class="btn btn-tonal" @click="apply(1)"><Icon name="add" size="18" />增加</button>
+      <button class="btn btn-tonal btn-tonal-danger" @click="apply(-1)">扣除</button>
     </div>
     <div v-if="!rows.length" class="text-gray text-sm">本赛段暂无变动</div>
     <div v-else class="scroll-table">
@@ -65,7 +65,7 @@ async function revert(l: LedgerEntry) {
             <td>{{ fmtDateTime(l.created_at) }}</td><td><template v-if="l.leg_id && race.legById.get(l.leg_id)"><LegTag :type="race.legById.get(l.leg_id)!.type" /> {{ legName(race.legById.get(l.leg_id)!) }}</template><template v-else>{{ l.leg_name || '其他' }}</template></td>
             <td :class="l.delta > 0 ? 'log-positive' : 'log-negative'">{{ fmtMoney(l.delta, true) }}</td>
             <td>{{ fmtMoney(l.balance_after) }}</td><td>{{ l.operator_name }}</td><td>{{ l.reason || '-' }}</td>
-            <td><span v-if="l.reverted" class="text-gray text-sm">{{ revertedBy(l) }}撤销</span><button v-else-if="race.canRevert(l.operator_id)" class="btn btn-outline btn-sm" @click="revert(l)">撤销</button></td>
+            <td><span v-if="l.reverted" class="text-gray text-sm">{{ revertedBy(l) }}撤销</span><button v-else-if="race.canRevert(l.operator_id)" class="btn btn-text btn-sm" @click="revert(l)"><Icon name="undo" size="16" />撤销</button></td>
           </tr>
         </tbody>
       </table>
