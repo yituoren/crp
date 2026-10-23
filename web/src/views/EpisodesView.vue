@@ -118,11 +118,11 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
     </div>
     <div v-if="!ep.legs.length" class="empty-state">暂无环节，{{ auth.isHost ? '请点击右上角添加' : '请等待主办添加' }}</div>
     <div class="grid grid-3">
-      <div v-for="(leg, i) in ep.legs" :key="leg.id" class="leg-item" :class="{ 'leg-item-host': auth.isHost && !isFixed(leg) }" v-bind="auth.isHost ? drag.bind(i) : {}" @click="$router.push({ name: 'leg', params: { episodeId: ep.id, legId: leg.id } })">
+      <div v-for="(leg, i) in ep.legs" :key="leg.id" class="leg-item" v-bind="auth.isHost ? drag.bind(i) : {}" @click="$router.push({ name: 'leg', params: { episodeId: ep.id, legId: leg.id } })">
         <div class="leg-item-body">
-        <div class="flex-between" style="margin-bottom: 6px">
+        <div class="flex-between leg-item-head">
           <LegTag :type="leg.type" :episode-id="ep.id" full />
-          <span class="text-xs text-gray">#{{ i + 1 }}</span>
+          <button v-if="auth.isHost && !isFixed(leg)" class="icon-btn icon-btn-sm icon-btn-danger" title="删除环节" @click.stop="deleteLeg(leg)"><Icon name="delete" size="18" /></button>
         </div>
         <div style="font-weight: 500; font-size: 15px">{{ legName(leg) }}</div>
         <div class="text-sm text-gray">站点：<template v-if="leg.needs_staff">{{ staffOf(leg.id).join('、') || '未分配' }}</template><span v-else>无需站点</span></div>
@@ -134,9 +134,6 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
           <template v-if="leg.can_eliminate"> · 淘汰 {{ leg.eliminate_count }} 队</template>
           <template v-if="leg.cutoffs.length"> · 熔断 {{ leg.cutoffs.length }} 种</template>
         </div>
-        </div>
-        <div v-if="auth.isHost && !isFixed(leg)" class="leg-item-side" @click.stop>
-          <button class="icon-btn icon-btn-danger" title="删除环节" @click="deleteLeg(leg)"><Icon name="delete" size="20" /></button>
         </div>
       </div>
     </div>

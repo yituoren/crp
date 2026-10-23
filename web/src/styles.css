@@ -205,10 +205,11 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .ep-btn .sub { font-weight: 400; font-size: 11px; opacity: .75; margin-left: 4px; }
 
 /* 环节 / 队伍卡片 */
-.leg-item { background: var(--surface); border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 16px; cursor: pointer; transition: background-color .15s, box-shadow .15s; display: flex; gap: 8px; align-items: stretch; }
-.leg-item-body { flex: 1; min-width: 0; }
-/* 主办：删除按钮占卡片右侧一列，垂直居中 */
-.leg-item-side { flex: none; display: flex; align-items: center; margin-right: -6px; }
+.leg-item { background: var(--surface); border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 16px; cursor: pointer; transition: background-color .15s, box-shadow .15s; }
+.leg-item-body { min-width: 0; }
+/* 卡片头：左侧类型标签，右侧删除图标（固定环节没有）；高度固定，让有无按钮的卡片对齐 */
+.leg-item-head { min-height: 32px; margin-bottom: 4px; }
+.leg-item-head .icon-btn-sm { margin: -4px -8px -4px 0; }
 .leg-item:hover { background: var(--surface-2); box-shadow: var(--shadow-1); }
 .team-card { background: var(--surface); border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 16px; }
 .team-card .btn-sm.btn-text { padding: 0 8px; }
