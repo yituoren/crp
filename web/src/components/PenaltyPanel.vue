@@ -65,7 +65,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
       <span v-if="!canAdd" class="text-sm text-gray">主办、本赛段站点可操作所有队伍，跟队只能操作所跟队伍</span>
     </div>
     <div v-if="race.episodePending" class="alert alert-warning">赛段尚未开始，开始赛段后才能操作罚时。</div>
-    <div v-else-if="race.episodeFinished && !auth.isHost" class="alert alert-info">赛段已结束，罚时记录已锁定，只有主办可以修改。</div>
+    <div v-else-if="race.episodeFinished" class="alert alert-info">赛段已结束，罚时记录已锁定，只有管理员可以修改。</div>
     <div v-else-if="canAdd" class="flex mb-2">
       <MSelect v-if="!props.legId" v-model="form.legId" outlined style="width: 160px" placeholder="选择环节" :options="[...legOptions.map((l) => ({ value: l.id, label: legName(l) })), ...(auth.isHost ? [{ value: 0, label: '其他' }] : [])]" />
       <input v-model="form.minutes" type="number" inputmode="numeric" min="1" step="1" class="input-inline" placeholder="分钟" style="width: 90px" />
@@ -87,7 +87,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
             <td class="c">{{ totals.get(p.team_id) ?? 0 }}</td>
             <td>{{ p.applied_by_name ?? '-' }}</td>
             <td class="wrap">{{ p.reason || '-' }}</td>
-            <td class="c"><span v-if="p.reverted" class="revert-note">{{ revertedBy(p.id) }}撤销</span><button v-else-if="race.canRevert(p.applied_by)" class="btn btn-text btn-sm" @click="revert(p)"><Icon name="undo" size="16" />撤销</button></td>
+            <td class="c"><span v-if="p.reverted" class="revert-note">{{ revertedBy(p.id) }}撤销</span><button v-else-if="race.canRevert(p.applied_by, p.team_id)" class="btn btn-text btn-sm" @click="revert(p)"><Icon name="undo" size="16" />撤销</button></td>
           </tr>
         </tbody>
       </table>

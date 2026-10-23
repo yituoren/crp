@@ -17,7 +17,7 @@ const editing = ref<{ team: Team; progress: Progress | null } | null>(null);
 const rows = computed(() => {
   const list = props.onlyTeamId ? race.teams.filter((t) => t.id === props.onlyTeamId) : race.teams;
   return list.map((team) => {
-    const locked = (race.isLocked(team.id, props.leg.id) && !auth.isAdmin) || (race.branchLocked(team.id, props.leg.id) && !race.progressOf(team.id, props.leg.id)?.completed_at && !auth.isAdmin); // 淘汰/退赛之后的环节、主线已完成的未完成支线：只读留空
+    const locked = (race.isLocked(team.id, props.leg.id) && !auth.isAdmin) || (race.branchLocked(team.id, props.leg.id) && !race.progressOf(team.id, props.leg.id)?.completed_at && !auth.isAdmin); // 淘汰/退赛之后的环节、主线已完成的未完成支线：只读留空（之前的环节显示记录但不可改）
     return { team, p: race.progressOf(team.id, props.leg.id), locked, can: !locked && race.canRecord(team.id, props.leg.id), edit: !locked && race.canEdit(team.id), block: race.blockReason(team.id, props.leg.id) };
   });
 });
@@ -77,9 +77,8 @@ function detourOptions(): string[] {
           <td class="c">
             <div class="flex" style="gap: 6px; flex-wrap: nowrap">
               <template v-if="locked"><span class="text-gray text-sm">-</span></template>
-              <template v-else-if="race.episodeFinished">
-                <button v-if="edit" class="btn btn-text btn-sm btn-slot" @click="editing = { team, progress: p }">修改记录</button>
-                <span v-else class="text-gray text-sm">已锁定</span>
+              <template v-else-if="race.episodeFinished || race.teamLocked(team.id)">
+                <span class="text-gray text-sm" :title="race.lockReason(team.id) ?? ''">已锁定</span>
               </template>
               <template v-else-if="can && isBranch">
                 <button v-if="!p?.arrived_at" class="btn btn-sm btn-slot" :disabled="!!block" :title="block ?? ''" @click="rec.branch('start', team.id, leg.id)">开始支线</button>

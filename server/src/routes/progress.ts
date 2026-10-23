@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { all, get, run, tx, now } from '../db.js';
 import { hostOnly, canRecordProgress, canManagePenalty, isHostRole, type Env, isAdminRole } from '../auth.js';
-import { recomputeEliminations, isLegLocked } from '../elimination.js';
-import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forbidden } from '../util.js';
+import { recomputeEliminations } from '../elimination.js';
+import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forbidden, editLockReason } from '../util.js';
 import { teamLabelMap } from './teams.js';
 import { episodeInEvent } from './episodes.js';
 
@@ -64,11 +64,9 @@ progressRoutes.post('/progress', async (c) => {
   const leg = get<any>('SELECT * FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId);
   if (!leg) throw notFound('环节不存在');
   if (action === 'single') action = 'complete'; // 旧客户端兼容：所有环节都记开始/结束
-  const episode = get('SELECT status, code FROM episodes WHERE id = ?', episodeId)!;
-  if (!isAdminRole(user.role)) {
-    if (episode.status === 'pending') throw bad(`${episode.code} 尚未开始，开始赛段后才能记录`);
-    if (episode.status === 'finished') throw bad(`${episode.code} 已结束，记录已锁定${isHostRole(user.role) ? '，如需修正请使用“修改记录”' : ''}`);
-  }
+  const episode = get<{ status: string; code: string }>('SELECT status, code FROM episodes WHERE id = ?', episodeId)!;
+  if (!isAdminRole(user.role) && episode.status === 'pending') throw bad(`${episode.code} 尚未开始，开始赛段后才能记录`);
+  { const r = editLockReason(user, episode, null); if (r) throw forbidden(r); }
   if (['arrive', 'complete'].includes(action) && leg.type !== 'BR') {
     const missing = missingPrerequisites(episodeId, teamId, legId);
     if (missing.length) throw bad(`该队伍还没有完成前面的环节：${missing.join('、')}`);
@@ -89,8 +87,8 @@ progressRoutes.post('/progress', async (c) => {
   const team = get<{ id: number; status: string; locked_from_leg_id: number | null }>('SELECT * FROM teams WHERE id = ?', teamId);
   if (!team) throw notFound('队伍不存在');
   if (!canRecordProgress(user, episodeId, teamId, legId)) throw forbidden('你没有该队伍/站点的记录权限');
-  // 淘汰 / 退赛之后的环节锁定：所有人都不能再记录（管理员除外）；之前的记录照常
-  if (!isAdminRole(user.role) && isLegLocked(c.get('event').id, team, legId)) throw forbidden(`该队伍已${team.status === 'withdrawn' ? '退赛' : '淘汰'}，此后的环节不能再记录`);
+  // 淘汰 / 退赛的队伍：所有记录只有管理员能改
+  { const r = editLockReason(user, null, team); if (r) throw forbidden(r); }
   if (['undo_arrive', 'undo_complete'].includes(action) && !isHostRole(user.role)) throw forbidden('撤销记录仅主办可操作');
 
   const before = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, legId);
@@ -292,9 +290,8 @@ progressRoutes.put('/progress/:episodeId/:teamId/:legId', async (c) => {
   if (episodeRow.status === 'pending' && !isAdminRole(user.role)) throw bad(`${episodeRow.code} 尚未开始，开始赛段后才能操作`);
   const teamRow = get<{ id: number; status: string; locked_from_leg_id: number | null }>('SELECT * FROM teams WHERE id = ?', teamId);
   if (!teamRow) throw notFound('队伍不存在');
-  if (!isAdminRole(user.role) && isLegLocked(c.get('event').id, teamRow, legId)) throw forbidden(`该队伍已${teamRow.status === 'withdrawn' ? '退赛' : '淘汰'}，此后的环节不能再修改`);
+  { const r = editLockReason(user, episodeRow as { status: string; code: string }, teamRow); if (r) throw forbidden(r); }
   if (!isHostRole(user.role)) {
-    if (episodeRow.status === 'finished') throw forbidden(`${episodeRow.code} 已结束，只有主办可以修改记录`);
     if (!canRecordProgress(user, episodeId, teamId, legId)) throw forbidden('只能修改所跟队伍的记录');
     if (!before) throw bad('还没有记录，请先记录');
     if ((before.arrived_at && !next.arrived_at) || (before.completed_at && !next.completed_at)) throw bad('跟队不能清空已有时间，如需撤销请联系主办');
@@ -328,11 +325,12 @@ progressRoutes.post('/episodes/:id/penalties', async (c) => {
   const teamId = int(b.teamId), minutes = int(b.minutes);
   if (!teamId || !minutes) throw bad('缺少队伍或罚时分钟数');
   if (!canManagePenalty(user, episodeId, teamId)) throw forbidden('只有主办、本赛段站点人员或该队伍的跟队可以操作罚时');
-  if (!get('SELECT 1 FROM teams WHERE id = ?', teamId)) throw notFound('队伍不存在');
-  const epRow = get('SELECT status, code FROM episodes WHERE id = ?', episodeId);
+  const teamRow = get<{ status: string }>('SELECT status FROM teams WHERE id = ?', teamId);
+  if (!teamRow) throw notFound('队伍不存在');
+  const epRow = get<{ status: string; code: string }>('SELECT status, code FROM episodes WHERE id = ?', episodeId);
   if (!epRow) throw notFound('赛段不存在');
   if (epRow.status === 'pending' && !isAdminRole(user.role)) throw bad(`${epRow.code} 尚未开始，开始赛段后才能操作罚时`);
-  if (epRow.status === 'finished' && !isHostRole(user.role)) throw forbidden(`${epRow.code} 已结束，只有主办可以操作罚时`);
+  { const r = editLockReason(user, epRow, teamRow); if (r) throw forbidden(r); }
   const legId = int(b.legId, 0) || null;
   if (legId && !get('SELECT 1 FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId)) throw notFound('环节不存在');
   if (!legId && !isHostRole(user.role)) throw forbidden('“其他”环节的罚时/补时只能由主办操作，请选择具体环节');
@@ -352,10 +350,8 @@ progressRoutes.post('/penalties/:id/revert', (c) => {
   const user = c.get('user');
   const orig = get('SELECT * FROM penalties WHERE id = ?', id);
   if (!orig) throw notFound('罚时记录不存在');
-  if (!isHostRole(user.role)) {
-    if (orig.applied_by !== user.id) throw forbidden('只有发出这条记录的本人或主办可以撤销');
-    if (get('SELECT status FROM episodes WHERE id = ?', orig.episode_id)?.status === 'finished') throw forbidden('赛段已结束，只有主办可以撤销');
-  }
+  if (!isHostRole(user.role) && orig.applied_by !== user.id) throw forbidden('只有发出这条记录的本人或主办可以撤销');
+  { const r = editLockReason(user, get<{ status: string; code: string }>('SELECT status, code FROM episodes WHERE id = ?', orig.episode_id), get<{ status: string }>('SELECT status FROM teams WHERE id = ?', orig.team_id)); if (r) throw forbidden(r); }
   if (orig.reverted) throw bad('这条记录已经撤销过了');
   if (orig.reverts_id) throw bad('撤销记录本身不能再撤销');
   const newId = tx(() => {
@@ -409,6 +405,7 @@ progressRoutes.put('/episodes/:id/pitstop/:teamId', hostOnly, async (c) => {
   episodeInEvent(c, episodeId);
   const user = c.get('user');
   const b = await body(c);
+  { const r = editLockReason(user, get<{ status: string; code: string }>('SELECT status, code FROM episodes WHERE id = ?', episodeId), get<{ status: string }>('SELECT status FROM teams WHERE id = ?', teamId)); if (r) throw forbidden(r); }
   const before = get('SELECT * FROM pitstop_results WHERE episode_id = ? AND team_id = ?', episodeId, teamId);
   const checkin = b.checkinAt === undefined ? (before?.checkin_at ?? null) : isoOrNull(b.checkinAt);
   const note = b.note === undefined ? (before?.note ?? '') : str(b.note, 300);

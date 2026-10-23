@@ -51,7 +51,7 @@ const stats = computed(() => ({
   <EpSelector />
 
   <div v-if="race.episodePending" class="alert alert-warning">{{ ep?.code }} 尚未开始。主办点「开始赛段」后才能记录时间、操作经费和罚时。</div>
-  <div v-else-if="race.episodeFinished" class="alert alert-info">{{ ep?.code }} 已结束，记录已锁定。{{ auth.isHost ? '如需修正，请使用各环节的「修改记录」。' : '幕后只读，如需修正请联系主办。' }}</div>
+  <div v-else-if="race.episodeFinished" class="alert alert-info">{{ ep?.code }} 已结束，所有记录已锁定，只有管理员可以修改。</div>
 
   <!-- 主办概览 -->
   <div v-if="auth.isHost" class="card">
@@ -88,9 +88,8 @@ const stats = computed(() => ({
               <td class="c"><LegExtraField :leg="leg" :team-id="myTeam!.id" :progress="p" :can="!locked && !!p?.arrived_at && !p?.completed_at && !race.episodeFinished" /></td>
               <td class="c">
                 <template v-if="locked"><span class="text-gray text-sm">-</span></template>
-                <template v-else-if="race.episodeFinished">
-                  <button v-if="race.canEdit(myTeam!.id)" class="btn btn-text btn-sm btn-slot" @click="editing = { leg, progress: p }">修改记录</button>
-                  <span v-else class="text-gray text-sm">已锁定</span>
+                <template v-else-if="race.episodeFinished || race.teamLocked(myTeam!.id)">
+                  <span class="text-gray text-sm" :title="race.lockReason(myTeam!.id) ?? ''">已锁定</span>
                 </template>
                 <template v-else-if="isBranch">
                   <div class="flex" style="gap: 6px; flex-wrap: nowrap">

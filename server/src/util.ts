@@ -60,6 +60,17 @@ export function fmtMoneyServer(cents: number): string {
   const v = cents / 100;
   return currencyMode() === 'coin' ? `${Math.round(v)} 币` : `${v.toFixed(2)} 元`;
 }
+/**
+ * 统一锁定规则：赛段已结束，或队伍已淘汰 / 退赛，所有记录（时间、罚时、经费、结算）只有管理员能改。
+ * 返回不能改的原因；null 表示没被这条规则拦住
+ */
+export function editLockReason(user: { role: string }, episode: { status: string; code: string } | null | undefined, team: { status: string } | null | undefined): string | null {
+  if (user.role === 'admin') return null;
+  if (episode?.status === 'finished') return `${episode.code} 已结束，只有管理员可以修改`;
+  if (team && team.status !== 'alive') return `该队伍已${team.status === 'withdrawn' ? '退赛' : '淘汰'}，只有管理员可以修改`;
+  return null;
+}
+
 export function money(v: unknown, label = '金额'): number {
   let cents: number;
   try { cents = toCents(v, label); } catch (e) { throw bad((e as Error).message); }

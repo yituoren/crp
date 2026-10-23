@@ -21,7 +21,8 @@ const isCoin = computed(() => moneyMode() === 'coin');
 const form = reactive({ teamId: (props.teamId ?? '') as number | '', kind: 'other' as 'other' | 'shop', legId: '' as number | '', itemId: '' as number | '', amount: '', reason: '' });
 watch(() => props.teamId, (v) => { form.teamId = v ?? ''; });
 
-const teamOptions = computed(() => race.teams.filter((t) => t.status === 'alive' && race.canAdjustCurrencyFor(t.id)).map((t) => ({ value: t.id, label: t.label })));
+// 淘汰 / 退赛的队伍仍在列表里，但只有管理员能对它们操作（canAdjustCurrencyFor 已包含这条规则）
+const teamOptions = computed(() => race.teams.filter((t) => race.canAdjustCurrencyFor(t.id)).map((t) => ({ value: t.id, label: t.status === 'alive' ? t.label : `${t.label}（${t.status === 'withdrawn' ? '已退赛' : '已淘汰'}）` })));
 const team = computed(() => (form.teamId === '' ? null : race.teamById.get(Number(form.teamId)) ?? null));
 const legs = computed(() => ep.value?.legs ?? []);
 const legOptions = computed(() => {
@@ -75,7 +76,8 @@ async function apply(sign: 1 | -1) {
       <slot name="header" />
     </div>
     <div v-if="race.episodePending" class="alert alert-warning">赛段尚未开始，开始赛段后才能操作{{ moneyLabel() }}。</div>
-    <div v-else-if="race.episodeFinished && !auth.isHost" class="alert alert-info">赛段已结束，{{ moneyLabel() }}记录已锁定，只有主办可以修改。</div>
+    <div v-else-if="race.episodeFinished" class="alert alert-info">赛段已结束，{{ moneyLabel() }}记录已锁定，只有管理员可以修改。</div>
+  <div v-else-if="props.teamId !== undefined && race.teamLocked(props.teamId)" class="alert alert-info">{{ race.lockReason(props.teamId) }}</div>
     <div v-else-if="!canOperate" class="text-sm text-gray">主办可操作所有队伍，跟队只能操作所跟队伍</div>
     <div v-else class="ops">
       <!-- 选择项：类型（货币模式）/ 环节，固定宽度 -->

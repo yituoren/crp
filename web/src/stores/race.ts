@@ -46,12 +46,24 @@ export const useRace = defineStore('race', () => {
   // 赛段状态锁：管理员不受任何状态限制，所以这两个锁对管理员恒为 false
   /** 当前赛段尚未开始（且非管理员）：环节记录、经费、罚时都不能操作 */
   const episodePending = computed(() => !auth.isAdmin && currentEpisode.value?.status === 'pending');
-  /** 当前赛段已结束（且非管理员）：记录锁定，常规记录按钮全部收起；只有主办能通过“修改记录”修正，普通幕后只读 */
+  /** 当前赛段已结束（且非管理员）：所有记录锁定，只有管理员能改 */
   const episodeFinished = computed(() => !auth.isAdmin && currentEpisode.value?.status === 'finished');
+  /** 队伍已淘汰 / 退赛（且非管理员）：该队的所有记录锁定，只有管理员能改 */
+  function teamLocked(teamId: number) {
+    if (auth.isAdmin) return false;
+    const t = teamById.value.get(teamId);
+    return !!t && t.status !== 'alive';
+  }
+  /** 统一的“不能改”原因：赛段已结束 / 队伍已淘汰退赛 */
+  function lockReason(teamId?: number): string | null {
+    if (episodeFinished.value) return '赛段已结束，只有管理员可以修改';
+    if (teamId !== undefined && teamLocked(teamId)) return `该队伍已${teamById.value.get(teamId)?.status === 'withdrawn' ? '退赛' : '淘汰'}，只有管理员可以修改`;
+    return null;
+  }
   /** 时间记录（常规按钮）：管理员任意；主办任意；跟队仅所跟队伍；站点不记时间；赛段结束后所有人都不能 */
   function canRecord(teamId: number, _legId: number) {
     if (auth.isAdmin) return true;
-    if (episodeFinished.value) return false;
+    if (episodeFinished.value || teamLocked(teamId)) return false;
     if (auth.isHost) return true;
     const a = myAssignment.value;
     return !!a && a.role === 'follow' && a.team_id === teamId;
@@ -59,28 +71,29 @@ export const useRace = defineStore('race', () => {
   /** 修改记录（弹窗修正）：管理员任意；主办随时可用（未开始除外）；跟队仅在进行中对所跟队伍可用 */
   function canEdit(teamId: number) {
     if (auth.isAdmin) return true;
-    if (episodePending.value) return false;
+    if (episodePending.value || episodeFinished.value || teamLocked(teamId)) return false;
     if (auth.isHost) return true;
-    if (episodeFinished.value) return false;
     const a = myAssignment.value;
     return !!a && a.role === 'follow' && a.team_id === teamId;
   }
   /** 罚时/补时：主办；本赛段站点任意队伍；跟队仅所跟队伍（赛段结束后仅主办） */
-  const canManagePenalty = computed(() => auth.isHost || (!episodeFinished.value && (myAssignment.value?.role === 'station' || myAssignment.value?.role === 'follow')));
+  const canManagePenalty = computed(() => auth.isAdmin || (!episodeFinished.value && (auth.isHost || myAssignment.value?.role === 'station' || myAssignment.value?.role === 'follow')));
   function canManagePenaltyFor(teamId: number) {
+    if (auth.isAdmin) return true;
+    if (episodeFinished.value || teamLocked(teamId)) return false;
     if (auth.isHost) return true;
-    if (episodeFinished.value) return false;
     const a = myAssignment.value;
     return a?.role === 'station' || (a?.role === 'follow' && a.team_id === teamId);
   }
   /** 撤销罚时/经费：只有发出记录的本人和主办 */
-  function canRevert(authorId: number | null | undefined) {
+  function canRevert(authorId: number | null | undefined, teamId?: number) {
+    if (auth.isAdmin) return true;
+    if (episodeFinished.value || (teamId !== undefined && teamLocked(teamId))) return false;
     if (auth.isHost) return true;
-    if (episodeFinished.value) return false;
     return !!authorId && authorId === auth.user?.id;
   }
   /** 经费：主办任意；跟队仅所跟队伍（赛段结束后仅主办）；站点无 */
-  const canAdjustCurrency = computed(() => auth.isHost || (!episodeFinished.value && myAssignment.value?.role === 'follow'));
+  const canAdjustCurrency = computed(() => auth.isAdmin || (!episodeFinished.value && (auth.isHost || myAssignment.value?.role === 'follow')));
   /** 淘汰权限：主办，或本赛段站在中继站的站点人员；不受赛段开始/结束限制 */
   const canEliminate = computed(() => {
     if (auth.isHost) return true;
@@ -89,8 +102,9 @@ export const useRace = defineStore('race', () => {
     return currentEpisode.value?.legs.some((l) => a.leg_ids.includes(l.id) && l.type === 'PS') ?? false;
   });
   function canAdjustCurrencyFor(teamId: number) {
+    if (auth.isAdmin) return true;
+    if (episodeFinished.value || teamLocked(teamId)) return false;
     if (auth.isHost) return true;
-    if (episodeFinished.value) return false;
     const a = myAssignment.value;
     return a?.role === 'follow' && a.team_id === teamId;
   }
@@ -260,7 +274,7 @@ export const useRace = defineStore('race', () => {
 
   return {
     episodes, teams, users, announcements, shopItems, loadShopItems, unreadAnnouncements, markAnnouncementsRead, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
-    aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, isLocked, parentOf, branchOf, branchLocked, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
+    aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, isLocked, teamLocked, lockReason, parentOf, branchOf, branchLocked, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
     loadAll, reset, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
   };
 });

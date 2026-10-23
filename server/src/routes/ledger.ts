@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { all, get, run, tx, now, fromCents } from '../db.js';
 import { canAdjustCurrency, type Env, isAdminRole, isHostRole } from '../auth.js';
-import { audit, body, str, int, notify, bad, forbidden, notFound, money, currencyMode } from '../util.js';
+import { audit, body, str, int, notify, bad, forbidden, notFound, money, currencyMode, editLockReason } from '../util.js';
 import { teamLabelMap } from './teams.js';
 
 export const ledgerRoutes = new Hono<Env>();
@@ -49,11 +49,9 @@ ledgerRoutes.post('/ledger', async (c) => {
   if (!canAdjustCurrency(user, episodeId ?? 0, teamId)) throw forbidden('只有主办或该队伍的跟队可以操作经费');
   const team = get('SELECT * FROM teams WHERE id = ?', teamId);
   if (!team || team.event_id !== c.get('event').id) throw notFound('队伍不存在');
-  if (episodeId) {
-    const epRow = get('SELECT status, code FROM episodes WHERE id = ?', episodeId);
-    if (epRow?.status === 'pending' && !isAdminRole(user.role)) throw bad(`${epRow.code} 尚未开始，开始赛段后才能操作经费`);
-    if (epRow?.status === 'finished' && !isHostRole(user.role)) throw forbidden(`${epRow.code} 已结束，只有主办可以操作经费`);
-  }
+  const epRow = episodeId ? get<{ status: string; code: string }>('SELECT status, code FROM episodes WHERE id = ?', episodeId) : null;
+  if (epRow?.status === 'pending' && !isAdminRole(user.role)) throw bad(`${epRow.code} 尚未开始，开始赛段后才能操作经费`);
+  { const r = editLockReason(user, epRow, team as { status: string }); if (r) throw forbidden(r); }
   const legId = int(b.legId, 0) || null; // 环节可空 = 其他，不做权限校验
   const legRow = legId ? get('SELECT id, shop_open FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId ?? 0) : null;
   if (legId && !legRow) throw notFound('环节不存在');
@@ -82,10 +80,8 @@ ledgerRoutes.post('/ledger/:id/revert', (c) => {
   const user = c.get('user');
   const orig = get('SELECT * FROM currency_ledger WHERE id = ?', id);
   if (!orig) throw notFound('流水不存在');
-  if (!isHostRole(user.role)) {
-    if (orig.operator_id !== user.id) throw forbidden('只有发出这条记录的本人或主办可以撤销');
-    if (orig.episode_id && get('SELECT status FROM episodes WHERE id = ?', orig.episode_id)?.status === 'finished') throw forbidden('赛段已结束，只有主办可以撤销');
-  }
+  if (!isHostRole(user.role) && orig.operator_id !== user.id) throw forbidden('只有发出这条记录的本人或主办可以撤销');
+  { const r = editLockReason(user, orig.episode_id ? get<{ status: string; code: string }>('SELECT status, code FROM episodes WHERE id = ?', orig.episode_id) : null, get<{ status: string }>('SELECT status FROM teams WHERE id = ?', orig.team_id)); if (r) throw forbidden(r); }
   if (orig.reverted) throw bad('这条变动已经撤销过了');
   if (orig.reverts_id) throw bad('撤销记录本身不能再撤销');
   const team = get('SELECT * FROM teams WHERE id = ?', orig.team_id);
