@@ -134,7 +134,7 @@ async function logout() {
         <span class="badge" :class="auth.isHost ? 'badge-host' : 'badge-crew'">{{ auth.isAdmin ? '管理员' : auth.isHost ? '主办' : '幕后' }}</span>
         <strong>{{ auth.user?.displayName }}</strong>
         <router-link to="/password" class="btn btn-outline btn-sm">改密</router-link>
-        <button class="btn btn-danger btn-sm" @click="logout">退出</button>
+        <button class="btn btn-outline btn-outline-danger btn-sm" @click="logout">退出</button>
       </div>
     </div>
     <nav class="nav">

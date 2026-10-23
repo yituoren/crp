@@ -27,7 +27,7 @@ async function logout() {
           <router-link v-if="$route.name !== 'home'" to="/" class="btn btn-outline btn-sm">主页</router-link>
           <router-link v-if="auth.isAdmin || auth.hostAnywhere" to="/account" class="btn btn-outline btn-sm">账号管理</router-link>
           <router-link to="/password" class="btn btn-outline btn-sm">改密</router-link>
-          <button class="btn btn-danger btn-sm" @click="logout">退出</button>
+          <button class="btn btn-outline btn-outline-danger btn-sm" @click="logout">退出</button>
         </div>
       </div>
       <div class="page-body"><router-view /></div>
