@@ -181,7 +181,7 @@ episodeRoutes.post('/episodes/:id/reset', hostOnly, (c) => {
   const ids = all<{ id: number; code: string }>('SELECT id, code FROM episodes WHERE event_id = ? AND (sort > ? OR (sort = ? AND id >= ?)) ORDER BY sort, id', eventId, ep.sort, ep.sort, id);
   tx(() => {
     for (const e of ids) {
-      for (const table of ['progress', 'penalties', 'pitstop_results', 'cutoff_uses', 'currency_ledger']) run(`DELETE FROM ${table} WHERE episode_id = ?`, e.id);
+      for (const table of ['progress', 'penalties', 'pitstop_results', 'cutoff_uses', 'currency_ledger', 'item_log']) run(`DELETE FROM ${table} WHERE episode_id = ?`, e.id);
       run("UPDATE episodes SET status = 'pending', started_at = NULL, finished_at = NULL, depart_base = NULL WHERE id = ?", e.id);
     }
     // 余额按剩余流水重算（经费发放、购买、熔断都在流水里）

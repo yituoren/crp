@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { api } from '@/api';
 import { useAuth } from './auth';
-import { legName, type ShopItem, type CutoffUse, type Cutoff, type Announcement, type Assignment, type Episode, type LedgerEntry, type Penalty, type PitstopRow, type Progress, type Team, type User } from '@/types';
+import { legName, type ShopItem, type CutoffUse, type Cutoff, type Announcement, type Assignment, type Episode, type LedgerEntry, type Penalty, type PitstopRow, type Progress, type Team, type User, type ItemLogEntry } from '@/types';
 
 
 export const useRace = defineStore('race', () => {
@@ -18,6 +18,7 @@ export const useRace = defineStore('race', () => {
   const penalties = ref<Penalty[]>([]);
   const pitstop = ref<PitstopRow[]>([]);
   const ledger = ref<LedgerEntry[]>([]);
+  const itemLog = ref<ItemLogEntry[]>([]);
   const shopItems = ref<ShopItem[]>([]);
   const cutoffUses = ref<CutoffUse[]>([]);
   const loaded = ref(false);
@@ -251,8 +252,11 @@ export const useRace = defineStore('race', () => {
   }
   async function loadLedger() {
     if (!currentEpisode.value) return;
-    ledger.value = (await api(`/ledger?episodeId=${currentEpisode.value.id}`)).ledger;
+    const id = currentEpisode.value.id;
+    const [l, i] = await Promise.all([api(`/ledger?episodeId=${id}`), api(`/item-log?episodeId=${id}`)]);
+    ledger.value = l.ledger; itemLog.value = i.items;
   }
+  const loadItemLog = loadLedger;
   async function loadEpisodeScoped() {
     await Promise.all([loadAssignments(), loadProgress(), loadLedger()]);
   }
@@ -293,6 +297,6 @@ export const useRace = defineStore('race', () => {
   return {
     episodes, teams, users, announcements, shopItems, loadShopItems, unreadAnnouncements, markAnnouncementsRead, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
     aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, isLocked, teamLocked, lockReason, structureEditable, cutoffUses, cutoffUseCount, cutoffReadyAt, parentOf, branchOf, branchLocked, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, currencyLegIds, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
-    loadAll, reset, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, selectEpisode, invalidate,
+    loadAll, reset, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, loadItemLog, itemLog, selectEpisode, invalidate,
   };
 });

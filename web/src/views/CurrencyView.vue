@@ -10,6 +10,7 @@ import { fmtMoney, moneyUnit, moneyLabel, moneyMode } from '@/utils/money';
 import CurrencyOps from '@/components/CurrencyOps.vue';
 import EpSelector from '@/components/EpSelector.vue';
 import BagCard from '@/components/BagCard.vue';
+import ItemLogTable from '@/components/ItemLogTable.vue';
 import Modal from '@/components/Modal.vue';
 import { type LedgerEntry, legName } from '@/types';
 
@@ -49,6 +50,11 @@ async function revert(l: LedgerEntry) {
         </div>
       </div>
     </div>
+  </div>
+
+  <div v-if="moneyMode() === 'coin'" class="card">
+    <div class="card-header"><span>道具日志</span><MSelect v-model="filterTeam" sm style="width: 150px" :options="[{ value: '', label: '全部队伍' }, ...race.teams.map((t) => ({ value: t.id, label: t.label }))]" /></div>
+    <ItemLogTable :team-id="filterTeam === '' ? undefined : filterTeam" />
   </div>
 
   <!-- 操作：与跟队「我的」页相同的表单，主办多一个队伍选择 -->

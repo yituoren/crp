@@ -52,4 +52,5 @@ export interface PitstopRow {
   penalty_minutes: number; final_time: string | null; rank: number | null; eliminated: boolean; note: string;
 }
 export interface LedgerEntry { id: number; episode_id: number | null; episode_code: string | null; team_id: number; team_name: string; team_code: string; delta: number; balance_after: number; reason: string; operator_id: number | null; operator_name: string; created_at: string; reverted: number; reverts_id: number | null; leg_id: number | null; leg_name: string | null; kind?: 'shop' | 'cutoff' | 'other' | 'use'; item_name?: string | null }
+export interface ItemLogEntry { id: number; episode_id: number | null; team_id: number; team_name: string; leg_id: number | null; leg_name: string | null; item_name: string; delta: number; kind: 'buy' | 'use'; ledger_id: number | null; operator_id: number | null; operator_name: string; created_at: string; reverted: number; reverts_id: number | null }
 export interface Announcement { id: number; content: string; level: 'info' | 'warning' | 'urgent'; created_by: string; created_at: string; pinned_at: string | null; audience: string }

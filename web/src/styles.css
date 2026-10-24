@@ -696,6 +696,7 @@ html, body { overscroll-behavior: none; }
 .bag-tile-count { font-size: 12px; color: var(--gray-500); font-variant-numeric: tabular-nums; }
 .bag-tile.on .bag-tile-count { color: var(--primary-on-light); }
 .bag-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+.bag-log { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--gray-200); }
 
 /* ---------- 当前环节卡：交通 / 商店 / 熔断 三段，横线隔开 ---------- */
 .cl-section { padding: 14px 0; border-top: 1px solid var(--gray-200); }

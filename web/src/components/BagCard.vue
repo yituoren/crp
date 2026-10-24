@@ -4,6 +4,7 @@ import { api } from '@/api';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { moneyMode } from '@/utils/money';
+import ItemLogTable from './ItemLogTable.vue';
 
 /**
  * 背包卡片：分开列出某队持有的各种物品，可多选后点「使用」，每件物品记一条「使用」流水，用掉的从背包里消失。
@@ -28,7 +29,7 @@ async function useSelected() {
   if (!(await ui.confirm('使用物品', `「${team.value.label}」使用：${names.join('、')}。每件物品记一条使用记录，用掉的从背包里消失。`))) return;
   busy.value = true;
   try {
-    for (const name of names) await api('/ledger', { method: 'POST', body: { episodeId: race.currentEpisode?.id ?? null, teamId: props.teamId, kind: 'use', itemName: name } });
+    for (const name of names) await api('/items/use', { method: 'POST', body: { episodeId: race.currentEpisode?.id ?? null, teamId: props.teamId, itemName: name } });
     selected.value = [];
     await Promise.all([race.loadTeams(), race.loadLedger()]);
     ui.toast(`已使用 ${names.length} 件物品`);
@@ -53,5 +54,7 @@ async function useSelected() {
         <button class="btn btn-tonal btn-sm" :disabled="!selected.length || busy" @click="useSelected">使用</button>
       </div>
     </template>
+    <!-- 道具日志：获得与使用，与经费流水分开 -->
+    <div class="bag-log"><ItemLogTable :team-id="teamId" :limit="plain ? 10 : 0" /></div>
   </div>
 </template>

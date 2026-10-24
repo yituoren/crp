@@ -142,6 +142,22 @@ CREATE TABLE IF NOT EXISTS currency_ledger (
   leg_id INTEGER                              -- 在哪个环节发生，可空（其他）
 );
 CREATE INDEX IF NOT EXISTS idx_ledger_ep ON currency_ledger(episode_id, created_at);
+CREATE TABLE IF NOT EXISTS item_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  episode_id INTEGER REFERENCES episodes(id) ON DELETE SET NULL,
+  team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  leg_id INTEGER,
+  item_name TEXT NOT NULL,
+  delta INTEGER NOT NULL,                     -- +1 获得 / -1 使用
+  kind TEXT NOT NULL DEFAULT 'use',           -- buy | use（撤销行沿用原 kind）
+  ledger_id INTEGER,                          -- 购买对应的经费流水
+  operator_id INTEGER,
+  operator_name TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  reverted INTEGER NOT NULL DEFAULT 0,
+  reverts_id INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_item_log_team ON item_log(team_id, created_at);
 CREATE TABLE IF NOT EXISTS leg_cutoffs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   leg_id INTEGER NOT NULL REFERENCES legs(id) ON DELETE CASCADE,
@@ -271,6 +287,19 @@ ensureColumn('currency_ledger', 'item_name', 'TEXT');
 ensureColumn('legs', 'shop_open', 'INTEGER NOT NULL DEFAULT 0');
 // 自动淘汰：环节可淘汰 + 淘汰人数；队伍记录在哪个环节被淘汰、从哪个环节起锁定（淘汰/退赛后不可再记录）
 run("UPDATE legs SET type = 'SQ' WHERE type = 'BR'"); // 支线简称 BR → SQ（side quest）
+// 道具改用单独日志：把经费流水里的购买（kind=shop）同步成“获得”，使用（kind=use）搬到道具日志后从经费流水删除
+if (!get('SELECT 1 FROM item_log LIMIT 1') && get("SELECT 1 FROM currency_ledger WHERE kind IN ('shop', 'use') LIMIT 1")) {
+  db.exec(`
+    INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, ledger_id, operator_id, operator_name, created_at, reverted, reverts_id)
+      SELECT episode_id, team_id, leg_id, item_name, CASE WHEN reverts_id IS NULL THEN 1 ELSE -1 END, 'buy', id, operator_id, operator_name, created_at, reverted, NULL
+      FROM currency_ledger WHERE kind = 'shop' AND item_name IS NOT NULL ORDER BY id;
+    UPDATE item_log SET reverts_id = (SELECT b.id FROM item_log b JOIN currency_ledger l ON l.id = item_log.ledger_id WHERE b.ledger_id = l.reverts_id) WHERE delta = -1 AND kind = 'buy';
+    INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, ledger_id, operator_id, operator_name, created_at, reverted, reverts_id)
+      SELECT episode_id, team_id, leg_id, item_name, CASE WHEN reverts_id IS NULL THEN -1 ELSE 1 END, 'use', NULL, operator_id, operator_name, created_at, reverted, NULL
+      FROM currency_ledger WHERE kind = 'use' AND item_name IS NOT NULL ORDER BY id;
+    DELETE FROM currency_ledger WHERE kind = 'use';
+  `);
+}
 // 起跑线改为“出发（开始）+ 完成”两个时间：旧记录只有出发（存在 completed_at），把它同时作为开始时间
 run("UPDATE progress SET arrived_at = completed_at WHERE arrived_at IS NULL AND completed_at IS NOT NULL AND leg_id IN (SELECT id FROM legs WHERE type = 'SL')");
 const addedCanElim = ensureColumn('legs', 'can_eliminate', 'INTEGER NOT NULL DEFAULT 0');

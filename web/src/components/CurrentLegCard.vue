@@ -58,7 +58,7 @@ async function confirmTransport() {
     const card = cardFor(t); if (!card) return;
     if (!(await ui.confirm('使用卡片', `「${tm.label}」${t}，使用背包里的「${card.name}」。`))) return;
     try {
-      await api('/ledger', { method: 'POST', body: { episodeId: race.currentEpisode?.id, teamId: tm.id, kind: 'use', itemName: card.name, legId: leg.id } });
+      await api('/items/use', { method: 'POST', body: { episodeId: race.currentEpisode?.id, teamId: tm.id, itemName: card.name, legId: leg.id } });
       transport.value = '';
       await Promise.all([race.loadTeams(), race.loadLedger()]);
       ui.toast(`已使用 ${card.name}`);
