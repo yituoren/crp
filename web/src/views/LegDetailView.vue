@@ -165,7 +165,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
         <div>
           <div v-if="leg.address" class="mb-2">地址：{{ leg.address }} <a v-if="leg.map_url" :href="leg.map_url" target="_blank">打开地图</a></div>
           <div v-if="leg.open_time || leg.close_time" class="mb-2">开放时间：{{ leg.open_time || '-' }} ~ {{ leg.close_time || '-' }}</div>
-          <div v-if="leg.shop_open" class="mb-2"><span class="badge badge-info">开放商店</span></div>
+          <div v-if="leg.shop_open && moneyMode() === 'coin'" class="mb-2"><span class="badge badge-info">开放商店</span></div>
           <div v-if="leg.can_eliminate" class="mb-2"><span class="badge badge-urgent">淘汰 {{ leg.eliminate_count }} 队</span><span class="text-gray text-sm"> 所有队伍到达后，最后到的 {{ leg.eliminate_count }} 队自动淘汰</span></div>
           <div v-if="leg.cutoffs.length" class="mb-2">熔断：<span v-for="c in leg.cutoffs" :key="c.id" class="badge badge-info" style="margin-right: 6px">{{ c.name }} · {{ fmtDurMs(c.start_min * 60000) }} 起 · 每 {{ fmtDurMs(c.interval_min * 60000) }}{{ moneyMode() === 'coin' && c.cost ? ` · ${c.cost} 币` : '' }}</span></div>
           <div v-if="leg.type === 'DT'" class="mb-2">绕道：A「{{ leg.detour_a || '未填写' }}」 / B「{{ leg.detour_b || '未填写' }}」</div>

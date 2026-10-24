@@ -16,7 +16,7 @@ import BagCard from '@/components/BagCard.vue';
 import ProgressEditModal from '@/components/ProgressEditModal.vue';
 import { type Leg, type Progress, legName } from '@/types';
 import { endLabel, hasStart } from '@/types';
-import { fmtMoney, moneyUnit } from '@/utils/money';
+import { fmtMoney, moneyUnit, moneyMode } from '@/utils/money';
 
 const auth = useAuth();
 const race = useRace();
@@ -87,7 +87,7 @@ const legRows = computed(() => {
           </tbody>
         </table>
       </div>
-      <BagCard :team-id="myTeam.id" />
+      <BagCard v-if="moneyMode() === 'coin'" :team-id="myTeam.id" />
       <TeamCurrencyPanel :team-id="myTeam.id" />
       <PenaltyPanel :team-id="myTeam.id" />
     </template>

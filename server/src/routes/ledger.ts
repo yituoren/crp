@@ -174,6 +174,7 @@ ledgerRoutes.post('/items/use', async (c) => {
   const teamId = int(b.teamId, 0);
   const itemName = str(b.itemName, 100);
   if (!teamId || !itemName) throw bad('缺少队伍或物品');
+  if (currencyMode() !== 'coin') throw bad('只有货币模式的比赛才有道具');
   const team = get('SELECT * FROM teams WHERE id = ?', teamId);
   if (!team || team.event_id !== c.get('event').id) throw notFound('队伍不存在');
   let legId = int(b.legId, 0) || null;

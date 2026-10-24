@@ -3,7 +3,6 @@ import { computed, ref, watch } from 'vue';
 import { api } from '@/api';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
-import { moneyMode } from '@/utils/money';
 import ItemLogTable from './ItemLogTable.vue';
 
 /**
@@ -39,7 +38,7 @@ async function useSelected() {
 
 <template>
   <div :class="plain ? '' : 'card'">
-    <div v-if="!plain" class="card-header"><span>{{ title }}</span><span v-if="moneyMode() !== 'coin'" class="text-sm text-gray">非货币模式</span></div>
+    <div v-if="!plain" class="card-header"><span>{{ title }}</span></div>
     <div v-if="!items.length" class="empty-rows">暂无物品</div>
     <template v-else>
       <div class="bag-grid">

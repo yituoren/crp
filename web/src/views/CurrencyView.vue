@@ -39,9 +39,9 @@ async function revert(l: LedgerEntry) {
 
   <!-- 背包：普通模式只看经费余额；货币模式看余额 + 持有物品 -->
   <div class="card">
-    <div class="card-header"><span>背包</span></div>
+    <div class="card-header"><span>{{ moneyMode() === 'coin' ? '背包' : `${moneyLabel()}余额` }}</span></div>
     <div class="grid grid-4">
-      <div v-for="t in race.teams" :key="t.id" class="team-card bag-card bag-card-click" :class="'team-' + t.status" @click="bagTeam = t.id">
+      <div v-for="t in race.teams" :key="t.id" class="team-card bag-card" :class="['team-' + t.status, { 'bag-card-click': moneyMode() === 'coin' }]" @click="moneyMode() === 'coin' && (bagTeam = t.id)">
         <div class="flex-between"><strong>{{ t.label }}</strong><span v-if="t.status !== 'alive'" class="status-eliminated">{{ t.status === 'eliminated' ? '已淘汰' : '已退赛' }}</span></div>
         <div class="currency-box">{{ fmtMoney(t.currency) }} <span class="text-sm text-gray">{{ moneyUnit() }}</span></div>
         <div v-if="moneyMode() === 'coin'" class="bag-items">

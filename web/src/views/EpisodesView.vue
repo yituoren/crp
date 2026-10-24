@@ -152,7 +152,7 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
         <div class="text-xs text-gray mt-1">
           {{ doneCount(leg.id) }} 已{{ endLabel(leg.type) }} · {{ arrivedCount(leg.id) }} 进行中
           · {{ leg.attachments.length }} 附件
-          <template v-if="leg.shop_open"> · 开放商店</template>
+          <template v-if="leg.shop_open && moneyMode() === 'coin'"> · 开放商店</template>
           <template v-if="leg.can_eliminate"> · 淘汰 {{ leg.eliminate_count }} 队</template>
           <template v-if="leg.cutoffs.length"> · 熔断 {{ leg.cutoffs.length }} 种</template>
         </div>
