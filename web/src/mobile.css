@@ -5,7 +5,10 @@
    ============================================================ */
 @media (max-width: 760px) {
   html { -webkit-text-size-adjust: 100%; }
+  /* 关掉浏览器自带的“下拉刷新”，否则页面顶部下拉唤起大屏时会同时触发刷新（Chrome / 华为浏览器等） */
+  html, body { overscroll-behavior-y: contain; }
   body { background: var(--paper); }
+  .m-live, .m-live-body .live-grid, .m-drawer { overscroll-behavior: contain; }
 
   /* ---------- 应用骨架 ---------- */
   .m-app { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; background: var(--paper); }
