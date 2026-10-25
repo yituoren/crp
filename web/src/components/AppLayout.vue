@@ -169,10 +169,10 @@ onUnmounted(() => {
       <div class="m-sep"></div>
       <router-link to="/"><Icon name="home" size="22" />回到主页</router-link>
     </aside>
+    <Transition name="m-live">
     <div v-if="liveOpen" class="m-live">
       <header class="m-bar">
-        <button class="icon-btn" title="返回" aria-label="返回" @click="liveOpen = false"><Icon name="arrow_back" size="24" /></button>
-        <div class="m-title">实时大屏</div>
+        <div class="m-title" style="padding-left: 12px">实时大屏</div>
         <button class="m-toggle on" @click="liveOpen = false"><Icon name="dashboard" size="18" />工作区</button>
       </header>
       <div class="m-live-body">
@@ -180,6 +180,7 @@ onUnmounted(() => {
         <div v-else class="loading"><span class="spinner"></span></div>
       </div>
     </div>
+    </Transition>
   </div>
 
   <!-- ========== 电脑 / 平板：原有两栏 ========== -->

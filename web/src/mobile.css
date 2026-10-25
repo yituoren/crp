@@ -44,7 +44,11 @@
   .m-drawer .m-sep { height: 1px; background: var(--gray-200); margin: 6px 12px; }
 
   /* 实时大屏：全屏覆盖 */
-  .m-live { position: fixed; inset: 0; z-index: 70; background: var(--paper); display: flex; flex-direction: column; }
+  .m-live { position: fixed; inset: 0; z-index: 70; background: var(--paper); display: flex; flex-direction: column; will-change: transform; }
+  /* 大屏从顶部滑下来、再滑回去（Material 标准缓动） */
+  .m-live-enter-active { transition: transform .32s cubic-bezier(.05, .7, .1, 1), opacity .32s ease; }
+  .m-live-leave-active { transition: transform .26s cubic-bezier(.3, 0, .8, .15), opacity .26s ease; }
+  .m-live-enter-from, .m-live-leave-to { transform: translateY(-100%); opacity: .4; }
   .m-live-body { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 4px 12px calc(12px + env(safe-area-inset-bottom)); }
   .m-live-body .live-card { flex: 1; margin: 0; }
   .m-live-body .live-grid { overflow-y: auto; }
