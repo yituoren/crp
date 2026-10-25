@@ -52,8 +52,6 @@ const NAV = [
 ] as const;
 const BOTTOM = ['today', 'announcements', 'episodes', 'currency', 'progress'];
 const bottomNav = computed(() => NAV.filter((n) => BOTTOM.includes(n.name)));
-// 抽屉只放底栏没有的页面，避免功能重复
-const drawerNav = computed(() => NAV.filter((n) => !BOTTOM.includes(n.name)));
 const navActive = (name: string) => route.name === name || (name === 'episodes' && route.name === 'leg');
 const page = ref(1); // 0 = 实时大屏，1 = 常规页面
 const dragX = ref(0); // 手指跟随时的临时偏移
@@ -164,7 +162,9 @@ onUnmounted(() => {
     <div v-if="drawer" class="m-scrim" @click="drawer = false"></div>
     <aside class="m-drawer" :class="{ open: drawer }">
       <div class="m-drawer-head">{{ auth.event.name }}</div>
-      <router-link v-for="n in drawerNav" :key="n.name" :to="{ name: n.name }" :class="{ 'router-link-active': navActive(n.name) }" active-class="" exact-active-class=""><Icon :name="n.icon" size="22" />{{ n.label }}</router-link>
+      <button class="m-item" @click="drawer = false; liveOpen = true"><Icon name="tv" size="22" />实时大屏</button>
+      <div class="m-sep"></div>
+      <router-link v-for="n in NAV" :key="n.name" :to="{ name: n.name }" :class="{ 'router-link-active': navActive(n.name) }" active-class="" exact-active-class=""><Icon :name="n.icon" size="22" />{{ n.label }}</router-link>
       <router-link v-if="auth.isHost" :to="{ name: 'admin' }"><Icon name="dashboard" size="22" />后台</router-link>
       <div class="m-sep"></div>
       <router-link to="/"><Icon name="home" size="22" />回到主页</router-link>
