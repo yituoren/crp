@@ -171,9 +171,13 @@ onUnmounted(() => {
     </aside>
     <Transition name="m-live">
     <div v-if="liveOpen" class="m-live">
+      <!-- 顶栏与工作区同构：菜单、标题、切换胶囊、（断线标记）、账号，切换按钮位置不变 -->
       <header class="m-bar">
-        <div class="m-title" style="padding-left: 12px">实时大屏</div>
+        <button class="icon-btn" title="菜单" aria-label="菜单" @click="drawer = true"><Icon name="menu" size="24" /></button>
+        <div class="m-title">实时大屏</div>
         <button class="m-toggle on" @click="liveOpen = false"><Icon name="dashboard" size="18" />工作区</button>
+        <span v-if="!ui.online" class="m-offline" title="与服务器的实时连接已断开，正在重连"><span class="sync-dot"></span></span>
+        <AccountMenu :before-logout="disconnectRealtime" />
       </header>
       <div class="m-live-body">
         <TeamPositions v-if="race.loaded" />
