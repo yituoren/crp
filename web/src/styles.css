@@ -648,7 +648,8 @@ html, body { overscroll-behavior: none; }
   .drawer-open .home-scrim { opacity: 1; pointer-events: auto; }
   .home-nav a { margin-left: -16px; padding-left: 24px; }
   .home-main { padding: 8px 12px 12px; }
-  .home-top { height: 56px; gap: 6px; }
+  .home-main { padding-top: 0; }
+  .home-top { height: 56px; gap: 6px; position: sticky; top: 0; z-index: 40; background: #f6f8fc; margin-bottom: 8px; } /* 手机：抬头固定在顶部，列表在下面滚 */
   .home-menu-btn { display: inline-flex; margin-left: -8px; }
   .home-search { max-width: none; height: 44px; padding-left: 12px; }
   .home-top .acct-btn { padding: 0 6px; }
