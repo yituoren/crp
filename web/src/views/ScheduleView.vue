@@ -82,7 +82,7 @@ async function copyPrev() {
 
 <template>
   <EpSelector />
-  <div class="card">
+  <div class="card card-table">
     <div class="card-header">
       <span>排班表</span>
       <div v-if="auth.isHost" class="flex">
@@ -92,7 +92,7 @@ async function copyPrev() {
     </div>
     <div v-if="!race.users.length" class="empty-state">暂无注册幕后</div>
     <div v-else class="scroll-table">
-      <table class="table">
+      <table class="table sched-table">
         <thead><tr><th style="width: 22%">幕后</th><th style="width: 12%" class="c">角色</th><th style="width: 26%">分配详情</th><th v-if="auth.isHost" style="min-width: 290px" class="c">编辑</th></tr></thead>
         <tbody>
           <tr v-for="r in form.rows" :key="r.userId">

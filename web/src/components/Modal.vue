@@ -7,10 +7,7 @@ const emit = defineEmits<{ close: [] }>();
   <Teleport to="body">
   <div class="modal-overlay" @click.self="emit('close')">
     <div class="modal" :class="{ 'modal-sm': small }">
-      <div class="flex-between mb-2">
-        <h3 style="margin: 0">{{ title }}</h3>
-        <button class="icon-btn" title="关闭" aria-label="关闭" @click="emit('close')"><Icon name="close" /></button>
-      </div>
+      <h3 class="modal-title">{{ title }}</h3>
       <slot />
     </div>
   </div>

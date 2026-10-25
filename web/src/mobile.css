@@ -116,6 +116,16 @@
   .table.m-cards .row-reverted { opacity: .55; }
   .table.m-cards .btn-sm { min-height: 32px; }
 
+  /* 排班表、进度表：去掉卡片的内边距，表格贴边，首列简化 */
+  .card-table { padding: 10px 0 6px; border-radius: 12px; }
+  .card-table .card-header { padding: 0 12px; }
+  .card-table .scroll-table, .card-table .matrix-scroll { padding: 0; }
+  .mx2 .mx2-team { min-width: 0; padding: 6px 8px; }
+  .mx2-team-full, .mx2-team-status, .mx2-team-ago { display: none; }
+  .mx2-team-short { display: inline; }
+  .mx2 .mx2-rank { min-width: 0; }
+  .mx2 th, .mx2 td { padding: 6px 8px; }
+  .mx2 .mx2-cell { min-width: 52px; }
   /* 信息类表格：保留横向滚动，但行高更紧 */
   .table th, .table td { padding: 8px 8px; }
   /* 记录表（跟队 / 站点）：每个环节一张卡：环节名 + 状态 / 开始 结束 / 记录信息 / 操作 */

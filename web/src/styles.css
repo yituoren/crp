@@ -369,6 +369,11 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .modal { background: var(--surface); border-radius: 28px; padding: 24px; width: 100%; max-width: 720px; max-height: 92vh; overflow-y: auto; box-shadow: var(--shadow-3); animation: modal-in .18s ease; }
 .modal-sm { max-width: 440px; }
 .modal h3 { font-size: 22px; font-weight: 500; }
+.modal-title { margin: 0 0 16px; }
+/* 排班表：首列（幕后）固定在左，其余横向滚动 */
+.sched-table th:first-child, .sched-table td:first-child { position: sticky; left: 0; z-index: 2; background: var(--surface); }
+.sched-table thead th:first-child { z-index: 3; }
+.mx2-team-short { display: none; }
 .modal-actions .btn-text { color: var(--primary); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
