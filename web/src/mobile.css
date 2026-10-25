@@ -16,6 +16,9 @@
   .m-bar .acct-btn { padding: 0 6px; }
   .m-body { flex: 1; min-width: 0; padding: 4px 12px calc(76px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; }
   .m-body > .page-body { flex: 1; }
+  /* 下拉手柄：平时是一行细小的提示，拖动时跟手变高 */
+  .m-pull { display: flex; align-items: center; justify-content: center; gap: 2px; height: 24px; margin: -4px 0 4px; border: none; background: transparent; color: var(--gray-500); font-size: 11px; font-family: inherit; cursor: pointer; transition: height .1s; overflow: hidden; }
+  .m-pull.pulling { color: var(--primary); }
   .m-offline { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--danger); padding: 0 6px; }
 
   /* 底部导航栏（Material 3 navigation bar） */

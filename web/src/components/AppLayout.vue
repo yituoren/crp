@@ -52,6 +52,40 @@ const NAV = [
 ] as const;
 const BOTTOM = ['today', 'announcements', 'episodes', 'currency', 'progress'];
 const bottomNav = computed(() => NAV.filter((n) => BOTTOM.includes(n.name)));
+// 抽屉只放底栏没有的页面，避免功能重复
+const drawerNav = computed(() => NAV.filter((n) => !BOTTOM.includes(n.name)));
+// 下拉唤起实时大屏：页面在顶部时手指下拉超过阈值打开；大屏里上滑（列表已到底或从顶栏开始）关闭
+const pull = ref(0);
+let pullStartY = 0, pullStartX = 0, pullArmed = false;
+const PULL_OPEN = 90;
+function onBodyTouchStart(e: TouchEvent) {
+  const t = e.touches[0]; if (!t) return;
+  pullArmed = window.scrollY <= 0 && !drawer.value && !liveOpen.value;
+  pullStartY = t.clientY; pullStartX = t.clientX; pull.value = 0;
+}
+function onBodyTouchMove(e: TouchEvent) {
+  if (!pullArmed) return;
+  const t = e.touches[0]; if (!t) return;
+  const dy = t.clientY - pullStartY, dx = Math.abs(t.clientX - pullStartX);
+  if (dy <= 0 || dx > Math.abs(dy)) { pull.value = 0; return; }
+  pull.value = Math.min(PULL_OPEN + 20, dy * 0.6);
+}
+function onBodyTouchEnd() {
+  if (pullArmed && pull.value >= PULL_OPEN * 0.6) liveOpen.value = true;
+  pull.value = 0; pullArmed = false;
+}
+let upStartY = 0, upArmed = false;
+function onLiveTouchStart(e: TouchEvent) {
+  const t = e.touches[0]; if (!t) return;
+  const grid = (e.target as HTMLElement).closest('.live-grid');
+  upArmed = !grid || grid.scrollTop + grid.clientHeight >= grid.scrollHeight - 2;
+  upStartY = t.clientY;
+}
+function onLiveTouchEnd(e: TouchEvent) {
+  const t = e.changedTouches[0]; if (!t || !upArmed) return;
+  if (upStartY - t.clientY > 100) liveOpen.value = false;
+  upArmed = false;
+}
 const navActive = (name: string) => route.name === name || (name === 'episodes' && route.name === 'leg');
 const page = ref(1); // 0 = 实时大屏，1 = 常规页面
 const dragX = ref(0); // 手指跟随时的临时偏移
@@ -146,7 +180,9 @@ onUnmounted(() => {
       <span v-if="!ui.online" class="m-offline" title="与服务器的实时连接已断开，正在重连"><span class="sync-dot"></span></span>
       <AccountMenu :before-logout="disconnectRealtime" />
     </header>
-    <main class="m-body">
+    <main class="m-body" @touchstart.passive="onBodyTouchStart" @touchmove.passive="onBodyTouchMove" @touchend.passive="onBodyTouchEnd" @touchcancel.passive="onBodyTouchEnd">
+      <!-- 下拉手柄：拖动或点击打开实时大屏 -->
+      <button class="m-pull" :class="{ pulling: pull > 0 }" :style="{ height: pull ? `${24 + pull}px` : '' }" @click="liveOpen = true"><Icon name="expand_more" size="18" />实时大屏</button>
       <div class="page-body">
         <router-view v-if="race.loaded" />
         <div v-else class="loading"><span class="spinner"></span></div>
@@ -161,17 +197,16 @@ onUnmounted(() => {
     <div v-if="drawer" class="m-scrim" @click="drawer = false"></div>
     <aside class="m-drawer" :class="{ open: drawer }">
       <div class="m-drawer-head">{{ auth.event.name }}</div>
-      <button class="m-item" @click="drawer = false; liveOpen = true"><Icon name="tv" size="22" />实时大屏</button>
-      <div class="m-sep"></div>
-      <router-link v-for="n in NAV" :key="n.name" :to="{ name: n.name }" :class="{ 'router-link-active': navActive(n.name) }" active-class="" exact-active-class=""><Icon :name="n.icon" size="22" />{{ n.label }}</router-link>
+      <router-link v-for="n in drawerNav" :key="n.name" :to="{ name: n.name }" :class="{ 'router-link-active': navActive(n.name) }" active-class="" exact-active-class=""><Icon :name="n.icon" size="22" />{{ n.label }}</router-link>
       <router-link v-if="auth.isHost" :to="{ name: 'admin' }"><Icon name="dashboard" size="22" />后台</router-link>
       <div class="m-sep"></div>
       <router-link to="/"><Icon name="home" size="22" />回到主页</router-link>
     </aside>
-    <div v-if="liveOpen" class="m-live">
+    <div v-if="liveOpen" class="m-live" @touchstart.passive="onLiveTouchStart" @touchend.passive="onLiveTouchEnd">
       <header class="m-bar">
         <button class="icon-btn" title="返回" aria-label="返回" @click="liveOpen = false"><Icon name="arrow_back" size="24" /></button>
         <div class="m-title">实时大屏</div>
+        <span class="text-xs text-gray" style="padding-right: 10px">上滑返回</span>
       </header>
       <div class="m-live-body">
         <TeamPositions v-if="race.loaded" />
