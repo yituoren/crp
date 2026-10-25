@@ -119,12 +119,9 @@
   /* 排班表、进度表：去掉卡片的内边距，表格贴边，首列简化 */
   .card-table { padding: 0; margin: 0 0 10px; background: transparent; border-radius: 0; }
   .card-table .card-header { padding: 0 2px; margin-bottom: 8px; }
-  .card-table .scroll-table, .card-table .matrix-scroll { padding: 0; margin: 0 -12px; } /* 表格贴到屏幕两边 */
-  .card-table .matrix-scroll .mx2 { border-left: none; }
-  .card-table .scroll-table .table { width: calc(100% - 0px); }
+  .card-table .scroll-table, .card-table .matrix-scroll { padding: 0; margin: 0; } /* 保留与屏幕边缘的 12px 边距 */
   .mx2 .mx2-team, .sched-table th:first-child, .sched-table td:first-child { background: var(--paper); }
   .mx2 thead .mx2-team { background: var(--surface-3); }
-  .mx2 .mx2-team { border-left: none; }
   .mx2 .mx2-team { min-width: 0; max-width: 112px; padding: 6px 8px; }
   .mx2-team-status, .mx2-team-ago { display: none; }
   /* 名次 + 队伍名（含成员），名字过长在固定宽度内省略 */
