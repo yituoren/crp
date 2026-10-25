@@ -182,7 +182,7 @@ onMounted(() => { if (auth.isAdmin) { loadUsers(); loadAudit(); } });
   <div v-if="tab === 'audit'" class="card">
     <div class="card-header"><span>全部操作日志（最近 200 条 / 共 {{ auditTotal }}）</span><button class="btn btn-text btn-sm" @click="loadAudit"><Icon name="refresh" size="16" />刷新</button></div>
     <div class="scroll-table">
-      <table class="table table-dense">
+      <table v-mobile-table class="table table-dense">
         <thead><tr><th>时间</th><th>比赛</th><th>操作人</th><th>动作</th><th>对象</th><th>变更前</th><th>变更后</th></tr></thead>
         <tbody>
           <tr v-for="l in audit" :key="l.id">

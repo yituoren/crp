@@ -3,10 +3,12 @@ import { createPinia } from 'pinia';
 import App from './App.vue';
 import { router } from './router';
 import './styles.css';
+import './mobile.css';
+import { mobileTable } from './directives/mobileTable';
 import Icon from './components/Icon.vue';
 import MSelect from './components/MSelect.vue';
 
-createApp(App).use(createPinia()).use(router).component('Icon', Icon).component('MSelect', MSelect).mount('#app');
+createApp(App).use(createPinia()).use(router).component('Icon', Icon).component('MSelect', MSelect).directive('mobile-table', mobileTable).mount('#app');
 
 // 手机浏览器若开启了“桌面版网站”，会忽略 viewport，用约 980px 的宽度排版，页面显得又小又挤。
 // 检测到布局宽度明显大于设备宽度时，重新声明 viewport 并提示用户关闭桌面版。

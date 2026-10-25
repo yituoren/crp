@@ -10,7 +10,9 @@ const open = ref(false);
 const root = ref<HTMLElement | null>(null);
 // 菜单用 fixed 定位挂在按钮下方，不受表格滚动容器裁剪；空间不够时向上弹
 const menuStyle = ref<Record<string, string>>({});
+const sheet = () => window.innerWidth <= 760;
 function place() {
+  if (sheet()) { menuStyle.value = {}; return; }
   const btn = root.value?.querySelector('.ms-btn') as HTMLElement | null;
   if (!btn) return;
   const r = btn.getBoundingClientRect();
@@ -42,7 +44,7 @@ onUnmounted(() => { document.removeEventListener('click', onDocClick); window.re
     <button type="button" class="ms-btn input-sm" :class="{ 'ms-empty': !modelValue.length }" @click="toggleOpen">
       <span class="ms-text">{{ summary }}</span><span class="ms-caret"><Icon name="expand_more" size="18" /></span>
     </button>
-    <Teleport to="body"><div v-if="open" ref="menu" class="ms-menu" :style="menuStyle">
+    <Teleport to="body"><div v-if="open && sheet()" class="sel-sheet-scrim" @click="open = false"></div><div v-if="open" ref="menu" class="ms-menu" :class="{ 'sel-sheet': sheet() }" :style="sheet() ? { position: 'fixed' } : menuStyle">
       <button v-for="o in options" :key="o.value" type="button" class="ms-item" :class="{ on: modelValue.includes(o.value) }" @click="toggle(o.value)">
         <span class="ms-check"><Icon v-if="modelValue.includes(o.value)" name="check" size="14" /></span><LegTag v-if="o.tag" :type="o.tag as LegType" /> {{ o.label }}
       </button>

@@ -25,7 +25,9 @@ const selected = computed(() => props.options.find((o) => String(o.value) === St
 const label = computed(() => selected.value?.label ?? props.placeholder);
 const isEmpty = computed(() => !selected.value);
 
+const sheet = () => window.innerWidth <= 760; // 手机：菜单改为底部面板
 function place() {
+  if (sheet()) { menuStyle.value = {}; return; }
   const btn = root.value?.querySelector('.sel-btn') as HTMLElement | null;
   if (!btn) return;
   const r = btn.getBoundingClientRect();
@@ -57,7 +59,7 @@ onUnmounted(() => { document.removeEventListener('click', onDocClick); document.
     <button type="button" class="sel-btn" :class="{ 'sel-empty': isEmpty }" :disabled="disabled" @click="toggleOpen">
       <span class="sel-text"><LegTag v-if="selected?.tag" :type="selected.tag as LegType" /> {{ label }}</span><Icon name="expand_more" :size="sm ? 18 : 20" class="sel-caret" />
     </button>
-    <Teleport to="body"><div v-if="open" ref="menu" class="sel-menu" :style="menuStyle" role="listbox">
+    <Teleport to="body"><div v-if="open && sheet()" class="sel-sheet-scrim" @click="open = false"></div><div v-if="open" ref="menu" class="sel-menu" :class="{ 'sel-sheet': sheet() }" :style="sheet() ? { position: 'fixed' } : menuStyle" role="listbox">
       <button v-for="o in options" :key="String(o.value)" type="button" class="sel-item" :class="{ active: String(o.value) === String(modelValue ?? ''), disabled: o.disabled }" role="option" :aria-selected="String(o.value) === String(modelValue ?? '')" @click="pick(o)">
         <span class="sel-item-check"><Icon v-if="String(o.value) === String(modelValue ?? '')" name="check" size="18" /></span><LegTag v-if="o.tag" :type="o.tag as LegType" /> {{ o.label }}
       </button>

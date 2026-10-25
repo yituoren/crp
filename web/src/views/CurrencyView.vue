@@ -68,7 +68,7 @@ async function revert(l: LedgerEntry) {
     </div>
     <div v-if="!rows.length" class="empty-rows">暂无记录</div>
     <div v-else class="scroll-table">
-      <table class="table table-dense">
+      <table v-mobile-table class="table table-dense">
         <thead><tr><th>时间</th><th>队伍</th><th>环节</th><th class="c">变动（{{ moneyUnit() }}）</th><th class="c">余额（{{ moneyUnit() }}）</th><th>操作人</th><th>原因</th><th class="c">其他</th></tr></thead>
         <tbody>
           <tr v-for="l in rows" :key="l.id" :class="{ 'row-reverted': l.reverted }">

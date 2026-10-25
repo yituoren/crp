@@ -40,7 +40,7 @@ function detourOptions(): string[] {
 
 <template>
   <div class="scroll-table">
-    <table class="table record-table">
+    <table v-mobile-table class="table record-table">
       <thead>
         <tr>
           <th class="col-first">队伍</th><th class="col-status">状态</th>

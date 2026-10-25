@@ -66,16 +66,16 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
     </div>
     <div v-if="race.episodePending" class="alert alert-warning">赛段尚未开始，开始赛段后才能操作罚时。</div>
     <div v-else-if="race.episodeFinished" class="alert alert-info">赛段已结束，罚时记录已锁定，只有管理员可以修改。</div>
-    <div v-else-if="canAdd" class="flex mb-2">
+    <div v-else-if="canAdd" class="flex mb-2 penalty-form">
       <MSelect v-if="!props.legId" v-model="form.legId" outlined style="width: 160px" placeholder="选择环节" :options="[...legOptions.map((l) => ({ value: l.id, label: legName(l), tag: l.type })), ...(auth.isHost ? [{ value: 0, label: '其他' }] : [])]" />
-      <input v-model="form.minutes" type="number" inputmode="numeric" min="1" step="1" class="input-inline" placeholder="分钟" style="width: 90px" />
-      <input v-model="form.reason" class="input-inline" placeholder="原因（如：打车超预算 / 站点失误耽误）" style="flex: 1; min-width: 160px" />
+      <input v-model="form.minutes" type="number" inputmode="numeric" min="1" step="1" class="input-inline pf-min" placeholder="分钟" style="width: 90px" />
+      <input v-model="form.reason" class="input-inline pf-reason" placeholder="原因（如：打车超预算 / 站点失误耽误）" style="flex: 1; min-width: 160px" />
       <button class="btn btn-tonal btn-tonal-danger" @click="apply(1)">增加罚时</button>
       <button class="btn btn-tonal" @click="apply(-1)">补充时间</button>
     </div>
     <div v-if="!visible.length" class="empty-rows">暂无记录</div>
     <div v-else class="scroll-table">
-      <table class="table table-dense">
+      <table v-mobile-table class="table table-dense">
         <thead><tr><th>时间</th><th>队伍</th><th v-if="!props.legId">环节</th><th class="c">类型</th><th class="c">分钟</th><th class="c">净罚时</th><th>操作人</th><th>原因</th><th class="c">其他</th></tr></thead>
         <tbody>
           <tr v-for="p in visible" :key="p.id" :class="{ 'row-reverted': p.reverted }">

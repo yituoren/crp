@@ -117,7 +117,7 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
     <div class="card">
       <div class="card-header">
         <span>{{ ep.name }} <span class="badge" :class="ep.status === 'running' ? 'badge-station' : ep.status === 'finished' ? 'badge-crew' : 'badge-info'">{{ statusLabel[ep.status] }}</span></span>
-        <div v-if="auth.isHost" class="flex">
+        <div v-if="auth.isHost" class="flex ep-actions">
           <button v-if="ep.status !== 'running'" class="btn btn-sm" @click="startEpisode"><Icon name="play_arrow" size="18" />开始赛段</button>
           <button v-else class="btn btn-tonal btn-sm" @click="finishEpisode"><Icon name="flag" size="16" />结束赛段</button>
           <button class="btn btn-text btn-sm" @click="openEpEdit"><Icon name="edit" size="16" />编辑赛段</button>

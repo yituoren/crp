@@ -27,7 +27,7 @@ async function revert(l: ItemLogEntry) {
 <template>
   <div v-if="!rows.length" class="empty-rows">暂无记录</div>
   <div v-else class="scroll-table">
-    <table class="table table-dense">
+    <table v-mobile-table class="table table-dense">
       <thead><tr><th>时间</th><th v-if="!teamId">队伍</th><th>环节</th><th>道具</th><th class="c">类型</th><th class="c">变动</th><th>操作人</th><th class="c">其他</th></tr></thead>
       <tbody>
         <tr v-for="l in rows" :key="l.id" :class="{ 'row-reverted': l.reverted }">

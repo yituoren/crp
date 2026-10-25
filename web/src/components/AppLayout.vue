@@ -34,6 +34,25 @@ const narrowQuery = window.matchMedia('(max-width: 1000px)');
 const narrow = ref(narrowQuery.matches);
 // 手机端左右滑动 / 触控板横向滚动切屏暂时关闭，只用底部按钮切换；需要时改回 true
 const SWIPE_ENABLED = false;
+// 手机（≤760px）：独立骨架（顶栏 + 底部导航 + 抽屉 + 全屏大屏），不用两屏翻页
+const mobileQuery = window.matchMedia('(max-width: 760px)');
+const mobile = ref(mobileQuery.matches);
+const drawer = ref(false);
+const liveOpen = ref(false);
+mobileQuery.addEventListener('change', (e) => { mobile.value = e.matches; drawer.value = false; liveOpen.value = false; });
+watch(() => route.fullPath, () => { drawer.value = false; });
+const NAV = [
+  { name: 'today', label: '我的', icon: 'person' },
+  { name: 'announcements', label: '公告', icon: 'campaign' },
+  { name: 'episodes', label: '赛段', icon: 'flag' },
+  { name: 'schedule', label: '排班', icon: 'schedule' },
+  { name: 'teams', label: '队伍', icon: 'group' },
+  { name: 'currency', label: '经费', icon: 'payments' },
+  { name: 'progress', label: '进度', icon: 'leaderboard' },
+] as const;
+const BOTTOM = ['today', 'announcements', 'episodes', 'currency', 'progress'];
+const bottomNav = computed(() => NAV.filter((n) => BOTTOM.includes(n.name)));
+const navActive = (name: string) => route.name === name || (name === 'episodes' && route.name === 'leg');
 const page = ref(1); // 0 = 实时大屏，1 = 常规页面
 const dragX = ref(0); // 手指跟随时的临时偏移
 const dragging = ref(false);
@@ -119,6 +138,51 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <!-- ========== 手机：顶栏 + 内容 + 底部导航 + 抽屉 ========== -->
+  <div v-if="mobile" class="m-app">
+    <header class="m-bar">
+      <button class="icon-btn" title="菜单" aria-label="菜单" @click="drawer = true"><Icon name="menu" size="24" /></button>
+      <div class="m-title">{{ auth.event.name }}</div>
+      <span v-if="!ui.online" class="m-offline" title="与服务器的实时连接已断开，正在重连"><span class="sync-dot"></span></span>
+      <AccountMenu :before-logout="disconnectRealtime" />
+    </header>
+    <main class="m-body">
+      <div class="page-body">
+        <router-view v-if="race.loaded" />
+        <div v-else class="loading"><span class="spinner"></span></div>
+      </div>
+    </main>
+    <nav class="m-nav">
+      <router-link v-for="n in bottomNav" :key="n.name" :to="{ name: n.name }" :class="{ 'router-link-active': navActive(n.name) }" active-class="" exact-active-class="">
+        <span class="m-nav-ic"><Icon :name="n.icon" size="22" /></span>{{ n.label }}
+        <span v-if="n.name === 'announcements' && race.unreadAnnouncements" class="nav-dot"></span>
+      </router-link>
+    </nav>
+    <div v-if="drawer" class="m-scrim" @click="drawer = false"></div>
+    <aside class="m-drawer" :class="{ open: drawer }">
+      <div class="m-drawer-head">{{ auth.event.name }}</div>
+      <button class="m-item" @click="drawer = false; liveOpen = true"><Icon name="tv" size="22" />实时大屏</button>
+      <div class="m-sep"></div>
+      <router-link v-for="n in NAV" :key="n.name" :to="{ name: n.name }" :class="{ 'router-link-active': navActive(n.name) }" active-class="" exact-active-class=""><Icon :name="n.icon" size="22" />{{ n.label }}</router-link>
+      <router-link v-if="auth.isHost" :to="{ name: 'admin' }"><Icon name="dashboard" size="22" />后台</router-link>
+      <div class="m-sep"></div>
+      <router-link to="/"><Icon name="home" size="22" />回到主页</router-link>
+    </aside>
+    <div v-if="liveOpen" class="m-live">
+      <header class="m-bar">
+        <button class="icon-btn" title="返回" aria-label="返回" @click="liveOpen = false"><Icon name="arrow_back" size="24" /></button>
+        <div class="m-title">实时大屏</div>
+      </header>
+      <div class="m-live-body">
+        <TeamPositions v-if="race.loaded" />
+        <div v-else class="loading"><span class="spinner"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 电脑 / 平板：原有两栏 ========== -->
+  <template v-else>
+
   <div class="pager">
    <div class="pager-track" :style="trackStyle">
     <!-- 左屏 / 电脑端左栏：实时大屏（队伍当前位置） -->
@@ -162,4 +226,5 @@ onUnmounted(() => {
     <button :class="{ active: page === 0 }" @click="goPage(0)"><Icon name="tv" size="18" />大屏</button>
     <button :class="{ active: page === 1 }" @click="goPage(1)"><Icon name="dashboard" size="18" />页面</button>
   </div>
+  </template>
 </template>

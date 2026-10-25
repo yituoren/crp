@@ -55,7 +55,7 @@ const legRows = computed(() => {
       <p class="my-work-head"><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.label }}</strong>，当前余额 <strong class="text-warning">{{ fmtMoney(myTeam.currency) }} {{ moneyUnit() }}</strong></p>
       <CurrentLegCard :team-id="myTeam.id" />
       <div class="scroll-table my-work-table">
-        <table class="table record-table">
+        <table v-mobile-table class="table record-table">
           <thead><tr><th class="col-first">环节</th><th class="col-status">状态</th><th class="col-time">开始</th><th class="col-time">结束</th><th class="col-extra c">记录信息</th><th class="col-action c">操作</th></tr></thead>
           <tbody>
             <tr v-for="{ leg, p, label, block, state, locked, isBranch } in legRows" :key="leg.id">

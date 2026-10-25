@@ -38,7 +38,7 @@ async function removeUse(id: number) {
   <div v-if="leg.cutoffs.length" class="card">
     <div class="card-header"><span>熔断使用情况</span></div>
     <div class="scroll-table">
-      <table class="table table-dense">
+      <table v-mobile-table class="table table-dense">
         <thead><tr><th>队伍</th><th v-for="cf in leg.cutoffs" :key="cf.id" class="c">{{ cf.name }}</th><th v-if="auth.isHost" class="c">操作</th></tr></thead>
         <tbody>
           <tr v-for="t in race.teams" :key="t.id" :class="{ 'mx-dead': t.status !== 'alive' }">

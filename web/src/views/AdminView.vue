@@ -134,7 +134,7 @@ onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
     <div class="card-header"><span>申请名单</span><span class="text-sm text-gray">{{ requests.length ? `${requests.length} 条待审核` : '' }}</span></div>
     <div v-if="!requests.length" class="empty-state">暂无申请</div>
     <div v-else class="scroll-table">
-      <table class="table">
+      <table v-mobile-table class="table">
         <thead><tr><th>幕后ID</th><th>说明</th><th>申请时间</th><th class="c">操作</th></tr></thead>
         <tbody>
           <tr v-for="r in requests" :key="r.id">
@@ -151,7 +151,7 @@ onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
   <div v-if="tab === 'audit'" class="card">
     <div class="card-header"><span>本比赛操作日志（最近 200 条 / 共 {{ auditTotal }}）</span><button class="btn btn-text btn-sm" @click="loadAudit"><Icon name="refresh" size="16" />刷新</button></div>
     <div class="scroll-table">
-      <table class="table table-dense">
+      <table v-mobile-table class="table table-dense">
         <thead><tr><th>时间</th><th>操作人</th><th>动作</th><th>对象</th><th>变更前</th><th>变更后</th></tr></thead>
         <tbody>
           <tr v-for="l in audit" :key="l.id">
