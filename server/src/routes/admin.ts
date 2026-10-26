@@ -3,7 +3,6 @@ import bcrypt from 'bcryptjs';
 import { all, get, run, tx, now, db } from '../db.js';
 import { adminOnly, type Env } from '../auth.js';
 import { audit, body, str, int, intParam, notify, bad, notFound } from '../util.js';
-import { importPrototype } from '../import-prototype.js';
 import { seed } from '../seed.js';
 
 /** 账号管理（查看、停用、重置密码、删除）只有管理员；其他人只能在「账号管理」里改自己的密码 */
@@ -103,16 +102,6 @@ systemRoutes.post('/system/import', async (c) => {
   audit(me, 'import', 'database', '', undefined, { exportedAt: data.exportedAt, format: data.format });
   notify('admin'); notify('episodes'); notify('teams');
   return c.json({ ok: true });
-});
-
-systemRoutes.post('/system/import-prototype', async (c) => {
-  const b = await body(c);
-  const data = b.data ?? b;
-  if (!data.episodes || !data.teams) throw bad('不是原型系统的备份文件（缺少 episodes / teams）');
-  const report = await importPrototype(data, { baseDate: str(b.baseDate, 10) || undefined, wipe: !!b.wipe });
-  audit(c.get('user'), 'import_prototype', 'database', '', undefined, report);
-  notify('admin'); notify('episodes'); notify('teams');
-  return c.json({ report });
 });
 
 systemRoutes.post('/system/reset', async (c) => {

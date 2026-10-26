@@ -65,9 +65,6 @@ const short = (s: string | null) => (s ? (s.length > 120 ? s.slice(0, 120) + '�
 
 // 备份（管理员）
 const importFile = ref<HTMLInputElement | null>(null);
-const protoFile = ref<HTMLInputElement | null>(null);
-const protoDate = ref(new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10));
-const protoWipe = ref(false);
 async function exportData() {
   try {
     const res = await fetch('/api/system/export', { credentials: 'same-origin' });
@@ -90,17 +87,6 @@ async function importData() {
   if (!data) return;
   if (!(await ui.confirm('恢复备份', '将用备份文件完全覆盖当前所有数据（包括账号和所有比赛）。此操作不可逆，确定？', { danger: true, okText: '覆盖恢复' }))) return;
   try { await api('/system/import', { method: 'POST', body: data, retries: 0 }); ui.toast('已恢复'); window.location.reload(); } catch (e) { ui.error(e); }
-}
-async function importProto() {
-  const data = await readJson(protoFile.value);
-  if (!data) return;
-  if (!(await ui.confirm('导入原型数据', `导入旧版单页系统的备份到开发用比赛。开始/完成时间按 ${protoDate.value} 这一天解释。${protoWipe.value ? '\n会先清空开发用比赛的数据。' : ''}`, { danger: protoWipe.value }))) return;
-  try {
-    const d = await api('/system/import-prototype', { method: 'POST', body: { data, baseDate: protoDate.value, wipe: protoWipe.value }, retries: 0 });
-    const r = d.report;
-    ui.toast(`导入完成：账号 ${r.users}，队伍 ${r.teams}，赛段 ${r.episodes}，环节 ${r.legs}，记录 ${r.progress}，货币 ${r.ledger}`);
-    if (r.warnings.length) alert('提示：\n' + r.warnings.join('\n'));
-  } catch (e) { ui.error(e); }
 }
 async function resetAll(includeAccounts: boolean) {
   const msg = includeAccounts ? '清空所有比赛的赛段、队伍、记录、公告，并删除除管理员以外的全部账号。' : '清空所有比赛的赛段、环节、附件、队伍、记录、经费流水、公告，恢复开发用比赛的默认赛段与队伍。账号保留。';
@@ -203,16 +189,6 @@ onMounted(() => { if (auth.isAdmin) { loadUsers(); loadAudit(); } });
         <span class="text-sm text-gray">恢复备份：</span><input ref="importFile" type="file" accept=".json" class="input-inline" style="width: 220px" />
         <button class="btn btn-warning" @click="importData">覆盖恢复</button>
       </div>
-    </div>
-    <div class="card">
-      <div class="card-header">导入旧版单页系统（BJ20_CommandCenter.html）的备份到开发用比赛</div>
-      <div class="flex">
-        <input ref="protoFile" type="file" accept=".json" class="input-inline" style="width: 220px" />
-        <span class="text-sm text-gray">记录日期：</span><input v-model="protoDate" type="date" class="input-inline" style="width: 160px" />
-        <label class="text-sm"><input v-model="protoWipe" type="checkbox" />先清空开发用比赛的数据</label>
-        <button class="btn" @click="importProto">导入</button>
-      </div>
-      <p class="info-text">旧版的开始/完成时间只有时分秒，需要指定这些记录属于哪一天。账号的旧密码会被加密后沿用。</p>
     </div>
     <div class="card" style="border-color: #fecaca">
       <div class="card-header text-danger">危险操作区</div>

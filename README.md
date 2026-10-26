@@ -1,181 +1,90 @@
-# 城市飞奔 · 幕后指挥系统（CRP）
+# CRP · City Run Project backstage
 
-给「城市飞奔」（City Run Project）比赛用的幕后管理网站：主办排赛程、排班、结算；跟队和站点人员在手机上记录队伍开始/完成时间、加减经费；所有人实时看到同一份数据。
+Backstage web app for running a *City Run* (Amazing-Race-style) fan event. Hosts build the race (episodes, legs, teams, schedule), crews record team progress and money on their phones, and everyone sees the same live data.
 
-- 前端：Vue 3 + Vite + TypeScript（`web/`）
-- 后端：Node.js + Hono + `node:sqlite`（`server/`），Socket.IO 实时推送
-- 数据：单个 SQLite 文件 + 附件目录（`DATA_DIR`，默认 `server/data/`）
-- 设计文档：[PLAN.md](PLAN.md)；旧版单页原型：`docs/prototype/BJ20_CommandCenter.html`
+- **Web**: Vue 3 + Vite + TypeScript (`web/`), hand-written Material 3 styles, separate phone layout under 760 px
+- **Server**: Node.js + Hono + `node:sqlite` (`server/`), Socket.IO for live invalidation, bcrypt + JWT cookie auth
+- **Data**: one SQLite file plus an uploads folder (`DATA_DIR`, default `server/data/`)
 
-## 多比赛与账号
+Documentation:
 
-- 手机端（宽度 ≤ 760px）用独立的布局，风格与桌面端一致：顶部应用栏（菜单、赛事名、账号）、底部导航栏（我的 / 公告 / 赛段 / 经费 / 进度）、左侧抽屉（全部页面、后台、回到主页）；实时大屏是全屏页：顶栏右侧的「大屏」胶囊一点打开，大屏顶栏的「工作区」胶囊或返回键回到工作区，不再左右翻页，也不依赖手势。弹窗和下拉菜单改为从底部弹出的面板，确认框仍居中；输入框 48px 高、文字 16px，避免 iOS 自动放大。经费 / 道具 / 罚时 / 熔断等日志表格改为一条记录一张卡片（标签：值），跟队和站点的记录表改为每个环节一张卡；进度结算、排班、账号列表这类信息表保留横向滚动。经费、罚时、交通等表单用固定网格排布，内容再多也不会换行错位。
-- 系统可同时管理多场比赛。登录后先进入主页（Gmail 式布局）：左侧栏「创建比赛」任何登录用户都可以用，只填赛事名称和邀请码（留空自动生成），每队人数、经费类型等之后在「后台 → 赛事设置」改，创建者自动成为该比赛主办并直接进入；「我的比赛」只看已加入的，「全部比赛」列出所有比赛。顶部搜索框按名称或主办搜索，右上角点用户名展开账号管理 / 退出登录（比赛内右上角相同，账号页的返回键回到进入前的页面）。筛选栏按创建时间、我的身份（主办 / 幕后 / 未加入）、状态（未开始 / 进行中 / 已结束）过滤，右侧切换卡片 / 条目两种展示形式（默认卡片，记住选择）。点已加入的比赛直接进入，点未加入的比赛弹出邀请码输入框。手机上左侧栏收进抽屉，顶部是菜单按钮、搜索框和账号图标。管理员默认属于所有比赛。
-- 每场比赛有一个短哈希作为路由：`/e/<hash>/...`。比赛内所有接口在 `/api/events/<hash>/...` 下；比赛列表、加入、账号、系统备份等接口在 `/api/events`、`/api/users`、`/api/system` 下。
-- 注册不再需要准入名单，任何人都可以注册。加入比赛要凭邀请码提交申请（可附一句说明），由该比赛的主办或管理员在「后台 → 成员与主办 → 申请名单」里审核，通过后才成为成员；管理员和比赛创建者例外。审核通过的人默认是幕后；创建者默认是主办，主办可以在「后台 → 成员与主办」把其他成员设为主办或取消。邀请码在「后台 → 赛事设置」里改。
-- 「账号管理」页所有人都能进（Google 账号式布局）：资料卡、基本信息（幕后ID 可以自己修改，管理员账号的 ID 不能改）、修改密码（忘记密码需管理员重置）；管理员另有账号列表（改ID、停用、重置密码、删除）、「全部日志」「备份与重置」。只有管理员能管理别人的账号，主办也不行。比赛内的「后台」有赛事设置、成员与主办、本比赛的操作日志。
-- 目前不提供页面上创建或删除比赛的通道。升级到多比赛时，原有数据自动成为 1 号比赛（开发用，邀请码 `dev`），另外新建一场空白的「测试赛」（邀请码 `test`），已注册账号自动加入 1 号比赛。上线后请尽快在赛事设置里把两个邀请码改掉。
+- [User manual (中文)](docs/user-manual.md) — how hosts, follows, stations and admins use the system
+- [API reference](docs/api.md) — every HTTP endpoint with roles and payloads
 
-## 本地开发
+## Features at a glance
 
-需要 Node.js ≥ 22.13（本机 25 亦可）。
+- Multiple events on one server. Each event has a short hash (`/e/<hash>/…`), an invite code, members with per-event roles (host / crew) and a global admin role.
+- Episodes made of typed legs (starting line, route info, task, detour, roadblock, fast forward, union, shuffle, U-turn, yield, speed bump, face-off, trap, side quest, pit stop). The first episode starts with a Starting Line and every episode ends with a Pit Stop.
+- Scheduled episode start with optional rank-based staggered departures; manual start and reset kept for testing.
+- Per-team progress with automatic chaining (a leg's start = previous leg's end), prerequisites, side quests that pause the main leg, mutual union partners, automatic elimination per leg, withdrawals and a unified lock rule (finished episode or eliminated team → admin only).
+- Money in two modes: cash (yuan, 2 decimals) or coins (integers). Coin mode adds a shop, per-team bags with a separate item log, fixed transport fares and cutoff costs.
+- Cutoffs (timed hints) per leg with countdowns; penalties and time credits; live standings computed on the fly.
+- Live board of team positions, announcements with read tracking, audit log, JSON backup/restore.
+- Phone layout: top app bar, bottom navigation, drawer, bottom-sheet dialogs and menus, card-style logs.
+
+## Development
+
+Node.js ≥ 22.13.
 
 ```bash
 npm install
-npm run dev        # 后端 http://localhost:3000 ，前端 http://localhost:5173（已代理 /api 与 /socket.io）
+npm run dev          # API on http://localhost:3000, web on http://localhost:5173 (proxies /api and /socket.io)
+npm run typecheck    # server + web
+npm run build        # builds web into server/public and compiles the server
 ```
 
-打开 http://localhost:5173 ，用主办名单里的 ID（默认 `阳秋` / `云缨` / `云影`）注册，即为主办。其他人需要主办先在「主办后台 → 准入名单」里添加 ID 才能注册。
+On first start the server seeds a development event (invite code `dev`) and an empty test event (invite code `test`). Create a global admin from the command line (it writes to `server/data`):
 
 ```bash
-npm run typecheck  # 前后端类型检查
-npm run build      # 打包前端并复制到 server/public，编译后端到 server/dist
-npm start          # 生产模式：单进程同时提供页面与 API（默认 3000 端口）
+npm run create-admin --workspace=server -- <username> <password>
 ```
 
-## 部署到服务器（Vultr / 任意 Ubuntu 22.04+ 机器）
+If you install packages through a mirror such as npmmirror, run `npm run lock:fix` before committing so `package-lock.json` points at the official registry; npm ≥ 11.10 refuses mismatched "remote" packages on the server.
 
-一台 1 核 1G 的机器足够。以 root 登录后：
+## Deployment
+
+Tested on Ubuntu 22.04 / Debian 12:
 
 ```bash
 git clone https://github.com/yituoren/crp.git /opt/crp
 bash /opt/crp/deploy/install.sh
 ```
 
-脚本会安装 Node 22 与 sqlite3、创建 `crp` 用户、构建、注册 systemd 服务 `crp`（监听 80 端口）、加每日 04:00 自动备份。完成后在手机上关掉 Wi-Fi 用流量访问 `http://服务器IP` 验证。
-
-常用命令：
+The script installs Node 22 and sqlite3, creates the `crp` user, builds, registers the `crp` systemd service on port 80 and adds a daily 04:00 backup.
 
 ```bash
-systemctl status crp            # 状态
-journalctl -u crp -f            # 实时日志
-bash /opt/crp/deploy/update.sh  # 拉取最新代码、重建、重启
-bash /opt/crp/deploy/backup.sh  # 立即备份到 /opt/crp/backups
-```
-> 本地若用 npmmirror 镜像装包，提交前先运行 `npm run lock:fix`，把 package-lock.json 里的下载地址改回官方源。npm 11.10 起会拒绝安装与配置源不一致的“remote”包，服务器上会报 EALLOWREMOTE。
-
-
-数据都在 `/opt/crp/data/`（`crp.db` 数据库、`uploads/` 附件、`jwt-secret.txt`）。迁移服务器只需复制这个目录。
-
-暂未配置域名与 HTTPS。密码在网络上明文传输，请提醒幕后不要复用重要密码。以后加域名时把 Nginx/Caddy 反代到本服务即可，代码不用改。
-
-### 可选：Docker
-
-```bash
-docker compose up -d --build   # 同样监听 80 端口，数据在 ./data
+systemctl status crp                 # status
+journalctl -u crp -f                 # live logs
+bash /opt/crp/deploy/update.sh       # pull, rebuild, restart
+bash /opt/crp/deploy/backup.sh       # backup now into /opt/crp/backups
+bash /opt/crp/deploy/create-admin.sh <username> <password>
 ```
 
-## 角色与权限
+All state lives in `/opt/crp/data/` (`crp.db`, `uploads/`, `jwt-secret.txt`); copy that folder to migrate. No TLS is configured by the installer — put Nginx or Caddy in front when you add a domain. `docker compose up -d --build` is an alternative that also listens on port 80 with data in `./data`.
 
-管理员是主办之上的最高权限，只能在服务器上用命令创建（不能通过注册获得）：
+Change the two seeded invite codes in *后台 → 赛事设置* right after going live.
 
-```bash
-bash /opt/crp/deploy/create-admin.sh 用户名 密码
-```
-
-本地开发时用 `npm run create-admin --workspace=server -- 用户名 密码`（写入 `server/data`）。注意服务器上的正式数据库在 `/opt/crp/data`，直接运行 npm 命令会写到错误的位置，请用上面的脚本。
-
-操作日志、导出备份、覆盖恢复、导入旧版数据、重置数据只有管理员可以操作；管理员账号只能由管理员修改、重置密码或删除，页面上不能把任何账号设为管理员或撤销管理员，只能用上面的命令。其余权限与主办相同。
-
-| 操作 | 主办 | 跟队 | 站点 | 直播员 / 机动幕后 |
-|---|---|---|---|---|
-| 查看赛程 / 排班 / 队伍 / 货币 | ✅ | ✅ | ✅ | ✅ |
-| 编辑赛段、环节、附件 | ✅ | ❌ | 所驻守环节的附件 | ❌ |
-| 排班 | ✅ | ❌ | ❌ | ❌ |
-| 记录出发 / 到达 / 完成 / 签到 | 任意 | 仅所跟队伍 | ❌ | ❌ |
-| 修改已有记录 | ✅ | 仅所跟队伍（不能清空、不能填未来） | ❌ | ❌ |
-| 撤销记录 | ✅ | ❌ | ❌ | ❌ |
-| 经费加减 | ✅ | 仅所跟队伍 | ❌ | ❌ |
-| 撤销经费变动 | ✅ | 仅所跟队伍 | ❌ | ❌ |
-| 罚时 / 补充时间 | ✅ | ❌ | ✅ | ❌ |
-| 本段淘汰标记 | ✅ | ❌ | 仅中继站站点 | ❌ |
-| 撤销罚时/补时 | ✅ | ❌ | 本赛段带环节的记录 | ❌ |
-| 手工改签到时间 | ✅ | ❌ | ❌ | ❌ |
-| 准入名单、账号、赛事设置 | ✅ | ❌ | ❌ | ❌ |
-| 操作日志、备份、恢复、重置 | 仅管理员 | ❌ | ❌ | ❌ |
-
-权限在服务端校验；跟队/站点/直播员身份来自主办在「排班」里的分配，按赛段生效。站点不记录时间也不动经费，负责罚时、补时和附件；直播员跨整个赛段跟进所有数据，只读。
-
-## 队伍与成员
-
-- 「赛事设置」里的「每队人数」决定队伍编辑页有几个成员栏（成员 1、成员 2……）。
-- 队伍默认按编号命名（01、02……）。填了成员后，页面各处以「编号 成员1&成员2」显示该队，例如「01 小A&小B」；没填则只显示编号。
-
-## 经费与货币
-
-- 「赛事设置 → 经费类型」二选一：经费（以元计，精确到小数点后两位）或货币（以币计，只允许整数）。影响所有金额的显示、单位和校验；数据库内部统一按分存整数。
-- 队伍没有初始货币，余额从 0 开始。经费按赛段补充：主办在「赛段信息」里给赛段填「每队经费」，点「开始赛段」时系统自动给每支存活队伍加上这笔钱并写入货币流水，只发一次。
-- 任务奖励、罚款、买线索等由站点或主办在「货币」页面手工加减，必须填原因。
-- 余额跨赛段累计，不会自动清零。
-
-## 赛段结构规则
-
-- 第一个赛段固定以 Starting Line 开头，每个赛段固定以中继站（PS）结尾，两者由系统在创建赛段时生成，不能删除、不能改类型、不能手动添加，也不能被移动到别的位置。
-- 其余环节在两者之间自由增删排序；新增的环节默认插在中继站之前。
-
-## 时间顺序规则
-
-- 赛段按顺序进行：前面的赛段没有「结束」，后面的赛段不能「开始」；同一时间只能有一个赛段进行中。
-- 赛段未开始时，任何人都不能记录时间、操作经费或罚时；跟队和站点只能在进行中的赛段操作。
-- 进度结算的名次实时计算并始终显示：已到中继站的按签到加净罚时排在前面，其余按走到第几个环节（完成优先于开始）、相同则按最近一次记录时间早晚排序，未出发的按队伍顺序，退赛的不排名放最后。
-- 环节的「判定标准」只有主办、管理员，以及本赛段被排为该环节站点的幕后能看到，其他幕后在环节详情和列表里都看不到。
-- 统一锁定规则：赛段已结束，或队伍已淘汰 / 退赛，这个赛段（或这支队伍）的时间记录、罚时补时、经费、商店购买、撤销、结算都只有管理员能改，主办也不行。淘汰和退赛的队伍仍显示在各列表和进度结算里，只有删除队伍才会清除它的记录。
-- 罚时/补时：主办任意；站点可操作本赛段所有队伍；跟队只能操作所跟队伍。撤销罚时或经费记录只有发出记录的本人和主办可以。
-- 经费页：上方「背包」按队伍显示余额（货币模式还显示持有物品），中间是与跟队「我的」页相同的操作表单（主办多一个队伍选择），下方是流水。
-- 经费权限：主办任意；跟队只能操作所跟队伍；站点可以操作本赛段任何队伍，但必须记在自己驻守的环节上（不能选「其他」），「我的」页每个驻守环节下方有对应的经费表单。
-- 操作类型：其他（非熔断）/ 商店购买（货币模式）。熔断的扣币由熔断功能自动记录。
-- 经费和罚时的环节选择规则一致：默认留空、必须选择；「其他」（不挂环节）只有主办能选，跟队和站点必须选具体环节。
-- 商店（仅货币模式）：主办在「后台 → 赛事设置」维护商品与价格；环节可勾选「开放商店」。操作表单选「商店购买」后，原因栏变为商品下拉，金额固定为价格且只能扣除，必须选开放商店的环节。购买以流水记录，撤销即退货；背包按未撤销的购买计数。
-- 中继站类型名按赛段自动显示：前面的赛段叫「中继站」，最后一个赛段叫「终点」。
-- 路障限制（后台「赛事设置」，默认 2）：同队成员完成路障的次数之差不能超过该整数；选路障完成人时，会让差值超限的成员不显示在下拉里。没登记名字的成员显示为「成员1」「成员2」。
-- 淘汰自动判定，没有手动淘汰入口：每个环节（含中继站）可勾选「可淘汰」并填淘汰队数，没有默认值，勾选后必须填。当所有未退赛的队伍都记录了该环节的结束时间，最后到达的 N 队自动淘汰；中继站按签到时间加净罚时排序。记录被修改或撤销后自动重算，队伍会相应恢复或重新淘汰；剩余队伍不多于淘汰数时不淘汰。
-- 退赛只有主办能操作：退赛前的记录保留并锁定，之后的环节留空；主办可取消退赛。队伍列表不再显示经费。
-- 拖动换序：赛段页的环节卡片和队伍页的队伍卡片都可以拖动换序，电脑上按住拖动，手机上长按约半秒后拖动；起跑线和中继站固定。环节卡片的删除按钮在卡片右侧，所有删除类按钮统一红色。队伍编号按顺序自动生成（01、02…），新增、删除、换序后自动重排，不能手动修改。
-- 每个环节只手动记一次结束时间（路线信息=到达、中继站=签到、其余=完成，起跑线也要在任务完成后记完成）；开始时间自动取上一个环节的结束时间，起跑线的开始 = 出发，由系统按发车时间自动记录。撤销或修改结束时间时，下一环节自动带上的开始时间会跟着变。
-- 所有环节都记录开始与结束两个时间，不再有记录方式选项；是否需要站点由类型查表决定（目前只有路线信息不需要）。
-- 背包与道具日志：只有货币模式有商店、背包、道具日志、商店开放、熔断消耗这些东西，经费（元）模式下这些入口全部不显示，经费页的队伍卡片只显示余额，接口上也拒绝购买和使用道具。货币模式下买到的商品进入队伍背包。道具有自己的日志（与经费流水分开）：购买时经费流水记扣款、道具日志同步记一条「获得 +1」；使用只记道具日志「使用 -1」，不动经费。跟队「我的」页的「本队背包」卡片和经费页点队伍卡片弹出的背包都按物品分格显示，可以多选后点「使用」，每件一条记录，用掉的从背包消失；背包卡片底部和经费页的「道具日志」卡都能看到获得与使用记录。撤销使用记录物品回到背包；购买在经费流水里撤销，道具日志同步写一条退回，物品已用掉的购买不能撤销。
-- 跟队「我的」页从上到下：当前环节卡、记录表、本队背包、本队货币、本队罚时与补时；主办的概览卡已去掉。「当前环节」卡按所跟队伍正在进行的环节给出操作，交通 / 商店 / 熔断三段用横线隔开：路线信息环节有「交通」（单车 / 打车 / 地铁 / 公交四选一，填消费后确认直接扣费并记「交通：xx」流水；货币比赛里单车、打车要用背包里名字含「单车」「打车」的卡片，不填金额，确认即使用卡片；地铁固定 3 币、公交固定 2 币，不能改，随时可用）；环节开放商店且是货币比赛时有「商店」（选商品填数量直接购买，每件一条流水）；环节配置了熔断时有「熔断」。三样都没有显示「暂无操作」。跟队的「本队货币」只剩增减经费，不再能买商品。
-- 熔断：每个环节可以像商品一样配置多种熔断，每种有名称、开始时间、间隔时间（都按分钟填写，显示时自动换算成 x h x m；货币模式多一个消耗币数）。队伍进入环节后过了起始时间第一次可用，每次使用后再过间隔时间可再次使用。跟队在「我的」页的熔断卡片里对所跟队伍使用，未就绪显示倒计时；主办可对任意队伍使用。货币模式使用时自动扣币并记一条「熔断：名称」的流水；环节详情页底部的「熔断使用情况」按队伍列出每种熔断的次数与倒计时，主办可删除某次使用（扣过的币退回）；在经费页撤销一条「熔断」流水同样会删掉那次使用并重置倒计时。
-- 绕道选择、路障完成人、快进结果等附加信息只能在本环节开始（上一环节结束）之后原地填写；记录完成后不能再原地改，只能通过「修改记录」修改。
-- 支线（SQ）环节：必须紧跟在一个主线环节之后（不能跟在起跑线、中继站或另一条支线后）。主线进行中可随时「开始支线」，此时主线暂停计时、不能记录完成；「结束支线」后主线恢复。支线不是必经环节，可以不进入；主线记录完成后普通幕后不能再改支线，未完成的支线留空。进度结算里支线并入主线组：开始、支线开始、支线结束、支线用时、完成、用时，主线用时已扣除支线时长。
-- 联合（Union）环节：每队在「合作队伍」里选另一队，双方互选后才能记录完成；任一方记录完成，另一方同时记录同一时间，之后两队各自继续。
-- 删除队伍会一并删除它的进度、罚时、结算、经费流水，并清掉别队记录里对它的引用。
-- 赛段自动开始：在「编辑赛段」里设置自动开始时间，到点后系统自动把赛段标记为进行中、发放补充经费，并给每支存活队伍记录本赛段第一个环节的开始时间（起跑线即出发时间，起跑线任务完成后由跟队记完成）。非首个赛段可勾选「按上一赛段名次先后发车」并填发车间隔 xx m：第 1 名在开始时间出发，之后每队依次晚一个间隔；不勾选则各队同时出发。上一赛段还没结束时不会自动开始。结束赛段仍需主办或管理员手动点击，且中继站之前仍在比赛的队伍（未退赛、未在更早环节被淘汰）必须全部到达中继站，否则会提示还有哪些队伍没到。
-- 「开始赛段」按钮保留但只供测试（点击会提示）；手动开始后同样会按发车规则自动记录各队出发，只是以点击时刻为基准。「重置赛段」也只供测试：清空该赛段及之后所有赛段的时间记录、罚时补时、签到、熔断使用和经费流水，这些赛段回到未开始，余额按剩余流水重算，淘汰状态重新计算；环节设置、排班、附件不变。
-- 管理员不受赛段状态限制：任何状态下都可以记录、修改、操作罚时与经费。
-- 赛段一旦开始（进行中或已结束），环节结构只有管理员能改：添加、删除、拖动换序环节，修改环节类型、淘汰设置、商店开放和熔断种类都会被拒绝，页面上相应的按钮和输入框对主办隐藏或置灰；主办仍可以改名称、说明、地址、开放时间等描述性内容。未开始的赛段不受限制。
-- 每支队伍必须按环节顺序打卡：前面的必经环节（Starting Line、路线信息、任务点、绕道、路障、联合、洗牌、陷阱、中继站）没有完成，后面的环节不能记录。快进（FF）、减速带、回转点、让路点、对抗（FO）只有部分队伍会经过，不作为前置条件；成功快进的队伍可直接到中继站签到。
-- 撤销记录只能从最后一个有记录的环节开始往前撤。主办在「修改」弹窗里的手工修正不受顺序限制。
-
-## 线索卡模板与配色
-
-`docs/templates/cards/` 里是三折页线索卡各类型的缩略图（按类型缩写命名）。页面上环节类型标签的颜色取自这些卡片的主色：起跑线 #C9DA4D、路线 #009DDA、任务 #33CBCC、绕道 #EAAA16、路障 #AC0000、快进（FF）#27CE62、联合 #EB661C、对抗（FO）#664193、减速带 #FFCC01。模板里没有的类型（回转点、让路点、陷阱、中继站、洗牌）另选了不冲突的颜色，定义在 `web/src/styles.css`。
-
-## 目录结构
+## Repository layout
 
 ```
 server/src
-  index.ts          启动、路由挂载、静态文件
-  db.ts             SQLite 连接与建表
-  auth.ts           登录态、角色与排班权限判断
-  seed.ts           首次启动写入默认赛段/队伍/主办名单
-  import-prototype.ts  导入旧版单页系统备份
-  routes/           auth episodes teams assignments progress ledger announcements admin dashboard
+  index.ts            bootstrap, route mounting, static files, scheduler start
+  db.ts               SQLite schema, migrations (ensureColumn), helpers
+  auth.ts             session cookie, roles, per-event permission helpers
+  util.ts             audit log, notify (Socket.IO), validation helpers
+  elimination.ts      automatic elimination and lock points
+  episodeStart.ts     episode start, departure plan, auto departures
+  scheduler.ts        5-second tick for scheduled starts and departures
+  progressCore.ts     progress upsert, chaining, final ranking
+  routes/             auth events episodes teams assignments progress ledger announcements admin dashboard
 web/src
-  views/            各页面（今日 / 赛段 / 环节详情 / 排班 / 队伍 / 货币 / 大屏 / 结算 / 后台）
-  components/       布局、弹窗、记录表格等
-  stores/           auth（登录态）、race（比赛数据）、ui（提示与确认）
-  realtime.ts       Socket.IO 失效通知 → 自动刷新
-deploy/             install.sh / update.sh / backup.sh / crp.service
-docs/               操作手册（crew-handbook.md）、原型
+  views/              pages (home, account, today, announcements, episodes, leg detail, schedule, teams, currency, progress, admin)
+  components/         layouts, dialogs, selects, cards, tables
+  stores/             auth, race (event data), ui (toasts, confirms)
+  styles.css          desktop styles; mobile.css phone overrides
+  directives/         v-mobile-table (card layout for tables on phones)
+deploy/               install.sh update.sh backup.sh create-admin.sh crp.service
+docs/                 user-manual.md (中文), api.md, templates/cards (clue card artwork)
 ```
 
-## 从旧版单页系统迁移数据
-
-旧版「导出全部数据备份」得到的 JSON 可在「主办后台 → 备份与重置 → 导入旧版备份」导入；或在服务器上：
-
-```bash
-bash /opt/crp/deploy/import-prototype.sh backup.json 2026-10-01
-```
-
-旧版的开始/完成时间只有时分秒，第二个参数指定这些记录所属日期。
+Leg type tag colours come from the clue-card artwork in `docs/templates/cards/`.
