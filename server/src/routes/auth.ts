@@ -19,7 +19,7 @@ authRoutes.post('/login', async (c) => {
   return c.json({ user });
 });
 
-/** 注册：任何人都可以注册，加入比赛靠邀请码 */
+/** Registration is open to everyone; events are joined with an invite code */
 authRoutes.post('/register', async (c) => {
   const { username, password, displayName } = await body(c);
   const u = str(username, 50);
@@ -51,7 +51,7 @@ authRoutes.get('/me', authRequired, (c) => {
   return c.json({ user: { ...user, createdAt }, hostAnywhere: user.role === 'admin' || hostAnywhere(user.id), serverTime: now() });
 });
 
-/** 改自己的幕后ID（管理员账号不能改）；各处显示名一并更新，历史记录里的操作人快照不动 */
+/** Rename own crew ID (not allowed for the admin account); the display name follows, operator snapshots in history stay */
 authRoutes.put('/profile', authRequired, async (c) => {
   const user = c.get('user');
   if (user.role === 'admin') return c.json({ error: '管理员账号的ID不能修改' }, 403);

@@ -16,7 +16,7 @@ const ui = useUi();
 const router = useRouter();
 const route = useRoute();
 const hash = computed(() => String(route.params.hash ?? ''));
-/** 进入/切换比赛：加载比赛信息，再加载数据 */
+/** Enter / switch event: load the event info, then its data */
 async function enterEvent() {
   race.reset();
   try {
@@ -28,13 +28,13 @@ async function enterEvent() {
   }
 }
 
-// 手机端：左右两屏（左：实时大屏，右：常规页面），像 iPhone 桌面一样整页切换。
-// 不依赖浏览器的横向滚动，用 JS 识别手势/触控板横滑后整屏平移，手机和电脑缩窄窗口都可用。
+// Narrow screens: two pages (left: live board, right: regular pages) switched like an iPhone home screen.
+// Does not rely on browser horizontal scrolling: JS detects swipes / trackpad gestures and translates the whole page.
 const narrowQuery = window.matchMedia('(max-width: 1000px)');
 const narrow = ref(narrowQuery.matches);
-// 手机端左右滑动 / 触控板横向滚动切屏暂时关闭，只用底部按钮切换；需要时改回 true
+// Swipe / trackpad paging is disabled for now, only the bottom buttons switch; set to true to re-enable
 const SWIPE_ENABLED = false;
-// 手机（≤760px）：独立骨架（顶栏 + 底部导航 + 抽屉 + 全屏大屏），不用两屏翻页
+// Phones (≤760px): separate shell (top bar + bottom navigation + drawer + full-screen live board), no two-page paging
 const mobileQuery = window.matchMedia('(max-width: 760px)');
 const mobile = ref(mobileQuery.matches);
 const drawer = ref(false);
@@ -53,10 +53,10 @@ const NAV = [
 const BOTTOM = ['today', 'announcements', 'episodes', 'currency', 'progress'];
 const bottomNav = computed(() => NAV.filter((n) => BOTTOM.includes(n.name)));
 const navActive = (name: string) => route.name === name || (name === 'episodes' && route.name === 'leg');
-const page = ref(1); // 0 = 实时大屏，1 = 常规页面
-const dragX = ref(0); // 手指跟随时的临时偏移
+const page = ref(1); // 0 = live board, 1 = regular pages
+const dragX = ref(0); // temporary offset while the finger drags
 const dragging = ref(false);
-// 位置交给 CSS 变量：窄屏时按 --page / --drag 平移，宽屏时媒体查询强制不平移
+// Position via CSS variables: narrow screens translate by --page / --drag, wide screens are pinned by a media query
 const trackStyle = computed(() => ({ '--page': String(page.value), '--drag': `${dragX.value}px`, transition: dragging.value ? 'none' : 'transform .25s ease' }));
 const isNarrow = () => window.innerWidth <= 1000;
 function goPage(i: number) { page.value = Math.max(0, Math.min(1, i)); dragX.value = 0; }
@@ -66,7 +66,7 @@ function onLayoutChange() {
 }
 
 let sx = 0, sy = 0, horizontal: boolean | null = null;
-/** 手势起点落在可横向滚动的元素（进度矩阵、宽表格、赛段选择条等）里时，交给它自己滚动，不翻屏 */
+/** When a gesture starts inside a horizontally scrollable element (matrix, wide table, episode bar…) let it scroll instead of paging */
 function insideHScroll(target: EventTarget | null): boolean {
   const el = (target as HTMLElement | null)?.closest?.('.matrix-scroll, .scroll-table, .live-grid, .ep-selector, .nav, textarea');
   if (!el) return false;
@@ -85,7 +85,7 @@ function onTouchMove(e: TouchEvent) {
   const dx = t.clientX - sx, dy = t.clientY - sy;
   if (horizontal === null && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) horizontal = Math.abs(dx) > Math.abs(dy);
   if (horizontal) {
-    // 已在边界时只跟随一小段，做出阻尼感
+    // at the edge only follow a little, for a damped feel
     const atEdge = (page.value === 0 && dx > 0) || (page.value === 1 && dx < 0);
     dragX.value = atEdge ? dx / 4 : dx;
   }
@@ -101,7 +101,7 @@ function onTouchEnd() {
 let wheelAcc = 0, wheelLock = 0;
 function onWheel(e: WheelEvent) {
   if (!isNarrow()) return;
-  if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return; // 纵向滚动交给页面
+  if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return; // vertical scrolling stays with the page
   if (insideHScroll(e.target)) return;
   const now = Date.now();
   if (now < wheelLock) return;
@@ -138,7 +138,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!-- ========== 手机：顶栏 + 内容 + 底部导航 + 抽屉 ========== -->
+  <!-- ========== Phone: top bar + content + bottom navigation + drawer ========== -->
   <div v-if="mobile" class="m-app">
     <header class="m-bar">
       <button class="icon-btn" title="菜单" aria-label="菜单" @click="drawer = true"><Icon name="menu" size="24" /></button>
@@ -169,7 +169,7 @@ onUnmounted(() => {
     </aside>
     <Transition name="m-live">
     <div v-if="liveOpen" class="m-live">
-      <!-- 顶栏与工作区同构：菜单、标题、切换胶囊、（断线标记）、账号，切换按钮位置不变 -->
+      <!-- Same bar as the workspace: menu, title, toggle pill, (offline dot), account; the toggle keeps its position -->
       <header class="m-bar">
         <button class="icon-btn" title="菜单" aria-label="菜单" @click="drawer = true"><Icon name="menu" size="24" /></button>
         <div class="m-title">{{ auth.event.name }}：实时大屏</div>
@@ -185,17 +185,17 @@ onUnmounted(() => {
     </Transition>
   </div>
 
-  <!-- ========== 电脑 / 平板：原有两栏 ========== -->
+  <!-- ========== Desktop / tablet: the original two columns ========== -->
   <template v-else>
 
   <div class="pager">
    <div class="pager-track" :style="trackStyle">
-    <!-- 左屏 / 电脑端左栏：实时大屏（队伍当前位置） -->
+    <!-- Left page / desktop left column: live board (team positions) -->
     <section class="pane pane-live">
       <TeamPositions v-if="race.loaded" />
       <div v-else class="loading"><span class="spinner"></span></div>
     </section>
-    <!-- 右屏 / 电脑端主区域 -->
+    <!-- Right page / desktop main area -->
     <section class="pane pane-main">
   <div class="container" :class="{ 'container-fixed': $route.meta.fillPage }">
     <header class="page-header">
@@ -226,7 +226,7 @@ onUnmounted(() => {
     </section>
    </div>
   </div>
-  <!-- 手机端页码指示 -->
+  <!-- Page switch (tablet) -->
   <div class="pager-dots">
     <button :class="{ active: page === 0 }" @click="goPage(0)"><Icon name="tv" size="18" />大屏</button>
     <button :class="{ active: page === 1 }" @click="goPage(1)"><Icon name="dashboard" size="18" />页面</button>

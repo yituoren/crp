@@ -1,4 +1,4 @@
-# 可选：docker compose up -d --build  → http://IP
+# Optional: docker compose up -d --build  → http://IP
 services:
   crp:
     build: .

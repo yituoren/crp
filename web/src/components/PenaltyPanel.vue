@@ -8,7 +8,7 @@ import { legName } from '@/types';
 import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
 
-// legId：只显示该环节（站点）的记录，新增也记在该环节上；teamId：只显示该队伍（跟队）的记录，新增也只针对该队
+// legId: show and add records for that leg only (station); teamId: show and add records for that team only (follow)
 const props = defineProps<{ legId?: number; teamId?: number }>();
 const auth = useAuth();
 const race = useRace();
@@ -16,9 +16,9 @@ const ui = useUi();
 const ep = computed(() => race.currentEpisode);
 const form = reactive({ teamId: (props.teamId ?? '') as number | '', minutes: '', reason: '', legId: '' as number | '' });
 const canAdd = computed(() => (props.teamId ? race.canManagePenaltyFor(props.teamId) : race.canManagePenalty));
-// 站点可选所有队伍；跟队只能选所跟队伍
+// stations may pick any team; follows only their own
 const teamOptions = computed(() => race.teams.filter((t) => race.canManagePenaltyFor(t.id)));
-// 环节选项：本赛段所有环节；“其他”只有主办能选
+// leg options: every leg of the episode; "other" is hosts only
 const legOptions = computed(() => (ep.value?.legs ?? []));
 const totals = computed(() => {
   const m = new Map<number, number>();
@@ -50,7 +50,7 @@ async function revert(p: { id: number; team_name: string; minutes: number; reaso
   if (!(await ui.confirm('撤销记录', `撤销「${p.team_name}」的这条 ${what}（${p.reason || '-'}）？会写入一条反向记录，净罚时和名次相应恢复。`, { danger: true, okText: '撤销' }))) return;
   try { await api(`/penalties/${p.id}/revert`, { method: 'POST' }); await race.loadProgress(); ui.toast('已撤销'); } catch (e) { ui.error(e); }
 }
-// 页面只显示原始记录（被撤销的划线）；反向记录留在数据库与操作日志里
+// Only original rows are shown (reverted ones struck through); reverse rows stay in the database and audit log
 const revertedBy = (id: number) => race.penalties.find((x) => x.reverts_id === id)?.applied_by_name ?? '';
 const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!props.legId || p.leg_id === props.legId) && (!props.teamId || p.team_id === props.teamId)));
 </script>

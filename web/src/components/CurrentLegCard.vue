@@ -10,18 +10,19 @@ import CutoffCard from './CutoffCard.vue';
 import ShopModal from './ShopModal.vue';
 
 /**
- * 跟队「我的」页的「当前环节」卡：按所跟队伍正在进行的环节给出可做的操作。
- *  - 标题行：左边「当前环节」+ 环节标签；右边「商店」按钮（环节开放商店且货币比赛时出现），点开是商品选项卡弹窗
- *  - 交通（路线信息）：单车 / 打车 / 地铁 / 公交 四选一，右侧消费输入框固定存在，确认直接扣费记流水；货币比赛里单车、打车要用背包里的对应卡片，此时不用填金额
- *  - 熔断（环节配置了熔断）：与原来的本队熔断一样
- * 交通与熔断都没有时显示「暂无操作」
+ * "Current leg" card on the follow's "Mine" page: offers the actions for the leg the team is on.
+ *  - header: "current leg" + leg tag on the left; a "shop" button on the right (shop-open leg in coin mode) opening the item dialog
+ *  - transport (Route Info): bike / taxi / subway / bus, single choice; the fare input is always present; confirm deducts and logs it.
+ *    In coin mode bike and taxi use the matching bag card and need no amount
+ *  - cutoffs (when the leg has any): same as the former team cutoff card
+ * Shows "nothing to do" when neither transport nor cutoffs apply
  */
 const props = defineProps<{ teamId: number }>();
 const race = useRace();
 const ui = useUi();
 const team = computed(() => race.teamById.get(props.teamId));
 const isCoin = computed(() => moneyMode() === 'coin');
-/** 正在进行的环节：有开始没结束的里最靠后的一个（支线进行中就是支线） */
+/** The leg in progress: the furthest one with a start and no end (a running side quest counts) */
 const currentLeg = computed<Leg | null>(() => {
   const legs = race.currentEpisode?.legs ?? [];
   let cur: Leg | null = null;
@@ -34,19 +35,19 @@ const showShop = computed(() => isCoin.value && !!currentLeg.value?.shop_open &&
 const showCutoff = computed(() => (race.currentEpisode?.legs ?? []).some((l) => { const p = race.progressOf(props.teamId, l.id); return !!p?.arrived_at && !p.completed_at && l.cutoffs.length > 0; }));
 const nothing = computed(() => !showTransport.value && !showCutoff.value);
 
-// ---- 交通 ----
+// ---- Transport ----
 const TRANSPORT = ['单车', '打车', '地铁', '公交'] as const;
 type Transport = (typeof TRANSPORT)[number];
 const transport = ref<Transport | ''>('');
 const fare = ref('');
-/** 货币比赛里单车 / 打车要有对应卡片：背包里名字含“单车”/“打车”的物品 */
+/** In coin mode bike / taxi need a matching card: a bag item whose name contains 单车 / 打车 */
 function cardFor(t: Transport) { return isCoin.value && (t === '单车' || t === '打车') ? (team.value?.inventory ?? []).find((i) => i.name.includes(t)) ?? null : null; }
 const needsCard = (t: Transport) => isCoin.value && (t === '单车' || t === '打车');
 const transportDisabled = (t: Transport) => !canUse.value || (needsCard(t) && !cardFor(t));
-/** 货币比赛：地铁固定 3 币、公交固定 2 币，不能改；单车、打车用卡片。经费比赛：都填实际消费 */
+/** Coin mode: subway costs 3, bus costs 2, fixed; bike and taxi use cards. Cash mode: enter the actual fare */
 const FIXED_FARE: Partial<Record<Transport, number>> = { 地铁: 3, 公交: 2 };
 const fixedFare = computed(() => (isCoin.value && transport.value ? FIXED_FARE[transport.value] ?? null : null));
-/** 金额框一直在（布局不跳）：用卡片或固定票价时置灰 */
+/** The fare input always stays (no layout jump) and is disabled for card use or fixed fares */
 const fareOff = computed(() => transport.value === '' || needsCard(transport.value) || fixedFare.value !== null);
 watch(fixedFare, (v) => { if (v !== null) fare.value = String(v); else if (transport.value && needsCard(transport.value)) fare.value = ''; });
 const shopOpen = ref(false);
@@ -85,7 +86,7 @@ async function confirmTransport() {
     </div>
     <div v-if="nothing" class="empty-rows">暂无操作</div>
     <template v-else>
-      <!-- 交通 -->
+      <!-- Transport -->
       <div v-if="showTransport" class="cl-section">
         <div class="cl-label">交通</div>
         <div class="cl-row">
@@ -98,7 +99,7 @@ async function confirmTransport() {
           <button class="btn btn-sm cl-confirm" :disabled="!transport || !canUse" @click="confirmTransport">确认</button>
         </div>
       </div>
-      <!-- 熔断 -->
+      <!-- Cutoffs -->
       <div v-if="showCutoff" class="cl-section">
         <div class="cl-label">熔断</div>
         <CutoffCard :team-id="teamId" plain />

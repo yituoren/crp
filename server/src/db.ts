@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
   role TEXT NOT NULL DEFAULT 'crew',          -- host | crew
   disabled INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
-  ann_read_id INTEGER NOT NULL DEFAULT 0     -- 最后已读公告 id（跨设备）
+  ann_read_id INTEGER NOT NULL DEFAULT 0     -- last read announcement id (shared across devices)
 );
 CREATE TABLE IF NOT EXISTS access_list (
   username TEXT PRIMARY KEY,
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS legs (
   close_time TEXT NOT NULL DEFAULT '',
   detour_a TEXT NOT NULL DEFAULT '',
   detour_b TEXT NOT NULL DEFAULT '',
-  needs_staff INTEGER NOT NULL DEFAULT 1,      -- 是否需要站点人员
+  needs_staff INTEGER NOT NULL DEFAULT 1,      -- whether station crew is needed
   record_mode TEXT NOT NULL DEFAULT 'full'     -- none | single | full
 );
 CREATE INDEX IF NOT EXISTS idx_legs_ep ON legs(episode_id, sort);
@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS assignments (
   role TEXT NOT NULL,                         -- follow | station
   team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL,
   leg_id INTEGER REFERENCES legs(id) ON DELETE SET NULL,
-  leg_ids TEXT,                               -- 站点驻守的环节 id 列表（JSON），可多个
+  leg_ids TEXT,                               -- leg ids the station covers (JSON array)
   UNIQUE(episode_id, user_id)
 );
 CREATE TABLE IF NOT EXISTS progress (
@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS progress (
   detour_choice TEXT,
   roadblock_by TEXT,
   ff_result TEXT,                             -- success | fail | null
-  target_team_id INTEGER,                     -- 回转/让路的施加对象
+  target_team_id INTEGER,                     -- target team of a U-Turn / Yield
   note TEXT NOT NULL DEFAULT '',
   recorded_by INTEGER,
   updated_at TEXT NOT NULL,
@@ -113,9 +113,9 @@ CREATE TABLE IF NOT EXISTS penalties (
   reason TEXT NOT NULL DEFAULT '',
   applied_by INTEGER,
   applied_at TEXT NOT NULL,
-  reverted INTEGER NOT NULL DEFAULT 0,        -- 已被撤销
-  reverts_id INTEGER,                         -- 本条是对哪条的撤销
-  leg_id INTEGER                              -- 在哪个环节（站点）产生，可空
+  reverted INTEGER NOT NULL DEFAULT 0,        -- reverted
+  reverts_id INTEGER,                         -- which row this one reverts
+  leg_id INTEGER                              -- leg (station) where it happened, nullable
 );
 CREATE TABLE IF NOT EXISTS pitstop_results (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -137,9 +137,9 @@ CREATE TABLE IF NOT EXISTS currency_ledger (
   operator_id INTEGER,
   operator_name TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL,
-  reverted INTEGER NOT NULL DEFAULT 0,        -- 已被撤销
-  reverts_id INTEGER,                         -- 本条是对哪条的撤销
-  leg_id INTEGER                              -- 在哪个环节发生，可空（其他）
+  reverted INTEGER NOT NULL DEFAULT 0,        -- reverted
+  reverts_id INTEGER,                         -- which row this one reverts
+  leg_id INTEGER                              -- leg where it happened, nullable ("other")
 );
 CREATE INDEX IF NOT EXISTS idx_ledger_ep ON currency_ledger(episode_id, created_at);
 CREATE TABLE IF NOT EXISTS item_log (
@@ -148,9 +148,9 @@ CREATE TABLE IF NOT EXISTS item_log (
   team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
   leg_id INTEGER,
   item_name TEXT NOT NULL,
-  delta INTEGER NOT NULL,                     -- +1 获得 / -1 使用
-  kind TEXT NOT NULL DEFAULT 'use',           -- buy | use（撤销行沿用原 kind）
-  ledger_id INTEGER,                          -- 购买对应的经费流水
+  delta INTEGER NOT NULL,                     -- +1 gained / -1 used
+  kind TEXT NOT NULL DEFAULT 'use',           -- buy | use (revert rows keep the original kind)
+  ledger_id INTEGER,                          -- ledger row of the purchase
   operator_id INTEGER,
   operator_name TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL,
@@ -162,9 +162,9 @@ CREATE TABLE IF NOT EXISTS leg_cutoffs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   leg_id INTEGER NOT NULL REFERENCES legs(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  start_min INTEGER NOT NULL DEFAULT 0,        -- 第一次可用：队伍进入环节后多少分钟
-  interval_min INTEGER NOT NULL DEFAULT 0,     -- 每次使用后多少分钟再次可用
-  cost INTEGER NOT NULL DEFAULT 0,             -- 货币模式下每次消耗（以分存）
+  start_min INTEGER NOT NULL DEFAULT 0,        -- first available: minutes after the team enters the leg
+  interval_min INTEGER NOT NULL DEFAULT 0,     -- minutes until it can be used again
+  cost INTEGER NOT NULL DEFAULT 0,             -- cost per use in coin mode (stored in cents)
   sort INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
 );
@@ -178,14 +178,14 @@ CREATE TABLE IF NOT EXISTS cutoff_uses (
   used_at TEXT NOT NULL,
   used_by INTEGER,
   used_by_name TEXT NOT NULL DEFAULT '',
-  ledger_id INTEGER                            -- 扣币对应的流水，撤销使用时一并反向
+  ledger_id INTEGER                            -- ledger row of the charge, reverted together with the use
 );
 CREATE INDEX IF NOT EXISTS idx_cutoff_uses_ep ON cutoff_uses(episode_id, team_id);
 CREATE TABLE IF NOT EXISTS shop_items (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   event_id INTEGER NOT NULL,
   name TEXT NOT NULL,
-  price INTEGER NOT NULL DEFAULT 0,            -- 以分存，货币模式下为整币 × 100
+  price INTEGER NOT NULL DEFAULT 0,            -- stored in cents; whole coins × 100 in coin mode
   sort INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
 );
@@ -195,26 +195,26 @@ CREATE TABLE IF NOT EXISTS announcements (
   level TEXT NOT NULL DEFAULT 'info',         -- info | warning | urgent
   created_by TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  pinned_at TEXT,                             -- 置顶时间，空为未置顶
-  audience TEXT NOT NULL DEFAULT 'all'        -- 通知对象（预留）
+  pinned_at TEXT,                             -- pinned at; null = not pinned
+  audience TEXT NOT NULL DEFAULT 'all'        -- audience (reserved)
 );
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  hash TEXT NOT NULL UNIQUE,                  -- 路由用的短哈希
+  hash TEXT NOT NULL UNIQUE,                  -- short hash used in routes
   name TEXT NOT NULL,
-  invite_code TEXT NOT NULL DEFAULT '',       -- 邀请码，输入后加入比赛
-  hosts TEXT NOT NULL DEFAULT '',             -- 主办名单（逗号分隔的幕后ID）
+  invite_code TEXT NOT NULL DEFAULT '',       -- invite code used to join the event
+  hosts TEXT NOT NULL DEFAULT '',             -- legacy host list (comma-separated crew IDs)
   team_size INTEGER NOT NULL DEFAULT 2,
   currency_mode TEXT NOT NULL DEFAULT 'yuan', -- yuan | coin
   rb_gap INTEGER NOT NULL DEFAULT 2,
-  owner_id INTEGER,                           -- 创建者：与管理员一样无需邀请码
+  owner_id INTEGER,                           -- creator: needs no invite code, like an admin
   created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS event_join_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  note TEXT NOT NULL DEFAULT '',                -- 申请说明（选填）
+  note TEXT NOT NULL DEFAULT '',                -- optional note on the join request
   status TEXT NOT NULL DEFAULT 'pending',       -- pending | approved | rejected
   created_at TEXT NOT NULL,
   decided_at TEXT,
@@ -224,7 +224,7 @@ CREATE TABLE IF NOT EXISTS event_members (
   event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   joined_at TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'crew',          -- 比赛内角色：host | crew（创建者默认 host）
+  role TEXT NOT NULL DEFAULT 'crew',          -- per-event role: host | crew (the creator defaults to host)
   UNIQUE(event_id, user_id)
 );
 CREATE TABLE IF NOT EXISTS ann_reads (
@@ -247,7 +247,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 `;
 db.exec(SCHEMA);
 
-/** 给旧库补列（幂等）。返回 true 表示本次新加了该列。 */
+/** Add a column to an existing database (idempotent). Returns true when the column was added just now. */
 function ensureColumn(table: string, col: string, ddl: string): boolean {
   const cols = (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((r) => r.name);
   if (cols.includes(col)) return false;
@@ -255,21 +255,21 @@ function ensureColumn(table: string, col: string, ddl: string): boolean {
   return true;
 }
 if (ensureColumn('legs', 'needs_staff', 'INTEGER NOT NULL DEFAULT 1') || ensureColumn('legs', 'record_mode', "TEXT NOT NULL DEFAULT 'full'")) {
-  // 老数据按类型套用默认：路线信息不排站点也不记时间；起跑线/终点只记一次
+  // Apply type defaults to old rows: Route Info needs no station and no time; Starting Line / finish are recorded once
   db.exec("UPDATE legs SET needs_staff = 0, record_mode = 'none' WHERE type = 'RI'");
   db.exec("UPDATE legs SET record_mode = 'single' WHERE type IN ('SL', 'PS')");
 }
-// 所有环节统一记录开始/结束两个时间；是否需要站点由类型决定（目前只有路线信息不需要）
-ensureColumn('legs', 'cutoff_start', 'INTEGER NOT NULL DEFAULT 0');     // 熔断开始时间（从赛段开始计，分钟）
-ensureColumn('legs', 'cutoff_interval', 'INTEGER NOT NULL DEFAULT 0');  // 熔断间隔（分钟）
+// Every leg records both a start and an end time; whether a station is needed depends on the type (only Route Info does not)
+ensureColumn('legs', 'cutoff_start', 'INTEGER NOT NULL DEFAULT 0');     // cutoff start time (minutes from the episode start)
+ensureColumn('legs', 'cutoff_interval', 'INTEGER NOT NULL DEFAULT 0');  // cutoff interval (minutes)
 db.exec("UPDATE legs SET record_mode = 'full' WHERE record_mode != 'full'");
 db.exec("UPDATE legs SET needs_staff = CASE WHEN type = 'RI' THEN 0 ELSE 1 END WHERE needs_staff != CASE WHEN type = 'RI' THEN 0 ELSE 1 END");
 ensureColumn('progress', 'target_team_id', 'INTEGER');
 ensureColumn('episodes', 'started_at', 'TEXT');
-ensureColumn('episodes', 'start_at', 'TEXT');            // 自动开始时间（为空 = 不自动开始）
-ensureColumn('episodes', 'inherit_rank', 'INTEGER NOT NULL DEFAULT 0'); // 按上一赛段名次先后发车
-ensureColumn('episodes', 'start_gap_min', 'INTEGER NOT NULL DEFAULT 0'); // 发车间隔（分钟）
-ensureColumn('episodes', 'depart_base', 'TEXT');        // 发车基准时间：自动开始 = 设定时间，手动开始 = 点击时刻；为空 = 不自动记录出发
+ensureColumn('episodes', 'start_at', 'TEXT');            // scheduled start time (null = no automatic start)
+ensureColumn('episodes', 'inherit_rank', 'INTEGER NOT NULL DEFAULT 0'); // depart in the order of the previous episode's ranking
+ensureColumn('episodes', 'start_gap_min', 'INTEGER NOT NULL DEFAULT 0'); // departure gap (minutes)
+ensureColumn('episodes', 'depart_base', 'TEXT');        // departure base time: scheduled start = the set time, manual start = click time; null = no automatic departures
 ensureColumn('episodes', 'finished_at', 'TEXT');
 ensureColumn('users', 'ann_read_id', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('announcements', 'pinned_at', 'TEXT');
@@ -280,14 +280,14 @@ ensureColumn('penalties', 'reverted', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('penalties', 'reverts_id', 'INTEGER');
 ensureColumn('penalties', 'leg_id', 'INTEGER');
 ensureColumn('currency_ledger', 'leg_id', 'INTEGER');
-// 商店：流水区分“商店购买 / 其他”，购买时记下物品（快照名字，物品删了也能追溯）；环节可开放商店
+// Shop: ledger rows distinguish "shop purchase / other"; purchases store the item (name snapshot, traceable after the item is deleted); legs can open the shop
 ensureColumn('currency_ledger', 'kind', "TEXT NOT NULL DEFAULT 'other'");
 ensureColumn('currency_ledger', 'item_id', 'INTEGER');
 ensureColumn('currency_ledger', 'item_name', 'TEXT');
 ensureColumn('legs', 'shop_open', 'INTEGER NOT NULL DEFAULT 0');
-// 自动淘汰：环节可淘汰 + 淘汰人数；队伍记录在哪个环节被淘汰、从哪个环节起锁定（淘汰/退赛后不可再记录）
-run("UPDATE legs SET type = 'SQ' WHERE type = 'BR'"); // 支线简称 BR → SQ（side quest）
-// 道具改用单独日志：把经费流水里的购买（kind=shop）同步成“获得”，使用（kind=use）搬到道具日志后从经费流水删除
+// Automatic elimination: leg flag + count; teams record where they were eliminated and from which leg they are locked (no records after elimination / withdrawal)
+run("UPDATE legs SET type = 'SQ' WHERE type = 'BR'"); // side quest code BR → SQ
+// Items moved to their own log: mirror ledger purchases (kind=shop) as "gained", move uses (kind=use) into the item log and delete them from the ledger
 if (!get('SELECT 1 FROM item_log LIMIT 1') && get("SELECT 1 FROM currency_ledger WHERE kind IN ('shop', 'use') LIMIT 1")) {
   db.exec(`
     INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, ledger_id, operator_id, operator_name, created_at, reverted, reverts_id)
@@ -300,7 +300,7 @@ if (!get('SELECT 1 FROM item_log LIMIT 1') && get("SELECT 1 FROM currency_ledger
     DELETE FROM currency_ledger WHERE kind = 'use';
   `);
 }
-// 起跑线改为“出发（开始）+ 完成”两个时间：旧记录只有出发（存在 completed_at），把它同时作为开始时间
+// Starting Line now has "departure (start) + completion": old rows only had the departure (in completed_at), reuse it as the start time
 run("UPDATE progress SET arrived_at = completed_at WHERE arrived_at IS NULL AND completed_at IS NOT NULL AND leg_id IN (SELECT id FROM legs WHERE type = 'SL')");
 const addedCanElim = ensureColumn('legs', 'can_eliminate', 'INTEGER NOT NULL DEFAULT 0');
 const addedElimCount = ensureColumn('legs', 'eliminate_count', 'INTEGER NOT NULL DEFAULT 1');
@@ -309,16 +309,16 @@ if (addedCanElim || addedElimCount) {
 }
 ensureColumn('teams', 'eliminated_leg_id', 'INTEGER');
 ensureColumn('teams', 'locked_from_leg_id', 'INTEGER');
-ensureColumn('assignments', 'leg_ids', 'TEXT'); // 站点可驻守多个环节：JSON 数组，leg_id 保留为第一个
+ensureColumn('assignments', 'leg_ids', 'TEXT'); // A station may cover several legs: JSON array, leg_id keeps the first one
 
-// ---------- 多比赛：赛段、队伍、公告、日志都挂在比赛下 ----------
+// ---------- Multi-event: episodes, teams, announcements and logs hang off an event ----------
 ensureColumn('episodes', 'event_id', 'INTEGER NOT NULL DEFAULT 1');
 ensureColumn('teams', 'event_id', 'INTEGER NOT NULL DEFAULT 1');
 ensureColumn('announcements', 'event_id', 'INTEGER NOT NULL DEFAULT 1');
 ensureColumn('audit_logs', 'event_id', 'INTEGER');
 ensureColumn('events', 'owner_id', 'INTEGER');
 ensureColumn('event_members', 'role', "TEXT NOT NULL DEFAULT 'crew'");
-/** 重建表以改掉 UNIQUE(code)：不同比赛可以有同样的 EP1 / T1。只做一次。 */
+/** Rebuild tables to drop UNIQUE(code): different events may share EP1 / T1. Runs once. */
 function rebuildForEvents() {
   const flag = db.prepare("SELECT value FROM settings WHERE key = 'schema_events'").get() as { value: string } | undefined;
   if (flag?.value === 'v1') return;
@@ -402,7 +402,7 @@ export function setSetting(key: string, value: string) {
   run('INSERT INTO settings(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', key, value);
 }
 
-// ---------- 金额：数据库以“分”存整数，接口以“元”收发（最多两位小数） ----------
+// ---------- Money: stored as integer cents, exchanged through the API in yuan (up to 2 decimals) ----------
 export function toCents(v: unknown, label = '金额'): number {
   const n = Number(v);
   if (!Number.isFinite(n)) throw new Error(`${label}无效`);
@@ -412,7 +412,7 @@ export function toCents(v: unknown, label = '金额'): number {
 }
 export const fromCents = (c: number | null | undefined) => (c == null ? 0 : c / 100);
 
-// 旧库金额是“元”整数，一次性乘 100 变成“分”
+// Old databases stored whole yuan; multiply by 100 once to get cents
 if (getSetting('currency_unit') !== 'cent') {
   db.exec('BEGIN');
   db.exec('UPDATE teams SET currency = currency * 100');

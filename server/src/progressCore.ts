@@ -1,6 +1,6 @@
 import { all, get, run, now } from './db.js';
 
-// 记录的底层写入与自动联动：进度接口和赛段自动发车共用
+// Low-level progress writes and chaining, shared by the progress routes and automatic departures
 
 export function prevEndTime(episodeId: number, teamId: number, sort: number): string | null {
   return get(
@@ -13,12 +13,12 @@ export function emptyProgress() {
   return { arrived_at: null, completed_at: null, detour_choice: null, roadblock_by: null, ff_result: null, target_team_id: null, note: '' };
 }
 /**
- * 记录完成后的自动联动：
- *  - 下一个环节（尚未完成）的开始时间 = 本环节结束时间
- *  - 中间被跳过的环节（只有自动填的开始时间、没有完成）把开始时间清掉
+ * Chaining after a completion:
+ *  - the next (not yet completed) leg's start time = this leg's end time
+ *  - skipped legs in between (auto-filled start, no completion) get their start time cleared
  */
 export function chainAfterComplete(episodeId: number, teamId: number, sort: number, endAt: string | null, userId: number, legType = '') {
-  if (!endAt || legType === 'SQ') return; // 支线结束不触发下一环节
+  if (!endAt || legType === 'SQ') return; // finishing a side quest does not chain the next leg
   const nextLeg = get("SELECT id FROM legs WHERE episode_id = ? AND sort > ? AND type != 'SQ' ORDER BY sort, id LIMIT 1", episodeId, sort);
   if (nextLeg) {
     const np = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, nextLeg.id) ?? emptyProgress();
@@ -49,7 +49,7 @@ export function upsertProgress(episodeId: number, teamId: number, legId: number,
 }
 
 
-/** 某赛段的最终名次（队伍 id 顺序）：中继站签到（手工优先）+ 净罚时，退赛不排；没有成绩的队伍按队伍顺序排在后面 */
+/** Final ranking of an episode (team ids in order): pit-stop check-in (manual wins) + net penalty; withdrawn teams are not ranked; teams without a result follow in team order */
 export function finalRanking(episodeId: number): number[] {
   const ep = get<{ event_id: number }>('SELECT event_id FROM episodes WHERE id = ?', episodeId);
   if (!ep) return [];

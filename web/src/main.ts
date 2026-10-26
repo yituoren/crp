@@ -10,8 +10,8 @@ import MSelect from './components/MSelect.vue';
 
 createApp(App).use(createPinia()).use(router).component('Icon', Icon).component('MSelect', MSelect).directive('mobile-table', mobileTable).mount('#app');
 
-// 手机浏览器若开启了“桌面版网站”，会忽略 viewport，用约 980px 的宽度排版，页面显得又小又挤。
-// 检测到布局宽度明显大于设备宽度时，重新声明 viewport 并提示用户关闭桌面版。
+// With "desktop site" enabled, phone browsers ignore the viewport and lay out at about 980px, so everything looks tiny.
+// When the layout width is clearly larger than the device width, re-declare the viewport and tell the user to turn desktop mode off.
 function checkDesktopMode() {
   const touch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   const device = Math.min(screen.width, screen.height);

@@ -1,16 +1,16 @@
 /* ============================================================
-   手机端（≤ 760px）独立布局：顶部应用栏 + 底部导航栏 + 左侧抽屉，
-   弹窗 / 下拉改为底部面板，日志表格改为卡片，表单固定网格不换行错位。
-   风格沿用桌面端的 Material 3 令牌。
+   Phone layout (≤ 760px): top app bar + bottom navigation + drawer,
+   dialogs / selects as bottom sheets, log tables as cards, forms on fixed grids that never wrap awkwardly.
+   Reuses the desktop Material 3 tokens.
    ============================================================ */
 @media (max-width: 760px) {
   html { -webkit-text-size-adjust: 100%; }
-  /* 关掉浏览器自带的“下拉刷新”，否则页面顶部下拉唤起大屏时会同时触发刷新（Chrome / 华为浏览器等） */
+  /* Disable the browser's pull-to-refresh (Chrome, Huawei browser…) so pulling at the top does not reload the page */
   html, body { overscroll-behavior-y: contain; }
   body { background: var(--paper); }
   .m-live, .m-live-body .live-grid, .m-drawer { overscroll-behavior: contain; }
 
-  /* ---------- 应用骨架 ---------- */
+  /* ---------- App shell ---------- */
   .m-app { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; background: var(--paper); }
   .m-bar { position: sticky; top: 0; z-index: 50; height: 56px; display: flex; align-items: center; gap: 2px; padding: 0 6px 0 4px; background: var(--paper); }
   .m-bar .icon-btn { width: 48px; height: 48px; }
@@ -19,12 +19,12 @@
   .m-bar .acct-btn { padding: 0 6px; }
   .m-body { flex: 1; min-width: 0; padding: 4px 12px calc(76px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; }
   .m-body > .page-body { flex: 1; }
-  /* 顶栏切换胶囊：工作区 ⇄ 实时大屏，一次点击切换 */
+  /* Top-bar toggle pill: workspace ⇄ live board in one tap */
   .m-toggle { height: 34px; width: 84px; justify-content: center; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; border: none; border-radius: 17px; background: var(--field); color: var(--gray-800); font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer; flex: none; margin-right: 4px; }
   .m-toggle.on { background: var(--primary-light); color: var(--primary-on-light); }
   .m-offline { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--danger); padding: 0 6px; }
 
-  /* 底部导航栏（Material 3 navigation bar） */
+  /* Bottom navigation (Material 3 navigation bar) */
   .m-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: flex; align-items: stretch; height: calc(64px + env(safe-area-inset-bottom)); padding: 0 4px env(safe-area-inset-bottom); background: var(--surface); box-shadow: 0 -1px 0 var(--gray-200); }
   .m-nav a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-decoration: none; color: var(--gray-600); font-size: 11px; font-weight: 500; position: relative; }
   .m-nav a:hover { text-decoration: none; }
@@ -33,7 +33,7 @@
   .m-nav a.router-link-active .m-nav-ic { background: var(--primary-light); color: var(--primary-on-light); }
   .m-nav .nav-dot { position: absolute; top: 10px; right: calc(50% - 22px); }
 
-  /* 抽屉 */
+  /* Drawer */
   .m-scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, .32); z-index: 510; animation: fade-in .15s ease; }
   .m-drawer { position: fixed; top: 0; bottom: 0; left: 0; width: 290px; max-width: 84vw; z-index: 520; background: var(--surface); border-radius: 0 16px 16px 0; padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 2px; overflow-y: auto; transform: translateX(-100%); transition: transform .2s ease; }
   .m-drawer.open { transform: none; box-shadow: var(--shadow-3); }
@@ -43,9 +43,9 @@
   .m-drawer a:hover { text-decoration: none; }
   .m-drawer .m-sep { height: 1px; background: var(--gray-200); margin: 6px 12px; }
 
-  /* 实时大屏：全屏覆盖 */
+  /* Live board: full-screen overlay */
   .m-live { position: fixed; inset: 0; z-index: 70; background: var(--paper); display: flex; flex-direction: column; will-change: transform; }
-  /* 大屏从顶部滑下来、再滑回去（Material 标准缓动） */
+  /* The live board slides down from the top and back up (Material standard easing) */
   .m-live-enter-active { transition: transform .32s cubic-bezier(.05, .7, .1, 1), opacity .32s ease; }
   .m-live-leave-active { transition: transform .26s cubic-bezier(.3, 0, .8, .15), opacity .26s ease; }
   .m-live-enter-from, .m-live-leave-to { transform: translateY(-100%); opacity: .4; }
@@ -56,7 +56,7 @@
   .live-row > div { white-space: normal; line-height: 1.3; }
   .live-row .live-time, .live-row .live-money { white-space: nowrap; }
 
-  /* ---------- 内容密度：卡片更紧、留白更少 ---------- */
+  /* ---------- Density: tighter cards, less whitespace ---------- */
   .card { border-radius: 14px; padding: 14px 14px 12px; margin-bottom: 10px; }
   .card-header { font-size: 15px; margin-bottom: 10px; min-height: 28px; }
   .section-title { font-size: 15px; }
@@ -68,7 +68,7 @@
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
   .leg-item { padding: 12px 14px; }
 
-  /* 触控尺寸：输入框 48px、文字 16px（避免 iOS 聚焦放大） */
+  /* Touch sizes: 48px inputs, 16px text (prevents iOS focus zoom) */
   input:not([type="checkbox"]):not([type="file"]), select { height: 48px; font-size: 16px; }
   textarea { font-size: 16px; }
   .sel-btn, .ms-btn { height: 48px; font-size: 15px; }
@@ -80,26 +80,26 @@
   .btn-sm { min-height: 36px; }
   input[type="checkbox"] { width: 22px; height: 22px; }
 
-  /* ---------- 弹窗：底部面板 ---------- */
+  /* ---------- Dialogs: bottom sheets ---------- */
   .modal-overlay { align-items: flex-end; padding: 0; backdrop-filter: none; }
   .modal { max-width: none; width: 100%; max-height: 92dvh; border-radius: 28px 28px 0 0; padding: 12px 16px calc(20px + env(safe-area-inset-bottom)); animation: sheet-in .22s ease; }
   .modal::before { content: ''; display: block; width: 32px; height: 4px; border-radius: 2px; background: var(--gray-300); margin: 0 auto 12px; }
   .modal h3 { font-size: 20px; }
   .modal-actions { position: sticky; bottom: 0; background: var(--surface); padding-top: 12px; margin-top: 12px; }
   .modal-actions .btn { min-height: 44px; }
-  /* 确认框仍居中（Material 对话框） */
+  /* The confirm dialog stays centred (Material dialog) */
   .modal-overlay-top { align-items: center; padding: 24px; }
   .modal-overlay-top .modal { border-radius: 28px; max-width: 420px; width: 100%; padding: 24px; animation: modal-in .18s ease; }
   .modal-overlay-top .modal::before { display: none; }
   .modal-overlay-top .modal-actions { position: static; padding-top: 0; }
 
-  /* ---------- 下拉：底部面板 ---------- */
+  /* ---------- Selects: bottom sheets ---------- */
   .sel-sheet-scrim { position: fixed; inset: 0; z-index: 399; background: rgba(0, 0, 0, .32); animation: fade-in .15s ease; }
   .sel-menu.sel-sheet, .ms-menu.sel-sheet { left: 0 !important; right: 0; bottom: 0; top: auto !important; min-width: 0 !important; width: 100%; max-height: 62dvh; border-radius: 28px 28px 0 0; padding: 8px 12px calc(12px + env(safe-area-inset-bottom)); animation: sheet-in .22s ease; }
   .sel-sheet::before { content: ''; display: block; width: 32px; height: 4px; border-radius: 2px; background: var(--gray-300); margin: 4px auto 10px; }
   .sel-sheet .sel-item, .sel-sheet .ms-item { min-height: 50px; font-size: 16px; border-radius: 14px; padding: 0 14px; }
 
-  /* ---------- 日志表格 → 卡片 ---------- */
+  /* ---------- Log tables → cards ---------- */
   .scroll-table:has(> .table.m-cards) { overflow: visible; }
   .table.m-cards { display: block; }
   .table.m-cards thead { display: none; }
@@ -116,24 +116,24 @@
   .table.m-cards .row-reverted { opacity: .55; }
   .table.m-cards .btn-sm { min-height: 32px; }
 
-  /* 排班表、进度表：去掉卡片的内边距，表格贴边，首列简化 */
+  /* Schedule and progress tables: no outer card, title and table directly on the page, simplified first column */
   .card-table { padding: 0; margin: 0 0 10px; background: transparent; border-radius: 0; }
   .card-table .card-header { padding: 0 2px; margin-bottom: 8px; }
-  .card-table .scroll-table, .card-table .matrix-scroll { padding: 0; margin: 0; } /* 保留与屏幕边缘的 12px 边距 */
+  .card-table .scroll-table, .card-table .matrix-scroll { padding: 0; margin: 0; } /* Keep the 12px margin to the screen edges */
   .mx2 .mx2-team, .sched-table th:first-child, .sched-table td:first-child { background: var(--paper); }
   .mx2 thead .mx2-team { background: var(--surface-3); }
   .mx2 .mx2-team { min-width: 0; max-width: 112px; padding: 6px 8px; }
   .mx2-team-status, .mx2-team-ago { display: none; }
-  /* 名次 + 队伍名（含成员），名字过长在固定宽度内省略 */
+  /* Rank + team name (with members), truncated with an ellipsis within a fixed width */
   .mx2 .mx2-team > .flex { gap: 4px; }
   .mx2 .mx2-team strong { min-width: 0; flex: 1; }
   .mx2-team-full { display: block; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mx2 .mx2-rank { min-width: 0; }
   .mx2 th, .mx2 td { padding: 6px 8px; }
   .mx2 .mx2-cell { min-width: 52px; }
-  /* 信息类表格：保留横向滚动，但行高更紧 */
+  /* Info tables keep horizontal scroll with tighter rows */
   .table th, .table td { padding: 8px 8px; }
-  /* 记录表（跟队 / 站点）：每个环节一张卡：环节名 + 状态 / 开始 结束 / 记录信息 / 操作 */
+  /* Record table (follow / station): one card per leg: leg name + status / start, end / extra info / actions */
   .record-table { min-width: 0; table-layout: auto; }
   .record-table.m-cards tr { background: var(--surface); border: 1px solid var(--gray-200); grid-template-columns: 1fr 1fr; }
   .record-table.m-cards td[data-label="环节"], .record-table.m-cards td[data-label="队伍"] { grid-column: 1 / -1; font-size: 15px; font-weight: 500; }
@@ -145,7 +145,7 @@
   .record-table.m-cards td[data-label="操作"] .flex { width: 100%; }
   .record-table.m-cards .extra-ctl { max-width: none; }
 
-  /* ---------- 表单固定网格，不随内容换行错位 ---------- */
+  /* ---------- Forms on fixed grids that never wrap awkwardly ---------- */
   .ops { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .ops-selects, .ops-main { display: contents; }
   .ops-kind, .ops-leg, .ops-amount, .ops-reason { width: auto !important; min-width: 0; }
@@ -164,14 +164,14 @@
   .ann-compose { padding: 10px 12px 12px; }
   .ann-compose textarea { height: 96px; }
 
-  /* 赛段头部按钮：两列等宽网格 */
+  /* Episode header buttons: two equal columns */
   .ep-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .ep-actions .btn { width: 100%; justify-content: center; }
-  /* 背包 / 商店 */
+  /* Bag / shop */
   .bag-grid { grid-template-columns: 1fr 1fr; }
   .bag-tile { height: 48px; }
 
-  /* 账号页、主页等已有自适应；排班表允许横向滚动 */
+  /* The account page and home already adapt; the schedule table may scroll horizontally */
   .acc-grid { grid-template-columns: 1fr; }
 }
 

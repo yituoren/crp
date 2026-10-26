@@ -5,10 +5,10 @@ import { adminOnly, type Env } from '../auth.js';
 import { audit, body, str, int, intParam, notify, bad, notFound } from '../util.js';
 import { seed } from '../seed.js';
 
-/** 账号管理（查看、停用、重置密码、删除）只有管理员；其他人只能在「账号管理」里改自己的密码 */
+/** Account management (list, disable, reset password, delete) is admin only; everyone else can only change their own password */
 const accountManager: MiddlewareHandler<Env> = adminOnly;
 
-// ================= 进比赛之前：账号管理 =================
+// ================= Before entering an event: account management =================
 export const userRoutes = new Hono<Env>();
 userRoutes.use('/users/*', accountManager);
 userRoutes.use('/users', accountManager);
@@ -62,7 +62,7 @@ userRoutes.delete('/users/:id', (c) => {
   return c.json({ ok: true });
 });
 
-// ================= 进比赛之前：系统级（管理员）：全部日志、备份、恢复、重置 =================
+// ================= Before entering an event: system level (admin): audit log, backup, restore, reset =================
 export const systemRoutes = new Hono<Env>();
 systemRoutes.use('/system/*', adminOnly);
 
@@ -98,7 +98,7 @@ systemRoutes.post('/system/import', async (c) => {
     }
     db.exec('PRAGMA foreign_keys = ON');
   });
-  seed(); // v1 备份没有 events 表：seed 会按旧设置补出 1 号比赛
+  seed(); // v1 backups have no events table: seed rebuilds event 1 from the old settings
   audit(me, 'import', 'database', '', undefined, { exportedAt: data.exportedAt, format: data.format });
   notify('admin'); notify('episodes'); notify('teams');
   return c.json({ ok: true });
@@ -111,7 +111,7 @@ systemRoutes.post('/system/reset', async (c) => {
   tx(() => {
     for (const t of ['pitstop_results', 'penalties', 'progress', 'currency_ledger', 'assignments', 'attachments', 'legs', 'episodes', 'teams', 'announcements', 'ann_reads']) run(`DELETE FROM ${t}`);
     if (includeAccounts) {
-      run("DELETE FROM users WHERE role != 'admin'"); // 只保留管理员账号
+      run("DELETE FROM users WHERE role != 'admin'"); // keep admin accounts only
       run('DELETE FROM event_members');
     }
   });
@@ -121,5 +121,5 @@ systemRoutes.post('/system/reset', async (c) => {
   return c.json({ ok: true });
 });
 
-/** 比赛内的“后台”暂时没有独立接口：赛事设置走 /events/:hash/info，日志走 /events/:hash/audit */
+/** The in-event backstage has no routes of its own yet: settings use /events/:hash/info, logs use /events/:hash/audit */
 export const adminRoutes = new Hono<Env>();

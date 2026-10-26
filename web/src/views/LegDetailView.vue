@@ -24,11 +24,11 @@ const leg = computed(() => ep.value?.legs.find((l) => l.id === legId.value) ?? n
 const canUpload = computed(() => race.canUploadTo(legId.value));
 const staff = computed(() => race.assignments.filter((a) => a.role === 'station' && (a.leg_ids ?? []).includes(legId.value)).map((a) => a.display_name));
 const auth = useAuth();
-// ---- 主办/管理员：页内编辑 ----
+// ---- Host / admin: inline editing ----
 const isFixed = computed(() => leg.value?.type === 'SL' || leg.value?.type === 'PS');
 const selectableTypes = LEG_TYPES.filter((t) => t !== 'SL' && t !== 'PS');
 const form = reactive({ type: 'TI' as LegType, name: '', description: '', address: '', map_url: '', clue_text: '', judge_criteria: '', open_time: '', close_time: '', detour_a: '', detour_b: '', shop_open: false, can_eliminate: false, eliminate_count: '' as number | '' });
-// 熔断种类列表：名称、起始时间、间隔（小时+分钟）、货币模式的消耗；随「保存修改」一起整表保存
+// Cutoff list: name, start, interval (minutes), cost in coin mode; saved as a whole with the leg
 const cutoffs = ref<{ id: number; name: string; start: number; interval: number; cost: string }[]>([]);
 function addCutoff() { cutoffs.value.push({ id: 0, name: '', start: 0, interval: 0, cost: '' }); }
 function removeCutoff(i: number) { cutoffs.value.splice(i, 1); }
@@ -62,7 +62,7 @@ async function saveLeg() {
 const fileInput = ref<HTMLInputElement | null>(null);
 const uploading = ref(false);
 
-// 进入详情页时把当前赛段切到该环节所属赛段，保证记录/排班数据一致
+// Switch the current episode to the leg's episode on entry so records / assignments match
 watch(episodeId, (id) => { if (id && id !== race.currentEpisodeId) race.selectEpisode(id); }, { immediate: true });
 
 async function upload(ev: Event) {
@@ -89,7 +89,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
     <div class="flex-between mb-2">
       <div><router-link :to="{ name: 'episodes' }" class="text-sm"><Icon name="arrow_back" size="16" />{{ ep.code }} 环节列表</router-link></div>
     </div>
-    <!-- 主办/管理员：页内编辑 -->
+    <!-- Host / admin: inline editing -->
     <div v-if="auth.isHost" class="card leg-edit">
       <div class="card-header">
         <span><LegTag :type="leg.type" /> {{ legName(leg) }} <span class="text-gray text-sm">站点：{{ staff.join('、') || '未分配' }}</span></span>
@@ -155,7 +155,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
       </div>
     </div>
 
-    <!-- 其他人：只读信息 -->
+    <!-- Everyone else: read-only info -->
     <div v-else class="card">
       <div class="card-header">
         <span><LegTag :type="leg.type" /> {{ legName(leg) }} <span class="text-gray text-sm">{{ legTypeLabel(leg.type, race.isLastEpisode(episodeId)) }}</span></span>

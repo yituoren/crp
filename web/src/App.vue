@@ -6,7 +6,7 @@ const ui = useUi();
 <template>
   <router-view />
 
-  <!-- 确认对话框 -->
+  <!-- Confirm dialog -->
   <div v-if="ui.confirmState" class="modal-overlay modal-overlay-top" @click.self="ui.closeConfirm(false)">
     <div class="modal modal-sm">
       <h3>{{ ui.confirmState.title }}</h3>
@@ -18,7 +18,7 @@ const ui = useUi();
     </div>
   </div>
 
-  <!-- 记录时间表单 -->
+  <!-- Record-time form -->
   <div v-if="ui.timeState" class="modal-overlay" @click.self="ui.closeTime(false)">
     <div class="modal modal-sm">
       <h3>{{ ui.timeState.title }}</h3>
@@ -34,7 +34,7 @@ const ui = useUi();
     </div>
   </div>
 
-  <!-- 提示条 -->
+  <!-- Toasts -->
   <div class="toast-container">
     <div v-for="t in ui.toasts" :key="t.id" class="toast" :class="'toast-' + t.type">{{ t.text }}</div>
   </div>

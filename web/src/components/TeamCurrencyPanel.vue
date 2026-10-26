@@ -9,7 +9,7 @@ import { fmtMoney, moneyUnit, moneyLabel } from '@/utils/money';
 import CurrencyOps from './CurrencyOps.vue';
 import { legName, type LedgerEntry } from '@/types';
 
-// 跟队在「我的」页面对所跟队伍的经费操作：加减、环节、最近流水与撤销
+// Money operations for the followed team on the follow's "Mine" page: add / deduct, leg, recent ledger and reverts
 const props = defineProps<{ teamId: number }>();
 const race = useRace();
 const ui = useUi();

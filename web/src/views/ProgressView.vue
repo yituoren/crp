@@ -13,17 +13,17 @@ const auth = useAuth();
 const race = useRace();
 const ep = computed(() => race.currentEpisode);
 const allLegs = computed(() => ep.value?.legs ?? []);
-/** 矩阵的列组：支线不单独成组，并入它前面的主线组 */
+/** Matrix column groups: side quests join the main leg's group instead of forming their own */
 const legs = computed(() => allLegs.value.filter((l) => l.type !== 'SQ'));
 const branchOf = (l: { id: number }) => { const i = allLegs.value.findIndex((x) => x.id === l.id); const n = allLegs.value[i + 1]; return n && n.type === 'SQ' ? n : null; };
 
-// 进行中的用时按当前时间计算，每 15 秒刷新一次
+// durations of running legs use the current time, refreshed every 15 s
 const now = ref(Date.now() + auth.serverOffsetMs);
 let timer: number | undefined;
 onMounted(() => { timer = window.setInterval(() => { now.value = Date.now() + auth.serverOffsetMs; }, 15000); });
 onUnmounted(() => clearInterval(timer));
 
-/** 支线占用的时长（主线用时要扣掉）：已结束按实际，进行中按到现在（或主线结束） */
+/** Time spent on the side quest (subtracted from the main leg): actual when ended, otherwise until now (or the main leg's end) */
 function branchElapsed(teamId: number, legId: number, mainEndMs: number | null): number {
   const br = branchOf({ id: legId }); if (!br) return 0;
   const bp = race.progressOf(teamId, br.id); if (!bp?.arrived_at) return 0;
@@ -33,14 +33,14 @@ function branchElapsed(teamId: number, legId: number, mainEndMs: number | null):
 }
 function cell(teamId: number, legId: number, single: boolean, isPs = false) {
   const p = race.progressOf(teamId, legId);
-  // 起跑线没有开始时间，只看出发（completed_at）
+  // single-column legs only look at the end time (completed_at)
   if (single) return p?.completed_at ? { start: (isPs ? fmtTimeSec : fmtTime)(p.completed_at), end: '-', dur: '-', cls: 'mx-done' } : { start: '-', end: '-', dur: '-', cls: '' };
   if (!p || !p.arrived_at) return { start: '-', end: p?.completed_at ? fmtTime(p.completed_at) : '-', dur: '-', cls: p?.completed_at ? 'mx-done' : '' };
   const startMs = new Date(p.arrived_at).getTime();
   if (p.completed_at) { const endMs = new Date(p.completed_at).getTime(); return { start: fmtTime(p.arrived_at), end: (isPs ? fmtTimeSec : fmtTime)(p.completed_at), dur: fmtDurMs(endMs - startMs - branchElapsed(teamId, legId, endMs)), cls: 'mx-done' }; }
   return { start: fmtTime(p.arrived_at), end: '进行中', dur: fmtDurMs(now.value - startMs - branchElapsed(teamId, legId, null)), cls: 'mx-arrived' };
 }
-/** 支线三列：开始 / 结束 / 用时 */
+/** Side quest columns: start / end / duration */
 function branchCell(teamId: number, legId: number) {
   const br = branchOf({ id: legId }); const bp = br ? race.progressOf(teamId, br.id) : null;
   if (!bp?.arrived_at) return { start: '-', end: '-', dur: '-', cls: '' };
@@ -48,7 +48,7 @@ function branchCell(teamId: number, legId: number) {
   if (bp.completed_at) return { start: fmtTime(bp.arrived_at), end: fmtTime(bp.completed_at), dur: fmtDurMs(new Date(bp.completed_at).getTime() - s), cls: 'mx-done' };
   return { start: fmtTime(bp.arrived_at), end: '进行中', dur: fmtDurMs(now.value - s), cls: 'mx-arrived' };
 }
-/** 需要附加信息的环节在组末尾多几列；中继站多“罚时”“结算”两列 */
+/** Legs with extra info get extra columns at the end of the group; pit stops get "penalty" and "final" */
 function extraCols(l: { type: string }): string[] {
   if (l.type === 'DT') return ['绕道选择'];
   if (l.type === 'RB') return ['完成人'];
@@ -73,7 +73,7 @@ function extraVal(teamId: number, l: { id: number; type: string }, i = 0): strin
   if (l.type === 'UT' || l.type === 'YD' || l.type === 'Union') return p.target_team_id ? race.teamById.get(p.target_team_id)?.label ?? '-' : '-';
   return '-';
 }
-/** 起跑线只有“出发”一列；其余环节：开始 / 结束 / 用时 */
+/** Cell contents: start / end / duration */
 const isSingleCol = (l: { type: string }) => !hasStart(l.type as LegType);
 const colspanOf = (l: { id: number; type: string }) => (isSingleCol(l) ? 1 : 3) + (branchOf(l) ? 3 : 0) + extraCols(l).length;
 function lastAgo(teamId: number): string {
@@ -87,8 +87,8 @@ function lastAgo(teamId: number): string {
   return `${m} 分钟前`;
 }
 
-// ---- 进度结算：实时名次 ----
-// 已到中继站的队伍按签到 + 净罚时（服务端算好的名次）排在最前；其余按进度深度（走到第几个环节、是开始还是完成）排序，深度相同的看最近一次记录时间，早的在前；没出发的按队伍顺序；退赛的不排名放最后
+// ---- Standings: live ranks ----
+// Teams at the pit stop come first by check-in + net penalty (server rank); the rest by progress depth (which leg, started or completed), ties by the latest record time (earlier first); unstarted teams in team order; withdrawn teams last and unranked
 const finalRank = computed(() => new Map(race.pitstop.map((r) => [r.team_id, r.rank])));
 function progressKey(teamId: number): { depth: number; t: number } {
   let depth = 0, t = 0;
@@ -120,7 +120,7 @@ const rankOf = computed(() => { const m = new Map<number, number>(); let n = 0; 
 <template>
   <EpSelector />
 
-  <!-- 进度矩阵 -->
+  <!-- Progress matrix -->
   <div class="card card-table">
     <div class="card-header"><span>进度结算</span></div>
     <div v-if="!legs.length" class="empty-state">本赛段没有需要记录的环节</div>
@@ -174,7 +174,7 @@ const rankOf = computed(() => { const m = new Map<number, number>(); let n = 0; 
     </div>
   </div>
 
-  <!-- 罚时与补时 -->
+  <!-- Penalties and credits -->
   <PenaltyPanel />
 
 </template>

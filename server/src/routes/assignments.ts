@@ -32,7 +32,7 @@ assignmentRoutes.get('/episodes/:id/assignments', (c) => {
   return c.json({ assignments: listAssignments(episodeId) });
 });
 
-/** 整体替换某赛段的排班。items: [{ userId, role: 'follow'|'station'|'live'|'crew', teamId?, legIds?: number[] }] */
+/** Replace an episode's whole schedule. items: [{ userId, role: 'follow'|'station'|'live'|'crew', teamId?, legIds?: number[] }] */
 assignmentRoutes.put('/episodes/:id/assignments', hostOnly, async (c) => {
   const episodeId = intParam(c, 'id');
   episodeInEvent(c, episodeId);
@@ -61,7 +61,7 @@ assignmentRoutes.put('/episodes/:id/assignments', hostOnly, async (c) => {
           episodeId, userId, 'station', ids[0]!, JSON.stringify(ids),
         );
       } else if (it.role === 'live') {
-        // 直播员：整个赛段跟进所有数据，只读，不绑定队伍或环节
+        // live: follows all data for the whole episode, read only, bound to no team or leg
         run(
           `INSERT INTO assignments(episode_id, user_id, role, team_id, leg_id, leg_ids) VALUES (?,?,?,NULL,NULL,NULL)
            ON CONFLICT(episode_id, user_id) DO UPDATE SET role = excluded.role, team_id = NULL, leg_id = NULL, leg_ids = NULL`,
@@ -77,7 +77,7 @@ assignmentRoutes.put('/episodes/:id/assignments', hostOnly, async (c) => {
   return c.json({ assignments: listAssignments(episodeId) });
 });
 
-/** 复制上一赛段的排班 */
+/** Copy the schedule from another episode */
 assignmentRoutes.post('/episodes/:id/assignments/copy-from/:from', hostOnly, (c) => {
   const to = intParam(c, 'id');
   const from = intParam(c, 'from');
@@ -85,7 +85,7 @@ assignmentRoutes.post('/episodes/:id/assignments/copy-from/:from', hostOnly, (c)
   tx(() => {
     run('DELETE FROM assignments WHERE episode_id = ?', to);
     for (const r of rows) {
-      // 站点绑定的环节属于原赛段，复制时保留跟队与直播员；站点降级为普通幕后
+      // station legs belong to the source episode, so follows and live roles are copied while stations become plain crew
       if (r.role === 'follow') run('INSERT INTO assignments(episode_id, user_id, role, team_id, leg_id) VALUES (?,?,?,?,NULL)', to, r.user_id, 'follow', r.team_id);
       if (r.role === 'live') run('INSERT INTO assignments(episode_id, user_id, role, team_id, leg_id) VALUES (?,?,?,NULL,NULL)', to, r.user_id, 'live');
     }

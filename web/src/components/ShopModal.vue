@@ -7,8 +7,8 @@ import { fmtMoney, moneyUnit } from '@/utils/money';
 import Modal from './Modal.vue';
 
 /**
- * 商店弹窗：商品做成和背包一样的选项卡，点选后名称右侧出现数量选择（未选时留同样大小的空位，卡片尺寸不变）。
- * 确认后按默认价格逐件扣款，一件一条流水。
+ * Shop dialog: items are tiles like the bag; selecting one shows a quantity stepper on its right (the space is reserved
+ * when unselected so tiles keep their size). Confirming charges the default price per unit, one ledger row each.
  */
 const props = defineProps<{ teamId: number; legId: number }>();
 const emit = defineEmits<{ close: [] }>();

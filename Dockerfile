@@ -1,4 +1,4 @@
-# 可选：Docker 方式运行（默认部署方式是 deploy/install.sh 的 systemd 方案）
+# Optional: run with Docker (the default deployment is the systemd setup in deploy/install.sh)
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./

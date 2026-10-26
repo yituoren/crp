@@ -14,7 +14,7 @@ const race = useRace();
 const ui = useUi();
 const editing = ref<Team | 'new' | null>(null);
 const form = reactive({ members: [] as string[] });
-// 拖动换序：编号按顺序自动重排
+// Drag reorder: numbers follow the order
 const drag = useDragSort({
   count: () => race.teams.length,
   onReorder: async (order) => {

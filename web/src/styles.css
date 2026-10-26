@@ -1,8 +1,8 @@
 /* ============================================================
-   视觉基调：Google Material 3
-   - 冷灰底色 #f8f9fa，表面纯白，文字 #1f1f1f / 次级 #444746
-   - 主色 Google 蓝 #0b57d0，浅色块 #d3e3fd；语义色按 M3 色板
-   - 字体 Google Sans / Roboto 风格的系统无衬线；胶囊按钮、色块 chip、12px 圆角卡片、28px 圆角对话框
+   Visual language: Google Material 3
+   - cool grey background #f8f9fa, white surfaces, text #1f1f1f / secondary #444746
+   - primary Google blue #0b57d0, light tint #d3e3fd; semantic colours from the M3 palette
+   - system sans-serif in the Google Sans / Roboto spirit; pill buttons, tonal chips, 12px card radius, 28px dialog radius
    ============================================================ */
 :root {
   --primary: #0b57d0; --primary-hover: #0842a0; --primary-light: #d3e3fd; --primary-on-light: #041e49; --primary-soft: #e8f0fe;
@@ -25,7 +25,7 @@ html, body { margin: 0; padding: 0; }
 body { font-family: var(--font-sans); background: var(--paper); color: var(--gray-800); line-height: 1.5; font-size: 14px; -webkit-tap-highlight-color: transparent; -webkit-font-smoothing: antialiased; }
 a { color: var(--primary); text-decoration: none; }
 a:hover { text-decoration: underline; text-underline-offset: 2px; }
-/* 字重层级：页面标题 400（Google 式大标题）、卡片标题与强调 600、标签与按钮 500、正文 400 */
+/* Weight hierarchy: page titles 400 (Google-style display), card titles and emphasis 600, labels and buttons 500, body 400 */
 h1, h2, h3 { margin: 0 0 12px; line-height: 1.3; letter-spacing: 0; color: var(--gray-900); }
 h1 { font-size: 22px; font-weight: 400; }
 h2 { font-size: 20px; font-weight: 500; }
@@ -39,13 +39,13 @@ p { margin: 0 0 8px; }
 *::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
 *::-webkit-scrollbar-track { background: transparent; }
 
-/* 按钮：Material 风格胶囊，填充 / 色块 / 描边三种 */
-/* 按钮（Material 3）
-   .btn            filled：主要动作
-   .btn-tonal      tonal：次要但需要可见的动作；加 .btn-tonal-danger 为红色色块
-   .btn-text       text：无边框无底色，悬停时出现淡色底；加 .btn-text-danger 为红字
-   .btn-outline    outlined：极少用
-   .icon-btn       圆形图标按钮，悬停出现圆形底色 */
+/* Buttons: Material pills in filled / tonal / outlined variants */
+/* Buttons (Material 3)
+   .btn            filled: primary action
+   .btn-tonal      tonal: secondary but visible action; add .btn-tonal-danger for a red tint
+   .btn-text       text: no border or fill, light fill on hover; add .btn-text-danger for red text
+   .btn-outline    outlined: rarely used
+   .icon-btn       round icon button with a circular hover fill */
 .btn { background: var(--primary); color: #fff; border: 1px solid transparent; padding: 0 20px; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: background-color .15s, box-shadow .15s, color .15s, border-color .15s; white-space: nowrap; line-height: 1.2; min-height: 40px; font-family: inherit; letter-spacing: .01em; position: relative; }
 .btn .icon { flex: none; margin-left: -4px; }
 .btn .icon:last-child:not(:first-child) { margin-left: 0; margin-right: -4px; }
@@ -84,19 +84,19 @@ p { margin: 0 0 8px; }
 .icon-btn-danger:hover { background: rgba(179, 38, 30, .08); color: var(--danger); }
 .icon { display: inline-block; vertical-align: middle; flex: none; }
 .btn-block { width: 100%; }
-/* 同一位置先后出现的按钮统一宽度，避免文字长短不同导致跳动 */
+/* Buttons that take turns in the same slot share a width so differing labels do not shift the layout */
 .btn-slot { min-width: 92px; }
 
-/* 卡片、布局 */
+/* Cards and layout */
 .container { max-width: 1200px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; flex: 1; min-width: 0; width: 100%; }
 .container-fixed { height: 100%; overflow: hidden; }
 .page-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .fill-page { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .fill-card.card { flex: 1; min-height: 0; display: flex; flex-direction: column; margin-bottom: 0; }
-/* 主区域最后一张卡片不再留下边距，滚到底时与左栏的 16px 边距一致 */
+/* The last card in the main area drops its bottom margin so the bottom matches the 16px of the left column */
 .page-body > .card:last-child { margin-bottom: 0; }
 .fill-card .scroll-y { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-/* 发公告：Gmail 式写信框。灰底圆角面板，左边无边框输入区，右边一列（对象胶囊下拉 + 蓝色发送按钮），输入区高度对齐右列 */
+/* Announcement composer, Gmail style: grey rounded panel, borderless textarea on the left, a column on the right (audience pill + blue send button); the textarea matches the column height */
 .ann-compose { display: flex; gap: 12px; align-items: stretch; background: var(--surface-3); border-radius: 16px; padding: 10px 10px 10px 16px; }
 .ann-compose textarea { flex: 1 1 auto; min-height: 0; height: auto; resize: none; border: none; background: transparent; padding: 8px 0; font-size: 15px; line-height: 1.5; color: var(--gray-900); box-shadow: none; }
 .ann-compose textarea:focus, .ann-compose textarea:hover { box-shadow: none; outline: none; background: transparent; border: none; }
@@ -110,7 +110,7 @@ p { margin: 0 0 8px; }
 .card { background: var(--surface); border: none; border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; box-shadow: none; }
 .card-header { font-weight: 600; font-size: 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--gray-900); min-height: 32px; }
 .grid { display: grid; gap: 12px; }
-.grid > * { min-width: 0; } /* 卡片可以比内容窄，内容自行换行，不把主区域撑出横向滚动 */
+.grid > * { min-width: 0; } /* Cards may be narrower than their content; content wraps instead of forcing horizontal scroll on the main area */
 .grid-2 { grid-template-columns: repeat(2, 1fr); }
 .grid-3 { grid-template-columns: repeat(3, 1fr); }
 .grid-4 { grid-template-columns: repeat(4, 1fr); }
@@ -129,9 +129,9 @@ p { margin: 0 0 8px; }
 .mt-1 { margin-top: 6px; } .mt-2 { margin-top: 12px; } .mt-3 { margin-top: 18px; }
 .mb-2 { margin-bottom: 12px; }
 .empty-state { text-align: center; padding: 36px 12px; color: var(--gray-400); font-size: 13px; }
-/* 卡片内“暂无记录”：所有记录类区块统一用这个（高度、边距、字号一致） */
+/* "No records" inside cards: every log block uses this for consistent height, spacing and size */
 .empty-rows { text-align: center; padding: 20px 12px; color: var(--gray-400); font-size: 13px; }
-/* 加载：Google 风格的圆形转圈 */
+/* Loading: Google-style circular spinner */
 .loading { display: flex; align-items: center; justify-content: center; padding: 40px 12px; flex: 1; min-height: 160px; }
 .spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--primary-light); border-top-color: var(--primary); animation: spin .8s linear infinite; }
 .spinner-sm { width: 18px; height: 18px; border-width: 2px; }
@@ -139,18 +139,18 @@ p { margin: 0 0 8px; }
 .mono { font-family: var(--font-mono); }
 .pre { white-space: pre-wrap; word-break: break-word; }
 
-/* 表单 */
+/* Forms */
 .form-group { margin-bottom: 14px; }
 .form-group label { display: block; font-weight: 500; margin-bottom: 6px; font-size: 12px; color: var(--gray-600); }
-/* Material 3 填充式文本框：标签放在框内左上角，灰底、上圆角、底部一条线；聚焦时底线变主色加粗。
-   只作用于“标签 + 单个控件”的表单组（输入框 / 文本域 / 下拉） */
+/* Material 3 filled text field: label inside the top-left corner, grey fill; focus switches to the primary outline.
+   Applies only to form groups made of a label plus a single control (input / textarea / select) */
 .form-group:has(> label + input:not([type="checkbox"]):not([type="file"]), > label + textarea, > label + .sel) { position: relative; background: var(--field); border-radius: 26px; border: 1px solid transparent; transition: background-color .15s, border-color .15s, box-shadow .15s; }
 .form-group:has(> label + input:not([type="checkbox"]):not([type="file"]), > label + textarea, > label + .sel):hover { background: var(--field-hover); }
 .form-group:has(> label + input:not([type="checkbox"]):not([type="file"]), > label + textarea, > label + .sel):focus-within { background: var(--surface); border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
 .form-group:has(> label + input:not([type="checkbox"]):not([type="file"]), > label + textarea, > label + .sel) > label { position: absolute; top: 7px; left: 16px; margin: 0; font-size: 11px; line-height: 14px; font-weight: 500; color: var(--gray-600); pointer-events: none; z-index: 1; white-space: nowrap; }
 .form-group:has(> label + input:not([type="checkbox"]):not([type="file"]), > label + textarea, > label + .sel):focus-within > label { color: var(--primary); }
 .form-group > label + input:not([type="checkbox"]):not([type="file"]) { background: transparent; border: none; border-radius: 26px; height: 50px; padding: 18px 16px 0; box-shadow: none; }
-/* 多行文本：标签占住上方区域，文本域从标签下面开始，滚动时内容不会钻到标签底下 */
+/* Multi-line text: the label owns the top area and the textarea starts below it, so scrolling never runs under the label */
 .form-group > label + textarea { background: transparent; border: none; border-radius: 0 0 20px 20px; padding: 2px 16px 10px; min-height: 72px; box-shadow: none; display: block; }
 .form-group > label + input:hover, .form-group > label + textarea:hover, .form-group > label + input:focus, .form-group > label + textarea:focus { background: transparent; border: none; box-shadow: none; }
 .form-group > label + input:disabled, .form-group > label + textarea:disabled { background: transparent; }
@@ -160,7 +160,7 @@ p { margin: 0 0 8px; }
 .form-group > label + .sel .sel-btn { background: transparent; border: none; border-radius: 26px; height: 50px; padding: 18px 12px 0 16px; font-weight: 400; }
 .form-group > label + .sel .sel-btn:hover, .form-group > label + .sel.sel-open .sel-btn { background: transparent; box-shadow: none; }
 .form-group > label + .sel .sel-caret { margin-top: -14px; }
-/* Google 式填充字段：输入框和下拉同一个浅灰底、无边框；聚焦白底 + 主色描边 */
+/* Google-style filled fields: inputs and selects share the same light grey fill, no border; focus = white fill + primary outline */
 input, textarea, select { width: 100%; padding: 8px 14px; border: 1px solid transparent; border-radius: 999px; font-size: 14px; font-family: inherit; background: var(--field); color: var(--gray-800); transition: border-color .15s, box-shadow .15s, background-color .15s; }
 input::placeholder, textarea::placeholder { color: var(--gray-500); }
 input:not([type="checkbox"]):not([type="file"]), select { height: 38px; padding-top: 0; padding-bottom: 0; }
@@ -169,7 +169,7 @@ input:hover, textarea:hover, select:hover { background: var(--field-hover); }
 textarea { border-radius: 20px; }
 input:focus, textarea:focus, select:focus { outline: none; background: var(--surface); border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
 input:disabled, textarea:disabled, select:disabled { background: var(--surface-2); color: var(--gray-500); cursor: not-allowed; }
-/* 勾选框统一为 Google 式圆形：未选空心圆，选中蓝底白勾 */
+/* Checkboxes as Google-style circles: hollow when off, blue with a white tick when on */
 input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 18px; height: 18px; margin: 0 6px 0 0; padding: 0; border: 1.5px solid var(--gray-400); border-radius: 50%; background: var(--surface); vertical-align: middle; cursor: pointer; flex: none; display: inline-block; position: relative; transition: background-color .15s, border-color .15s; }
 input[type="checkbox"]:hover { border-color: var(--gray-600); }
 input[type="checkbox"]:checked { background: var(--primary); border-color: var(--primary); }
@@ -177,7 +177,7 @@ input[type="checkbox"]:checked::after { content: ''; position: absolute; left: 5
 input[type="checkbox"]:disabled { opacity: .5; cursor: not-allowed; }
 input[type="checkbox"]:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 input[type="file"] { padding: 6px; height: auto; }
-/* 数字输入框不显示加减箭头 */
+/* Hide the spin buttons of number inputs */
 input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 textarea { min-height: 90px; resize: vertical; line-height: 1.5; }
@@ -187,24 +187,24 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .info-text { font-size: 12px; color: var(--gray-500); margin-top: 4px; }
 .form-error { color: var(--danger); font-size: 13px; min-height: 18px; text-align: center; margin-top: 8px; }
 
-/* 表格 */
+/* Tables */
 .scroll-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .table th, .table td { padding: 9px 12px; border-bottom: 1px solid var(--gray-100); text-align: left; vertical-align: middle; white-space: nowrap; }
 .table th { background: transparent; font-weight: 600; color: var(--gray-600); font-size: 12px; letter-spacing: .02em; border-bottom: 1px solid var(--gray-200); }
-/* 非文本列（按钮、标签、数字、控件）：表头与单元格都居中；文本列保持左对齐 */
+/* Non-text columns (buttons, tags, numbers, controls) are centred in header and cells; text columns stay left-aligned */
 .table th.c, .table td.c { text-align: center; }
 .table td.c > .flex, .table td.flex.c { justify-content: center; }
 .table tbody tr { transition: background-color .12s; }
 .table tbody tr:hover { background: var(--row-hover); }
 .table tr:last-child td { border-bottom: none; }
 .table .wrap { white-space: normal; }
-/* 列多的记录表：收紧内边距，原因/备注列允许折行，让表格尽量不出横向滚动 */
+/* Dense log tables: tighter padding, reason / note columns may wrap, to avoid horizontal scroll where possible */
 .table-dense th, .table-dense td { padding: 8px 6px; font-size: 12.5px; }
 .table-dense .btn-sm { padding: 0 8px; min-height: 28px; }
 .table .wrap.mono { word-break: break-all; max-width: 240px; }
 
-/* 标签：Material 色块风格 */
+/* Badges: Material tonal style */
 .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 8px; font-size: 11px; font-weight: 500; line-height: 1.6; letter-spacing: .02em; }
 .badge-host { background: var(--warning-light); color: var(--warning-on-light); }
 .badge-crew { background: var(--chip); color: var(--gray-600); }
@@ -215,25 +215,25 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .badge-warning { background: var(--warning-light); color: var(--warning-on-light); }
 .badge-urgent { background: var(--danger-light); color: var(--danger-on-light); }
 .tag { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: .3px; color: #fff; background: var(--gray-500); white-space: nowrap; line-height: 1.5; }
-/* 环节类型颜色：取自 docs/templates 三折页线索模板的卡片主色 */
-.tag-SL { background: #C9DA4D; color: #2B3300; }     /* 起跑线任务 */
-.tag-RI { background: #009DDA; }                     /* 路线 */
-.tag-TI { background: #33CBCC; color: #063D3E; }     /* 任务 */
-.tag-DT { background: #EAAA16; color: #3A2A00; }     /* 绕道 */
-.tag-RB { background: #AC0000; }                     /* 路障 */
-.tag-FF { background: #27CE62; color: #063A18; }     /* 快进 Fast Forward */
-.tag-Union { background: #EB661C; }                  /* 联合 */
-.tag-FO { background: #664193; }                     /* 对抗 Face Off */
-.tag-SB { background: #FFCC01; color: #3D3000; }     /* 减速带 */
-/* 模板中没有的类型，选与上面不冲突的颜色 */
-.tag-UT { background: #4338CA; }                     /* 回转点 */
-.tag-YD { background: #78350F; }                     /* 让路点 */
-.tag-Trap { background: #1E293B; }                   /* 陷阱 */
-.tag-PS { background: #DB2777; }                     /* 中继站 */
-.tag-Shuffle { background: #6B7280; }                /* 洗牌 */
-.tag-SQ { background: #0D9488; }                     /* 支线 */
+/* Leg type colours: taken from the clue-card artwork in docs/templates */
+.tag-SL { background: #C9DA4D; color: #2B3300; }     /* Starting Line */
+.tag-RI { background: #009DDA; }                     /* Route Info */
+.tag-TI { background: #33CBCC; color: #063D3E; }     /* Task */
+.tag-DT { background: #EAAA16; color: #3A2A00; }     /* Detour */
+.tag-RB { background: #AC0000; }                     /* Roadblock */
+.tag-FF { background: #27CE62; color: #063A18; }     /* Fast Forward */
+.tag-Union { background: #EB661C; }                  /* Union */
+.tag-FO { background: #664193; }                     /* Face Off */
+.tag-SB { background: #FFCC01; color: #3D3000; }     /* Speed Bump */
+/* Types without artwork: colours chosen not to clash with the above */
+.tag-UT { background: #4338CA; }                     /* U-Turn */
+.tag-YD { background: #78350F; }                     /* Yield */
+.tag-Trap { background: #1E293B; }                   /* Trap */
+.tag-PS { background: #DB2777; }                     /* Pit Stop */
+.tag-Shuffle { background: #6B7280; }                /* Shuffle */
+.tag-SQ { background: #0D9488; }                     /* Side Quest */
 
-/* 赛段选择 */
+/* Episode selector */
 .ep-selector { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; scrollbar-width: none; }
 .ep-selector-right { margin-left: auto; flex: none; padding-left: 8px; }
 .ep-selector::-webkit-scrollbar { display: none; }
@@ -244,26 +244,26 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .ep-btn.done.active { color: var(--primary-on-light); border-color: var(--primary-light); background: var(--primary-light); opacity: .8; }
 .ep-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--success); margin-left: 6px; vertical-align: 1px; }
 
-/* 环节 / 队伍卡片 */
-.leg-list-head { min-height: 32px; } /* 添加环节按钮隐藏后行高不变 */
+/* Leg / team cards */
+.leg-list-head { min-height: 32px; } /* Row height stays the same when the add-leg button is hidden */
 .leg-item { background: var(--surface); border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 16px; cursor: pointer; transition: background-color .15s, box-shadow .15s; }
 .leg-item-body { min-width: 0; }
-/* 卡片头：左侧类型标签，右侧删除图标（固定环节没有）；高度固定，让有无按钮的卡片对齐 */
+/* Card head: type tag on the left, delete icon on the right (none for fixed legs); fixed height keeps cards aligned */
 .leg-item-head { min-height: 32px; margin-bottom: 4px; }
 .leg-item-head .icon-btn-sm { margin: -4px -8px -4px 0; }
 .leg-item:hover { background: var(--surface-2); box-shadow: var(--shadow-1); }
 .team-card { background: var(--surface); border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 16px; }
 .team-card .btn-sm.btn-text { padding: 0 8px; }
-/* 拖动换序 */
+/* Drag to reorder */
 .leg-item[draggable="true"], .team-card[draggable="true"] { cursor: grab; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .leg-item.dragging, .team-card.dragging { opacity: .4; }
 .leg-item.drag-over, .team-card.drag-over { outline: 2px solid var(--primary); outline-offset: -2px; background: var(--primary-soft); }
-/* 背包卡片：物品以小色块列出 */
+/* Bag card: items as small chips */
 .bag-items { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 8px; min-height: 22px; }
 .bag-item { display: inline-flex; align-items: center; gap: 3px; padding: 0 8px; height: 22px; border-radius: 8px; background: var(--chip); font-size: 12px; color: var(--gray-700); }
 .bag-empty { font-size: 12px; line-height: 22px; color: var(--gray-500); }
 .bag-count { color: var(--gray-500); }
-/* 熔断设置：每条两行（名称 / 消耗 / 删除；起始 / 间隔），适应窄栏 */
+/* Cutoff editor: two rows per entry (name / cost / delete; start / interval) to fit narrow columns */
 .cutoff-edit { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--gray-200); }
 .cutoff-edit:last-of-type { border-bottom: none; }
 .cutoff-edit-top { display: flex; align-items: center; gap: 8px; }
@@ -283,7 +283,7 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .elim-row { gap: 6px; margin-bottom: 12px; white-space: nowrap; flex-wrap: nowrap; }
 .elim-row .elim-count { width: 56px; height: 32px; text-align: center; padding: 0 6px; }
 .elim-row span { font-size: 13px; }
-/* 经费操作表单：两组固定槽位。选择项一组、金额/原因/按钮一组；窄屏时整组换行，组内不拆 */
+/* Money operation form: two fixed slot groups, selects and amount / reason / buttons; narrow screens wrap whole groups only */
 .ops { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 .ops-selects { display: flex; gap: 8px; flex: 0 0 auto; flex-wrap: wrap; }
 .ops-kind { width: 120px; } .ops-leg { width: 170px; }
@@ -293,7 +293,7 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .ops-main .btn { flex: none; }
 @media (max-width: 640px) { .ops-selects > * { flex: 1 1 140px; width: auto !important; } .ops-main { flex-basis: 100%; flex-wrap: wrap; } .ops-amount { flex: 0 0 96px; } .ops-reason { flex: 1 1 140px; min-width: 0; } .ops-main .btn { flex: 1 1 45%; } }
 
-/* 赛事设置：分区卡片网格 + 底部操作栏 */
+/* Event settings: grid of section cards plus a bottom action bar */
 .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .settings-section { margin-bottom: 0; }
 .settings-wide { grid-column: 1 / -1; }
@@ -318,7 +318,7 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .log-negative { color: var(--danger); font-weight: 600; }
 .upload-area { border: 1.5px dashed var(--gray-300); border-radius: var(--radius-sm); padding: 18px; text-align: center; color: var(--gray-500); cursor: pointer; margin-top: 10px; background: var(--surface-2); transition: border-color .15s, color .15s, background-color .15s; }
 .upload-area:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
-/* 附件卡片：上方文件名，下方打开 / 删除 */
+/* Attachment card: file name on top, open / delete below */
 .att-item { border-radius: var(--radius-sm); padding: 10px 12px; background: var(--surface-2); display: flex; flex-direction: column; gap: 8px; }
 .att-head { min-width: 0; }
 .att-name { font-size: 14px; font-weight: 500; color: var(--gray-900); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -330,8 +330,8 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .alert-urgent { background: var(--danger-light); color: var(--danger-on-light); --alert-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z'/></svg>"); }
 .alert-info { background: var(--primary-soft); color: var(--primary-on-light); --alert-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z'/></svg>"); }
 
-/* 顶部：品牌名用衬线体，其余控件保持紧凑 */
-/* 顶栏：Gmail / Gemini 式 app bar，左侧返回图标 + 标题，右侧图标按钮 */
+/* Header: brand title, compact controls */
+/* App bar in the Gmail / Gemini style: back icon + title on the left, icon buttons on the right */
 .page-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; padding: 4px 0 8px; min-height: 48px; }
 .page-header h1 { font-size: 22px; margin: 0; font-weight: 400; letter-spacing: 0; color: var(--gray-900); display: flex; align-items: center; gap: 10px; }
 .appbar-left { display: flex; align-items: center; gap: 4px; min-width: 0; }
@@ -342,7 +342,7 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 .sync-status.online { background: var(--success-light); color: var(--success-on-light); }
 .sync-status.offline { background: var(--danger-light); color: var(--danger-on-light); }
-/* 导航：Material 标签页，当前项主色文字 + 3px 圆角下划线，悬停出现淡底 */
+/* Navigation: Material tabs, active item in primary with a 3px rounded underline, light fill on hover */
 .nav { display: flex; gap: 0; overflow-x: auto; margin: 0 0 16px; padding: 0; scrollbar-width: none; background: transparent; border-bottom: 1px solid var(--gray-200); width: 100%; }
 .nav::-webkit-scrollbar { display: none; }
 .nav a { flex: 0 0 auto; padding: 12px 16px 10px; border: none; border-radius: 8px 8px 0 0; background: transparent; color: var(--gray-600); font-weight: 500; font-size: 14px; position: relative; transition: background-color .15s, color .15s; }
@@ -351,26 +351,26 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .nav a.router-link-active::after { content: ''; position: absolute; left: 12px; right: 12px; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: var(--primary); }
 .nav-dot-wrap { position: relative; }
 .nav-dot { position: absolute; top: 9px; right: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--danger); }
-/* 手机端：导航排成 4 列网格，两行对齐 */
+/* Narrow screens: navigation as a 4-column grid over two rows */
 @media (max-width: 640px) { .nav { display: grid; grid-template-columns: repeat(4, 1fr); overflow: visible; width: 100%; } .nav a { text-align: center; padding: 10px 4px 8px; } .nav-dot { right: 12px; } }
 .grid-stat { grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 760px) { .grid-stat { grid-template-columns: repeat(2, 1fr); } }
 .stat-num { font-size: 28px; font-weight: 500; letter-spacing: 0; font-variant-numeric: tabular-nums; color: var(--gray-900); }
 
-/* 登录 */
+/* Sign-in */
 .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: var(--paper); }
 .login-box { width: 100%; max-width: 420px; background: var(--surface); border-radius: 28px; padding: 40px 36px 28px; border: 1px solid var(--gray-200); box-shadow: none; }
 .login-box h2 { text-align: center; margin-bottom: 28px; font-size: 28px; font-weight: 500; letter-spacing: 0; line-height: 1.3; }
 .login-sub { display: block; font-size: 15px; font-weight: 400; color: var(--gray-600); margin-top: 6px; }
 
-/* 弹窗：Material 对话框 */
+/* Dialogs: Material dialog */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, .32); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; backdrop-filter: blur(2px); animation: fade-in .15s ease; }
-.modal-overlay-top { z-index: 160; } /* 确认框要盖在其他弹窗（Teleport 到 body 的 Modal）之上 */
+.modal-overlay-top { z-index: 160; } /* The confirm dialog must sit above other dialogs (Modals teleported to body) */
 .modal { background: var(--surface); border-radius: 28px; padding: 24px; width: 100%; max-width: 720px; max-height: 92vh; overflow-y: auto; box-shadow: var(--shadow-3); animation: modal-in .18s ease; }
 .modal-sm { max-width: 440px; }
 .modal h3 { font-size: 22px; font-weight: 500; }
 .modal-title { margin: 0 0 16px; }
-/* 排班表：首列（幕后）固定在左，其余横向滚动 */
+/* Schedule table: the first column (crew) is pinned left, the rest scrolls horizontally */
 .sched-table th:first-child, .sched-table td:first-child { position: sticky; left: 0; z-index: 2; background: var(--surface); }
 .sched-table thead th:first-child { z-index: 3; }
 .mx2-team-short { display: none; }
@@ -379,14 +379,14 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes modal-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 
-/* 提示条：Material snackbar */
+/* Toasts: Material snackbar */
 .toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; width: calc(100% - 32px); max-width: 480px; }
 .toast { background: var(--gray-900); color: #fff; padding: 12px 18px; border-radius: 10px; font-size: 14px; box-shadow: var(--shadow-3); animation: toast-in .2s ease; text-align: center; }
 .toast-error { background: var(--danger); }
 .toast-info { background: var(--primary); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
-/* 进度矩阵 */
+/* Progress matrix */
 .matrix td.cell { text-align: center; min-width: 56px; font-size: 11px; }
 .cell-done { background: var(--success-light); }
 .cell-arrived { background: var(--warning-light); }
@@ -397,17 +397,17 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .rank-2 { color: #6b6761; font-weight: 500; }
 .rank-3 { color: #8a4b1f; font-weight: 500; }
 
-/* 环节编辑表单（电脑端两栏） */
+/* Leg editor form (two columns on desktop) */
 .leg-edit .edit-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 20px; align-items: stretch; }
 .leg-edit .edit-col { display: flex; flex-direction: column; gap: 14px; }
 .leg-edit .edit-section { background: transparent; border: none; border-radius: 0; padding: 0 0 4px; }
-.leg-edit .edit-col > .edit-section + .edit-section { border-top: 1px solid var(--gray-200); padding-top: 14px; } /* 分区之间用分割线，不再套灰卡片 */
+.leg-edit .edit-col > .edit-section + .edit-section { border-top: 1px solid var(--gray-200); padding-top: 14px; } /* Sections are separated by rules instead of grey cards */
 .leg-edit .edit-col > .edit-section:last-child { flex: 1; }
 .leg-edit .edit-section-fill { display: flex; flex-direction: column; padding-bottom: 14px; }
 .leg-edit .ta-group { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .leg-edit .ta-group textarea { flex: 1; }
 .leg-edit .edit-section-title { font-weight: 500; font-size: 15px; color: var(--gray-900); margin-bottom: 10px; }
-/* 标题行带按钮时高度与纯标题一致：按钮垂直居中并允许溢出到内边距里 */
+/* A section head with a button keeps the plain-title height: the button is centred and may overflow into the padding */
 .leg-edit .edit-section-head { display: flex; justify-content: space-between; align-items: center; height: 18px; margin-bottom: 10px; }
 .leg-edit .edit-section-head .edit-section-title { margin: 0; }
 .leg-edit .edit-section-head .btn { margin-right: -10px; }
@@ -418,17 +418,17 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .leg-edit .form-group { margin-bottom: 12px; }
 @media (max-width: 900px) { .leg-edit .edit-grid { grid-template-columns: 1fr; } }
 
-/* ---------- 左右两屏 / 左栏 ---------- */
+/* ---------- Two pages / left column ---------- */
 .pager { height: 100vh; height: 100dvh; overflow: hidden; }
 .pager-track { display: flex; align-items: stretch; height: 100%; transform: none !important; }
-/* 左栏：大屏幕 600px，窄一些的桌面按比例收窄，给右侧主区域留够宽度 */
+/* Left column: 600px on large screens, proportionally narrower on smaller desktops to leave room for the main area */
 .pane-live { flex: none; width: clamp(400px, 38vw, 600px); height: 100%; overflow: auto; padding: 16px 0 16px 16px; display: flex; flex-direction: column; overscroll-behavior: contain; scrollbar-gutter: stable; }
-.pane-main { flex: 1; min-width: 0; height: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-gutter: stable; } /* 预留滚动条位置：滚动条出现 / 消失不改变宽度，避免布局来回抖动 */ /* 主区域永不横向滚动，宽表格在各自的 .scroll-table 里滚 */
+.pane-main { flex: 1; min-width: 0; height: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-gutter: stable; } /* Reserve the scrollbar gutter so a scrollbar appearing / disappearing does not change the width and jitter the layout */ /* The main area never scrolls horizontally; wide tables scroll inside their own .scroll-table */
 html, body { overscroll-behavior: none; }
 .pager-dots { display: none; }
 .live-card { flex: 1; display: flex; flex-direction: column; min-height: 0; margin-bottom: 0; padding: 18px 18px 14px; }
 .live-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
-/* 表格区域撑满卡片；行高由组件按“12 行填满”算出（--row-h）：不足 12 支下方留白，多于 12 支表内滚动 */
+/* The grid fills the card; the component computes --row-h so 12 rows fit: fewer teams leave space, more teams scroll inside */
 .live-grid { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; }
 .live-row { flex: none; height: var(--row-h, 44px); display: grid; grid-template-columns: minmax(90px, 1.2fr) minmax(110px, 1.5fr) minmax(96px, 1.4fr) 76px; gap: 10px; align-items: center; padding: 0 6px; border-bottom: 1px solid var(--gray-100); font-size: 13px; white-space: nowrap; }
 .live-row > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -444,9 +444,9 @@ html, body { overscroll-behavior: none; }
   .pager-track { width: 200%; will-change: transform; transform: translateX(calc(var(--page, 1) * -50% + var(--drag, 0px))) !important; }
   .pane { flex: none; width: 50%; height: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
   .pane-live { position: static; padding: 16px 16px 40px; }
-  /* 手机端大屏：列与电脑端一致，固定列给足宽度，队伍和环节允许换行 */
-  .live-grid { overflow-x: hidden; flex: none; } /* 手机端整屏可滚，不限制行数 */
-  .live-row { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.95fr); gap: 6px; font-size: 12px; height: auto; min-height: 44px; padding: 0 2px; } /* 全部按比例分配，适配不同屏宽 */
+  /* Narrow live board: same columns as desktop, generous fixed widths, team and leg cells may wrap */
+  .live-grid { overflow-x: hidden; flex: none; } /* Narrow screens scroll the whole page, no row limit */
+  .live-row { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.95fr); gap: 6px; font-size: 12px; height: auto; min-height: 44px; padding: 0 2px; } /* All columns proportional, adapting to any width */
   .live-row > div { white-space: normal; line-height: 1.3; }
   .live-row .live-time, .live-row .live-money { white-space: nowrap; }
   .live-row .record-time { font-size: 11px; }
@@ -461,18 +461,18 @@ html, body { overscroll-behavior: none; }
   .pager-dots button.active { color: var(--primary-on-light); background: var(--primary-light); }
 }
 
-/* 窄桌面（两栏仍并排）：左栏大屏表格列再收紧，保证不出横向滚动 */
+/* Narrow desktop (still two columns): tighten the live board columns to avoid horizontal scroll */
 @media (min-width: 1001px) and (max-width: 1200px) {
   .live-row { grid-template-columns: minmax(78px, 1.2fr) minmax(98px, 1.5fr) minmax(82px, 1.4fr) 70px; gap: 8px; font-size: 12px; }
   .live-team { font-size: 13px; }
 }
 
-/* 进度页矩阵：队伍列固定在左，其余横向滚动；每个环节用实线分组 */
+/* Progress matrix: team column pinned left, the rest scrolls horizontally; legs grouped by solid rules */
 .matrix-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .mx2 { min-width: max-content; border-collapse: separate; border-spacing: 0; border-top: 2px solid var(--gray-300); border-bottom: 2px solid var(--gray-300); border-right: 2px solid var(--gray-300); border-radius: 0; }
 .mx2 th, .mx2 td { text-align: center; border-bottom: 1px solid var(--gray-200); white-space: nowrap; }
 .mx2 tbody tr:last-child td { border-bottom: none; }
-.mx2 .mx2-team { position: sticky; left: 0; z-index: 2; background: var(--surface); text-align: left; min-width: 150px; border-left: 2px solid var(--gray-300); border-right: 2px solid var(--gray-300); } /* 与右侧的分割线画在队伍列上：横向滚动时跟着固定列走，不会消失 */
+.mx2 .mx2-team { position: sticky; left: 0; z-index: 2; background: var(--surface); text-align: left; min-width: 150px; border-left: 2px solid var(--gray-300); border-right: 2px solid var(--gray-300); } /* The divider to the right is drawn on the team column so it moves with the pinned column and never disappears */
 .mx2 .mx2-team + .mx2-first, .mx2 thead tr:nth-child(2) > :first-child { border-left: none; }
 .mx2 thead .mx2-team { background: var(--surface-2); z-index: 3; }
 .mx2 .mx2-leg { background: var(--surface-2); padding: 8px 12px; }
@@ -481,16 +481,16 @@ html, body { overscroll-behavior: none; }
 .mx2 .mx2-sub { background: var(--surface-2); font-weight: 500; color: var(--gray-500); }
 .mx2 .mx2-cell { min-width: 64px; font-variant-numeric: tabular-nums; }
 .mx2 .mx2-extra { font-family: inherit; min-width: 72px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
-/* 分组之间只画一条线：每组首列画左边线，表格右缘由 .mx2 的 border-right 收尾 */
+/* One line between groups: each group's first column draws its left border, the table's right edge comes from .mx2 */
 .mx2 .mx2-first { border-left: 2px solid var(--gray-300); }
 .mx2 .mx2-branch { color: var(--gray-600); font-size: 12px; }
 .mx2 .mx-done { background: #e6f4ea; color: #137333; }
 .mx2 .mx-arrived { background: #fef7e0; color: #b06000; }
 
-/* 卡片内嵌套的面板（站点分工下的罚时）：用浅灰底区分 */
+/* Panels nested inside cards (e.g. penalties under a station section) are set off with a light outline */
 .card .card { box-shadow: none; margin-bottom: 0; background: var(--surface); border: 1px solid var(--gray-200); }
 
-/* 记录表：固定表格布局，各列按比例分配（内容变化不改变列宽），列数不同也均匀铺满 */
+/* Record table: fixed layout with proportional columns (content changes do not change widths), filling the width for any column count */
 .record-table { table-layout: fixed; width: 100%; min-width: 600px; }
 .record-table th, .record-table td { overflow: hidden; text-overflow: ellipsis; }
 .record-table .col-first { width: 24%; }
@@ -500,9 +500,9 @@ html, body { overscroll-behavior: none; }
 .record-table .col-action { width: 22%; min-width: 200px; }
 .record-table .extra-ctl { width: 100%; max-width: 140px; }
 
-/* 下拉（MSelect）与多选（MultiSelect）：参考 Gemini 的模型选择器
-   触发器默认是无边框的灰色胶囊，悬停加深；放在输入框旁边或表单里时用 outlined 变体与输入框对齐
-   菜单是大圆角白色卡片 + 阴影，选项为圆角块，当前项左侧打勾 */
+/* Select (MSelect) and multi-select (MultiSelect), modelled on Gemini's model picker
+   the trigger is a borderless grey pill that darkens on hover; next to inputs or in forms the outlined variant aligns with inputs
+   the menu is a large-radius white card with shadow, rounded options, a tick on the current item */
 .sel, .ms { position: relative; display: inline-block; vertical-align: middle; max-width: 100%; }
 .sel-btn, .ms-btn { width: 100%; height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 10px 0 16px; border: 1px solid transparent; border-radius: 999px; background: var(--field); color: var(--gray-800); cursor: pointer; text-align: left; font-family: inherit; font-size: 14px; font-weight: 500; transition: background-color .15s, box-shadow .15s; }
 .sel-sm .sel-btn, .ms-btn.input-sm { height: 32px; font-size: 13px; padding: 0 8px 0 12px; }
@@ -511,7 +511,7 @@ html, body { overscroll-behavior: none; }
 .sel-btn:focus-visible, .ms-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 .sel-btn.sel-empty, .ms-btn.ms-empty { color: var(--gray-600); font-weight: 400; }
 .sel-disabled .sel-btn { opacity: .5; cursor: not-allowed; }
-/* outlined：与输入框同高同圆角，放在输入框旁边不突兀 */
+/* outlined: same height and radius as inputs so it sits comfortably next to them */
 .sel-outlined .sel-btn { background: var(--field); border: 1px solid transparent; border-radius: 999px; font-weight: 400; padding: 0 8px 0 14px; }
 .sel-outlined .sel-btn:hover { background: var(--field-hover); }
 .sel-outlined.sel-open .sel-btn { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); background: var(--surface); }
@@ -534,9 +534,9 @@ html, body { overscroll-behavior: none; }
 .ms-item.on .ms-check { background: var(--primary); border-color: var(--primary); color: #fff; }
 .ms-item .tag, .sel-item .tag, .sel-text .tag { margin-right: 2px; }
 .sel-text { display: inline-flex; align-items: center; gap: 2px; }
-.sched-leg { white-space: nowrap; line-height: 22px; } /* 排班表：站点的每个环节占一行 */
+.sched-leg { white-space: nowrap; line-height: 22px; } /* Schedule table: one line per station leg */
 .station-leg + .station-leg { border-top: 1px solid var(--gray-200); padding-top: 16px; margin-top: 4px; }
-/* 「我的」页不套外层卡片：状态行 + 无边框大表格，其余区块是灰底卡片 */
+/* The "Mine" page has no outer card: status line + borderless table, other blocks are cards */
 .my-work { display: flex; flex-direction: column; gap: 16px; }
 .my-work-head { margin: 0; }
 .my-work .card { background: var(--surface); box-shadow: none; margin-bottom: 0; }
@@ -544,19 +544,19 @@ html, body { overscroll-behavior: none; }
 .my-work .station-leg { display: flex; flex-direction: column; gap: 12px; }
 .my-work .station-leg > p, .my-work .station-leg > .flex-between { margin: 0; }
 
-/* 小时 + 分钟 双输入 */
+/* Hour + minute pair input */
 .hm-row { display: flex; align-items: center; gap: 6px; }
 .hm-row input { width: 0; flex: 1; min-width: 56px; }
 .hm-row span { color: var(--gray-500); font-size: 13px; }
 
-/* 已撤销的记录：整行变淡，除“其他”列外划线，“其他”列写明是谁撤销的 */
+/* Reverted rows: faded, struck through except the "other" column, which names who reverted */
 .row-reverted { opacity: .55; }
 .row-reverted td:not(:last-child) { text-decoration: line-through; }
-/* “xxx撤销”说明文字与原来的撤销按钮同高，撤销后行高不变 */
+/* The "reverted by" note matches the revert button height so the row does not change height */
 .revert-note { display: inline-flex; align-items: center; min-height: 32px; font-size: 12px; color: var(--gray-500); }
 .table-dense .revert-note { min-height: 28px; }
 
-/* 进比赛之前的页面 */
+/* Pages before entering an event */
 .plain-wrap { min-height: 100vh; display: flex; flex-direction: column; }
 .plain-title { color: inherit; text-decoration: none; }
 .plain-title:hover { text-decoration: none; }
@@ -566,11 +566,11 @@ html, body { overscroll-behavior: none; }
 .event-name { font-weight: 600; font-size: 17px; margin-bottom: 8px; }
 .back-btn { margin-right: 2px; vertical-align: middle; }
 
-/* “桌面版网站”模式提示 */
+/* "Desktop site" mode notice */
 .desktop-mode-tip { position: fixed; left: 12px; right: 12px; bottom: 60px; z-index: 500; background: var(--gray-900); color: #fff; padding: 12px 16px; border-radius: 12px; font-size: 16px; line-height: 1.5; box-shadow: var(--shadow-3); }
 .desktop-mode-tip button { margin-left: 12px; background: transparent; border: 1px solid rgba(255,255,255,.5); color: #fff; border-radius: 999px; padding: 4px 12px; font-size: 14px; }
 
-/* ---------- 主页：Gmail 式布局（左侧栏 + 顶部搜索 + 列表面板） ---------- */
+/* ---------- Home: Gmail-style layout (sidebar + top search + list panel) ---------- */
 .home { min-height: 100vh; display: flex; background: #f6f8fc; }
 .home-side { width: 216px; flex: none; padding: 8px 12px 16px 12px; display: flex; flex-direction: column; }
 .home-brand { height: 64px; display: flex; align-items: center; padding: 0 12px; font-size: 26px; font-weight: 500; color: var(--gray-700); letter-spacing: .04em; }
@@ -590,7 +590,7 @@ html, body { overscroll-behavior: none; }
 .home-search:focus-within { background: var(--surface); box-shadow: var(--shadow-1); }
 .home-search input { flex: 1; height: 100%; border: none; background: transparent; padding: 0; font-size: 16px; color: var(--gray-900); box-shadow: none; min-width: 0; }
 .home-search input:focus { box-shadow: none; outline: none; }
-/* 右上角账号：点击展开菜单（主页与比赛内共用） */
+/* Account button in the corner: click for a menu (shared by home and events) */
 .acct { position: relative; flex: none; }
 .home-top .acct { margin-left: auto; }
 .acct-btn { height: 40px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px 0 8px; border: none; border-radius: 20px; background: transparent; color: var(--gray-800); font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer; transition: background-color .15s; }
@@ -601,7 +601,7 @@ html, body { overscroll-behavior: none; }
 .acct-menu .sel-item:hover { text-decoration: none; }
 .sel-item-danger { color: var(--danger); }
 .sel-item-danger:hover { background: var(--danger-light); }
-/* 列表面板 */
+/* List panel */
 .home-panel { flex: 1; background: var(--surface); border-radius: 16px; padding: 12px 0 8px; display: flex; flex-direction: column; min-height: 0; }
 .home-chips { display: flex; align-items: center; gap: 8px; padding: 0 12px 12px 16px; border-bottom: 1px solid var(--gray-200); }
 .home-chips-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
@@ -624,13 +624,13 @@ html, body { overscroll-behavior: none; }
 .home-status.status-running { color: var(--success); }
 .home-status.status-finished { color: var(--gray-500); }
 .home-date { min-width: 72px; text-align: right; font-variant-numeric: tabular-nums; }
-/* 条目形式 */
+/* Row view */
 .home-list { display: flex; flex-direction: column; }
 .home-row { display: flex; align-items: center; gap: 14px; height: 40px; padding: 0 16px; border-bottom: 1px solid var(--gray-100); cursor: pointer; transition: background-color .12s; }
 .home-row:hover { background: var(--surface-2); }
 .home-row-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; color: var(--gray-900); }
 .home-row-snippet { color: var(--gray-600); }
-/* 卡片形式 */
+/* Card view */
 .home-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; padding: 8px 16px 12px; }
 .home-card { border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 16px; cursor: pointer; display: flex; flex-direction: column; gap: 8px; transition: background-color .15s; background: var(--surface); }
 .home-card:hover { background: var(--surface-2); }
@@ -639,7 +639,7 @@ html, body { overscroll-behavior: none; }
 .home-card-snippet { font-size: 13px; color: var(--gray-600); }
 .home-card .home-row-meta { justify-content: space-between; margin-top: auto; }
 .home-card .home-date { min-width: 0; }
-/* 手机：顶部一行菜单 + 搜索 + 账号，侧栏变成抽屉 */
+/* Phones: one top row with menu + search + account, the sidebar becomes a drawer */
 .home-scrim { display: none; }
 @media (max-width: 760px) {
   .home-side { position: fixed; left: 0; top: 0; bottom: 0; width: 280px; max-width: 82vw; z-index: 520; background: #f6f8fc; padding: 8px 16px 16px; transform: translateX(-100%); transition: transform .2s ease; box-shadow: none; }
@@ -649,12 +649,12 @@ html, body { overscroll-behavior: none; }
   .home-nav a { margin-left: -16px; padding-left: 24px; }
   .home-main { padding: 8px 12px 12px; }
   .home-main { padding-top: 0; }
-  .home-top { height: 56px; gap: 6px; position: sticky; top: 0; z-index: 40; background: #f6f8fc; margin-bottom: 8px; } /* 手机：抬头固定在顶部，列表在下面滚 */
+  .home-top { height: 56px; gap: 6px; position: sticky; top: 0; z-index: 40; background: #f6f8fc; margin-bottom: 8px; } /* Phones: the header sticks to the top while the list scrolls */
   .home-menu-btn { display: inline-flex; margin-left: -8px; }
   .home-search { max-width: none; height: 44px; padding-left: 12px; }
   .home-top .acct-btn { padding: 0 6px; }
   .home-top .acct-name { display: none; }
-  /* 手机：三个筛选条固定一行，放不下时横向滑动；展示切换固定在右侧 */
+  /* Phones: the three filter chips stay on one row and scroll horizontally when needed; the view toggle stays right */
   .home-chips { padding: 0 6px 10px 8px; gap: 4px; }
   .home-chips-row { flex: 1; flex-wrap: nowrap; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-bottom: 1px; }
   .home-chips-row::-webkit-scrollbar { display: none; }
@@ -669,7 +669,7 @@ html, body { overscroll-behavior: none; }
   .home-row-meta { margin-left: 70px; }
 }
 
-/* ---------- 账号页（Google 账号式）：顶部资料卡 + 信息行 ---------- */
+/* ---------- Account page (Google Account style): profile header + info rows ---------- */
 .acc { display: flex; flex-direction: column; gap: 16px; }
 .acc-hero { display: flex; align-items: center; gap: 20px; padding: 8px 4px 4px; }
 .acc-avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--primary-light); color: var(--primary-on-light); font-size: 30px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex: none; }
@@ -687,7 +687,7 @@ html, body { overscroll-behavior: none; }
 .acc-pw .form-group { margin-bottom: 12px; }
 @media (max-width: 520px) { .acc-row { grid-template-columns: 72px minmax(0, 1fr) auto; } .acc-avatar { width: 56px; height: 56px; font-size: 24px; } .acc-name { font-size: 20px; } }
 
-/* ---------- 背包卡片：物品格子可多选，用掉的消失 ---------- */
+/* ---------- Bag card: multi-select item tiles, used items disappear ---------- */
 .bag-card-click { cursor: pointer; transition: background-color .15s; }
 .bag-card-click:hover { background: var(--surface-2); }
 .bag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
@@ -704,15 +704,15 @@ html, body { overscroll-behavior: none; }
 .bag-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
 .bag-log { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--gray-200); }
 
-/* ---------- 当前环节卡：交通 / 商店 / 熔断 三段，横线隔开 ---------- */
+/* ---------- Current leg card: transport / shop / cutoffs, separated by rules ---------- */
 .cl-section { padding: 14px 0; border-top: 1px solid var(--gray-200); }
 .cl-section:first-of-type { border-top: none; padding-top: 0; }
 .cl-section:last-child { padding-bottom: 0; }
-.cl-label { font-size: 15px; font-weight: 500; color: var(--gray-900); margin-bottom: 10px; } /* 段标题比内容字大一号 */
+.cl-label { font-size: 15px; font-weight: 500; color: var(--gray-900); margin-bottom: 10px; } /* Section labels one size larger than the content */
 .cl-title { display: inline-flex; align-items: center; gap: 10px; }
 .cl-leg { font-size: 14px; font-weight: 400; color: var(--gray-600); display: inline-flex; align-items: center; gap: 4px; }
 
-/* 商店弹窗：选项卡 + 选中后右侧数量 */
+/* Shop dialog: tiles with a quantity stepper on the right when selected */
 .shop-grid { display: flex; flex-direction: column; gap: 8px; }
 .shop-tile { height: 48px; cursor: pointer; }
 .shop-tile .bag-tile-name { flex: 1; }

@@ -29,7 +29,7 @@ export const useUi = defineStore('ui', () => {
     confirmState.value?.resolve(v);
     confirmState.value = null;
   }
-  /** 弹出时间表单，返回 datetime-local 字符串；取消返回 null */
+  /** Show the time form; returns a datetime-local string or null when cancelled */
   function askTime(title: string, message: string, defaultValue: string) {
     return new Promise<string | null>((resolve) => { timeState.value = { title, message, value: defaultValue, resolve }; });
   }

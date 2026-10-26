@@ -11,7 +11,7 @@ onMounted(() => {
   auth.leaveEvent();
   setUnauthorizedHandler(() => { auth.user = null; router.replace('/login'); });
 });
-/** 返回：回到进入这个页面之前的地方（主页或比赛内），没有历史时回主页 */
+/** Back: return to where the user came from (home or inside an event); home when there is no history */
 function goBack() {
   if (window.history.state?.back) router.back(); else router.push('/');
 }

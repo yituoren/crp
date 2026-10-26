@@ -1,10 +1,10 @@
 import { ref } from 'vue';
 
 /**
- * 卡片拖动换序：把 bind(i) 展开到每张卡片上，松手时回调新的顺序索引数组。
- * - 电脑端：浏览器原生拖放（鼠标按住拖动）
- * - 手机端：长按约 0.35 秒进入拖动，手指移动到目标卡片上松开；没长按前的滑动仍然是正常滚动
- * canDrag(i) 返回 false 的项不能拖也不能被放到它的位置上（比如固定的起跑线 / 中继站）。
+ * Drag-to-reorder for cards: spread bind(i) onto each card; on drop the callback receives the new index order.
+ * - desktop: native HTML5 drag and drop
+ * - phones: long-press about 0.35 s to start dragging, release over the target card; swiping before that scrolls as usual
+ * Items where canDrag(i) is false can neither be dragged nor dropped onto (e.g. the fixed Starting Line / Pit Stop).
  */
 export function useDragSort(opts: { count: () => number; canDrag?: (i: number) => boolean; onReorder: (order: number[]) => void | Promise<void> }) {
   const from = ref<number | null>(null);
@@ -20,7 +20,7 @@ export function useDragSort(opts: { count: () => number; canDrag?: (i: number) =
     void opts.onReorder(order);
   }
 
-  // ---- 手机端长按拖动 ----
+  // ---- Long-press drag on phones ----
   let pressTimer: number | undefined;
   let startX = 0, startY = 0;
   let touchActive = false;
@@ -35,11 +35,11 @@ export function useDragSort(opts: { count: () => number; canDrag?: (i: number) =
   function onDocTouchMove(e: TouchEvent) {
     const t = e.touches[0]; if (!t) return;
     if (!touchActive) {
-      // 还没长按成功：手指挪动超过阈值就当作滚动，取消长按
+      // long press not reached yet: moving past the threshold counts as scrolling, cancel it
       if (Math.abs(t.clientX - startX) > MOVE_TOLERANCE || Math.abs(t.clientY - startY) > MOVE_TOLERANCE) { clearPress(); detach(); }
       return;
     }
-    e.preventDefault(); // 拖动中不让页面滚动
+    e.preventDefault(); // no page scrolling while dragging
     const i = indexAt(t.clientX, t.clientY);
     over.value = i !== null && can(i) ? i : null;
   }
@@ -84,7 +84,7 @@ export function useDragSort(opts: { count: () => number; canDrag?: (i: number) =
       onDrop: (e: DragEvent) => { e.preventDefault(); finish(i); },
       onDragend: () => { from.value = null; over.value = null; },
       onTouchstart: (e: TouchEvent) => onTouchStart(i, e),
-      onContextmenu: (e: Event) => { if (touchActive || pressTimer) e.preventDefault(); }, // 长按时不弹系统菜单
+      onContextmenu: (e: Event) => { if (touchActive || pressTimer) e.preventDefault(); }, // no context menu during a long press
     };
   }
   return { bind, from, over };

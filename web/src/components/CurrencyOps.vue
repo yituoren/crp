@@ -8,21 +8,21 @@ import { fmtMoney, parseMoney, moneyUnit, moneyLabel, moneyMode } from '@/utils/
 import { legName } from '@/types';
 
 /**
- * 经费 / 货币操作表单（跟队「我的」页与「经费」页共用）
- * - teamId 固定时不显示队伍选择；否则按权限列出可操作的队伍（主办全部，跟队只有所跟队伍）
- * - 货币模式多一个“类型”：商店购买 / 其他。商店购买时原因栏换成商品下拉，金额固定为价格，只能扣除，且必须选开放商店的环节
+ * Money operation form (shared by the follow's "Mine" page and the money page)
+ * - with a fixed teamId the team select is hidden; otherwise the teams the user may operate are listed (hosts all, follows their own)
+ * - coin mode adds a "kind": shop purchase / other. For purchases the reason field becomes an item select, the amount is the price, deduction only, and a shop-open leg is required
  */
-const props = defineProps<{ teamId?: number; legId?: number }>(); // legId：固定在某个环节上（站点「我的」页）
+const props = defineProps<{ teamId?: number; legId?: number }>(); // legId: pinned to one leg (station's "Mine" page)
 const auth = useAuth();
 const race = useRace();
 const ui = useUi();
 const ep = computed(() => race.currentEpisode);
 const isCoin = computed(() => moneyMode() === 'coin');
 const form = reactive({ teamId: (props.teamId ?? '') as number | '', kind: 'other' as 'other' | 'shop' | 'cutoff', legId: (props.legId ?? '') as number | '', itemId: '' as number | '', amount: '', reason: '' });
-const stationOnly = computed(() => race.currencyLegIds !== null); // 站点：必须选自己驻守的环节
+const stationOnly = computed(() => race.currencyLegIds !== null); // station: must pick one of its own legs
 watch(() => props.teamId, (v) => { form.teamId = v ?? ''; });
 
-// 淘汰 / 退赛的队伍仍在列表里，但只有管理员能对它们操作（canAdjustCurrencyFor 已包含这条规则）
+// eliminated / withdrawn teams stay in the list but only admins may operate on them (canAdjustCurrencyFor covers this)
 const teamOptions = computed(() => race.teams.filter((t) => race.canAdjustCurrencyFor(t.id)).map((t) => ({ value: t.id, label: t.status === 'alive' ? t.label : `${t.label}（${t.status === 'withdrawn' ? '已退赛' : '已淘汰'}）` })));
 const team = computed(() => (form.teamId === '' ? null : race.teamById.get(Number(form.teamId)) ?? null));
 const legs = computed(() => ep.value?.legs ?? []);
@@ -30,7 +30,7 @@ const legOptions = computed(() => {
   let list = form.kind === 'shop' ? legs.value.filter((l) => l.shop_open) : legs.value;
   if (race.currencyLegIds) list = list.filter((l) => race.currencyLegIds!.includes(l.id));
   const opts = list.map((l) => ({ value: l.id, label: legName(l), tag: l.type }));
-  // “其他”只有主办能选；商店购买必须选具体环节
+  // "other" is hosts only; purchases need a concrete leg
   return form.kind !== 'shop' && auth.isHost ? [...opts, { value: 0, label: '其他' }] : opts;
 });
 const kindOptions = computed(() => [
@@ -88,12 +88,12 @@ async function apply(sign: 1 | -1) {
   <div v-else-if="props.teamId !== undefined && race.teamLocked(props.teamId)" class="alert alert-info">{{ race.lockReason(props.teamId) }}</div>
     <div v-else-if="!canOperate" class="text-sm text-gray">主办可操作所有队伍，跟队只能操作所跟队伍，站点只能记在自己驻守的环节上</div>
     <div v-else class="ops">
-      <!-- 选择项：类型（货币模式）/ 环节，固定宽度 -->
+      <!-- Selects: kind (coin mode) / leg, fixed widths -->
       <div class="ops-selects">
         <MSelect v-if="props.teamId === undefined" v-model="form.kind" outlined class="ops-kind" :options="kindOptions" />
         <MSelect v-if="props.legId === undefined" v-model="form.legId" outlined class="ops-leg" :placeholder="form.kind === 'shop' ? '开放商店的环节' : '选择环节'" :options="legOptions" />
       </div>
-      <!-- 金额 / 原因（或商品）/ 按钮，槽位不随类型变化 -->
+      <!-- Amount / reason (or item) / buttons; slots do not change with the kind -->
       <div class="ops-main">
         <input v-if="form.kind === 'shop'" :value="item ? fmtMoney(item.price) : ''" class="ops-amount" :placeholder="moneyUnit() === '币' ? '数量' : '金额'" disabled />
         <input v-else v-model="form.amount" type="number" :inputmode="isCoin ? 'numeric' : 'decimal'" min="0" step="1" class="ops-amount" :placeholder="moneyUnit() === '币' ? '数量' : '金额'" />

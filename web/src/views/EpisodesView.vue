@@ -21,10 +21,10 @@ const staffOf = (legId: number) => race.assignments.filter((a) => a.role === 'st
 const doneCount = (legId: number) => race.aliveTeams.filter((t) => race.progressOf(t.id, legId)?.completed_at).length;
 const arrivedCount = (legId: number) => race.aliveTeams.filter((t) => { const p = race.progressOf(t.id, legId); return p?.arrived_at && !p.completed_at; }).length;
 
-// ---- 赛段编辑 ----
+// ---- Episode editing ----
 const epEditing = ref(false);
 const epForm = reactive({ name: '', budget: 0, status: 'pending', notes: '', startAt: '', inheritRank: false, startGapMin: 0 });
-/** 是否第一个赛段（没有上一赛段可以继承名次） */
+/** Whether this is the first episode (no previous ranking to inherit) */
 const isFirstEp = computed(() => !!ep.value && race.episodes[0]?.id === ep.value.id);
 function openEpEdit() {
   if (!ep.value) return;
@@ -36,7 +36,7 @@ async function saveEp() {
   if (epForm.startAt && !body.startAt) { ui.toast('自动开始时间格式不正确', 'error'); return; }
   try { await api(`/episodes/${ep.value!.id}`, { method: 'PUT', body }); await race.loadEpisodes(); epEditing.value = false; ui.toast('赛段已保存'); } catch (e) { ui.error(e); }
 }
-/** 自动开始的说明文字 */
+/** Summary text for the scheduled start */
 const autoStartText = computed(() => {
   const e = ep.value; if (!e?.start_at) return '';
   const stagger = e.inherit_rank && !isFirstEp.value && e.start_gap_min > 0;
@@ -81,7 +81,7 @@ async function deleteEpisode() {
   try { await api(`/episodes/${ep.value.id}`, { method: 'DELETE' }); await race.loadEpisodes(); ui.toast('已删除'); } catch (e) { ui.error(e); }
 }
 
-// ---- 环节编辑 ----
+// ---- Leg editing ----
 const isFixed = (l: Leg) => l.type === 'SL' || l.type === 'PS';
 async function addLeg() {
   try {
@@ -95,7 +95,7 @@ async function deleteLeg(leg: Leg) {
   if (!(await ui.confirm('删除环节', `删除「${legName(leg)}」？相关记录和附件也将丢失。`, { danger: true, okText: '删除' }))) return;
   try { await api(`/legs/${leg.id}`, { method: 'DELETE' }); await race.loadEpisodes(); ui.toast('已删除'); } catch (e) { ui.error(e); }
 }
-// 拖动换序：起跑线和中继站固定，不参与
+// Drag reorder: the Starting Line and Pit Stop are fixed and excluded
 const drag = useDragSort({
   count: () => ep.value?.legs.length ?? 0,
   canDrag: (i) => !!ep.value && !isFixed(ep.value.legs[i]!),

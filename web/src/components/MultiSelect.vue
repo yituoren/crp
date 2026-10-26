@@ -3,12 +3,12 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import LegTag from './LegTag.vue';
 import type { LegType } from '@/types';
 
-// 下拉多选：按钮显示已选摘要，点开后是勾选列表，点击外部关闭
+// Multi-select: the button shows a summary, opens a checklist, closes on outside click
 const props = defineProps<{ modelValue: number[]; options: { value: number; label: string; tag?: string }[]; placeholder?: string }>();
 const emit = defineEmits<{ 'update:modelValue': [number[]] }>();
 const open = ref(false);
 const root = ref<HTMLElement | null>(null);
-// 菜单用 fixed 定位挂在按钮下方，不受表格滚动容器裁剪；空间不够时向上弹
+// The menu is fixed-positioned under the button so table scroll containers do not clip it; opens upward when short on space
 const menuStyle = ref<Record<string, string>>({});
 const sheet = () => window.innerWidth <= 760;
 function place() {

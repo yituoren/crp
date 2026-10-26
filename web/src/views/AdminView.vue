@@ -11,9 +11,9 @@ const race = useRace();
 const ui = useUi();
 const tab = ref<'settings' | 'members' | 'audit'>('settings');
 
-// 赛事设置（比赛信息）
+// Event settings
 const settings = reactive({ name: '', inviteCode: '', teamSize: 2, currencyMode: 'yuan', rbGap: 2 });
-// 商店商品（货币模式）：整表编辑后一次保存
+// Shop items (coin mode): edited as a whole and saved at once
 const shop = reactive<{ items: { id: number; name: string; price: string }[] }>({ items: [] });
 function fillShop() { shop.items = race.shopItems.map((i) => ({ id: i.id, name: i.name, price: String(i.price) })); }
 function addItem() { shop.items.push({ id: 0, name: '', price: '' }); }
@@ -23,7 +23,7 @@ function fill() {
   Object.assign(settings, { name: e.name, inviteCode: e.inviteCode ?? '', teamSize: e.teamSize, currencyMode: e.currencyMode, rbGap: e.rbGap });
   fillShop();
 }
-/** 保存全部：先保存赛事设置，再保存商品（货币模式） */
+/** Save everything: event settings first, then shop items (coin mode) */
 async function saveAll() {
   try {
     await api('/info', { method: 'PUT', body: settings });
@@ -38,14 +38,14 @@ async function saveAll() {
   } catch (e) { ui.error(e); }
 }
 
-// 成员与主办：创建者固定为主办，其他成员由主办设置；管理员是全局角色，不在这里设置
+// Members and hosts: the creator is a fixed host, others are set by hosts; admin is global and not managed here
 async function setRole(u: any, role: 'host' | 'crew') {
   const what = role === 'host' ? `把「${u.username}」设为本比赛主办？主办可以编辑赛段、排班、经费、罚时和设置。` : `取消「${u.username}」的主办身份？`;
   if (!(await ui.confirm(role === 'host' ? '设为主办' : '取消主办', what, { danger: role === 'crew' }))) return;
   try { await api(`/members/${u.id}`, { method: 'PUT', body: { role } }); await race.loadUsers(); ui.toast('已更新'); } catch (e) { ui.error(e); }
 }
 const roleText = (r: string) => (r === 'admin' ? '管理员' : r === 'host' ? '主办' : '幕后');
-// 申请名单：凭邀请码提交的加入申请，通过后成为幕后
+// Join requests submitted with the invite code; approved users become crew
 const requests = ref<{ id: number; user_id: number; username: string; note: string; created_at: string }[]>([]);
 async function loadRequests() { try { requests.value = (await api('/join-requests')).requests; } catch { requests.value = []; } }
 async function decide(r: { id: number; username: string }, action: 'approve' | 'reject') {
@@ -54,7 +54,7 @@ async function decide(r: { id: number; username: string }, action: 'approve' | '
 }
 watch(() => race.users, () => { if (tab.value === 'members') loadRequests(); });
 
-// 本比赛的操作日志（管理员）
+// This event's audit log (admin)
 const audit = ref<any[]>([]);
 const auditTotal = ref(0);
 async function loadAudit() { const d = await api('/audit?limit=200'); audit.value = d.logs; auditTotal.value = d.total; }

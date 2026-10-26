@@ -1,8 +1,8 @@
 import type { Directive } from 'vue';
 
 /**
- * v-mobile-table：给表格每个单元格打上 data-label（取自表头文字），
- * 手机端样式据此把每一行渲染成“标签：值”的卡片（日志类表格用）。
+ * v-mobile-table: stamps every cell with data-label taken from the header text so the phone
+ * stylesheet can render each row as a "label: value" card (used for log tables).
  */
 function label(table: HTMLTableElement) {
   const heads = [...table.querySelectorAll<HTMLTableCellElement>('thead th')].map((th) => th.textContent?.trim() ?? '');

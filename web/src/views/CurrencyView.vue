@@ -19,13 +19,13 @@ const race = useRace();
 const ui = useUi();
 const ep = computed(() => race.currentEpisode);
 const filterTeam = ref<number | ''>('');
-/** 点背包卡片后弹窗：在弹窗里选物品使用 */
+/** Dialog opened from a bag card: pick and use items there */
 const bagTeam = ref<number | null>(null);
-/** 跟队只能操作所跟队伍：表单里直接固定队伍 */
+/** Follows may only operate on their own team: pin it in the form */
 const fixedTeam = computed(() => (!auth.isHost && race.myAssignment?.role === 'follow' ? race.myAssignment.team_id ?? undefined : undefined));
-// 页面上只显示原始流水（被撤销的划线标出）；反向的撤销记录保留在数据库和操作日志里，不在列表中重复出现
+// Only original rows are shown (reverted ones struck through); reverse rows stay in the database and audit log and are not listed again
 const rows = computed(() => race.ledger.filter((l) => !l.reverts_id && (!filterTeam.value || l.team_id === filterTeam.value)));
-/** 谁撤销了这条记录：找到它的反向流水的操作人 */
+/** Who reverted this row: the operator of its reverse row */
 const revertedBy = (l: LedgerEntry) => race.ledger.find((x) => x.reverts_id === l.id)?.operator_name ?? '';
 async function revert(l: LedgerEntry) {
   const msg = l.kind === 'use' ? `撤销「${l.team_name}」的这次使用（${l.reason}）？物品会回到背包。` : `撤销「${l.team_name}」的这笔 ${fmtMoney(l.delta, true)} ${moneyUnit()}（${l.reason || '手动调整'}）？会写入一条反向流水，余额相应恢复。`;
@@ -37,7 +37,7 @@ async function revert(l: LedgerEntry) {
 <template>
   <EpSelector />
 
-  <!-- 背包：普通模式只看经费余额；货币模式看余额 + 持有物品 -->
+  <!-- Bags: cash mode shows balances only; coin mode shows balances + items -->
   <div class="card">
     <div class="card-header"><span>{{ moneyMode() === 'coin' ? '背包' : `${moneyLabel()}余额` }}</span></div>
     <div class="grid grid-4">
@@ -57,7 +57,7 @@ async function revert(l: LedgerEntry) {
     <ItemLogTable :team-id="filterTeam === '' ? undefined : filterTeam" />
   </div>
 
-  <!-- 操作：与跟队「我的」页相同的表单，主办多一个队伍选择 -->
+  <!-- Operations: the same form as the follow's "Mine" page, hosts get a team select -->
   <CurrencyOps :team-id="fixedTeam">
   </CurrencyOps>
 

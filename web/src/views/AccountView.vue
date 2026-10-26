@@ -7,10 +7,10 @@ import { fmtDateTime } from '@/utils/time';
 
 const auth = useAuth();
 const ui = useUi();
-// 管理员：账号管理 / 我的账号 / 全部日志 / 备份与重置；其他人只有修改密码
+// Admin: accounts / my account / audit log / backup & reset; everyone else only changes their password
 const tab = ref<'users' | 'me' | 'audit' | 'backup'>(auth.isAdmin ? 'users' : 'me');
 
-// 我的账号：改 ID（管理员账号不能改）
+// My account: rename (not for the admin account)
 const renaming = ref(false);
 const newName = ref('');
 function openRename() { newName.value = auth.user?.username ?? ''; renaming.value = true; }
@@ -24,11 +24,11 @@ async function renameUser(u: any) {
   if (!name || name.trim() === u.username) return;
   try { await api(`/users/${u.id}`, { method: 'PUT', body: { username: name.trim() } }); await loadUsers(); ui.toast('ID 已修改'); } catch (e) { ui.error(e); }
 }
-/** 身份：管理员是全局角色；主办按是否在任一比赛担任主办判断 */
+/** Identity: admin is global; host means hosting any event */
 const myRole = computed(() => (auth.isAdmin ? '管理员' : auth.hostAnywhere ? '主办' : '幕后'));
 const initial = computed(() => (auth.user?.displayName ?? '?').slice(0, 1).toUpperCase());
 
-// 修改自己的密码（所有人）
+// Change own password (everyone)
 const pw = reactive({ oldPassword: '', newPassword: '', newPassword2: '' });
 const pwMsg = ref('');
 async function changePassword() {
@@ -41,7 +41,7 @@ async function changePassword() {
   } catch (e) { pwMsg.value = e instanceof Error ? e.message : String(e); }
 }
 
-// 账号
+// Accounts
 const users = ref<any[]>([]);
 async function loadUsers() { users.value = (await api('/users')).users; }
 async function toggleDisabled(u: any) {
@@ -57,13 +57,13 @@ async function deleteUser(u: any) {
   try { await api(`/users/${u.id}`, { method: 'DELETE' }); await loadUsers(); } catch (e) { ui.error(e); }
 }
 
-// 全部操作日志（管理员）
+// Full audit log (admin)
 const audit = ref<any[]>([]);
 const auditTotal = ref(0);
 async function loadAudit() { const d = await api('/system/audit?limit=200'); audit.value = d.logs; auditTotal.value = d.total; }
 const short = (s: string | null) => (s ? (s.length > 120 ? s.slice(0, 120) + '…' : s) : '');
 
-// 备份（管理员）
+// Backup (admin)
 const importFile = ref<HTMLInputElement | null>(null);
 async function exportData() {
   try {
@@ -105,7 +105,7 @@ onMounted(() => { if (auth.isAdmin) { loadUsers(); loadAudit(); } });
     <a href="#" :class="{ 'router-link-active': tab === 'backup' }" @click.prevent="tab = 'backup'">备份与重置</a>
   </div>
 
-  <!-- 我的账号：资料卡 + 基本信息 + 密码（Google 账号式） -->
+  <!-- My account: profile header + basic info + password (Google Account style) -->
   <div v-if="tab === 'me'" class="acc">
     <div class="acc-hero">
       <div class="acc-avatar">{{ initial }}</div>

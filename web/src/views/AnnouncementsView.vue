@@ -35,7 +35,7 @@ watch(() => race.announcements, () => race.markAnnouncementsRead());
   <div class="fill-page">
     <div class="card fill-card">
       <div class="card-header"><span>公告（{{ race.announcements.length }}）</span></div>
-      <!-- 发公告：左边输入框，右边一列（上：发送对象，下：发送），输入框高度与右列对齐 -->
+      <!-- Compose: textarea on the left, a column on the right (audience above, send below); the textarea matches the column height -->
       <div v-if="auth.isHost" class="ann-compose mb-2">
         <textarea v-model="form.content" placeholder="写点什么，发给所有幕后…" @keydown.ctrl.enter="post" @keydown.meta.enter="post" />
         <div class="ann-side">

@@ -6,22 +6,22 @@ const dateMinuteFmt = new Intl.DateTimeFormat('zh-CN', { timeZone: TZ, hour12: f
 
 const dateOnlyFmt = new Intl.DateTimeFormat('zh-CN', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
 const timeMinFmt = new Intl.DateTimeFormat('zh-CN', { timeZone: TZ, hour12: false, hour: '2-digit', minute: '2-digit' });
-/** 时刻，精确到分钟（默认） */
+/** Time of day to the minute (default) */
 export function fmtTime(iso?: string | null): string {
   if (!iso) return '-';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '-';
   return timeMinFmt.format(d).replace(/^24:/, '00:');
 }
-/** 时刻，精确到秒（只用于中继站签到与最终成绩） */
+/** Time of day to the second (pit-stop check-ins and final times only) */
 export function fmtTimeSec(iso?: string | null): string {
   if (!iso) return '-';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '-';
   return timeFmt.format(d).replace(/^24:/, '00:');
 }
-/** 日期时刻，精确到分钟 */
-/** 仅日期：2026-10-24 */
+/** Date and time to the minute */
+/** Date only: 2026-10-24 */
 export function fmtDate(iso?: string | null): string {
   if (!iso) return '-';
   const d = new Date(iso);
@@ -34,21 +34,21 @@ export function fmtDateTime(iso?: string | null): string {
   if (Number.isNaN(d.getTime())) return '-';
   return dateMinuteFmt.format(d).replace(/\//g, '-');
 }
-/** 日期时刻，精确到秒 */
+/** Date and time to the second */
 export function fmtDateTimeSec(iso?: string | null): string {
   if (!iso) return '-';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '-';
   return dateTimeFmt.format(d).replace(/\//g, '-');
 }
-/** 精确到分钟：MM-DD HH:mm */
+/** To the minute: MM-DD HH:mm */
 export function fmtDateMinute(iso?: string | null): string {
   if (!iso) return '-';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '-';
   return dateMinuteFmt.format(d).replace(/\//g, '-');
 }
-/** ISO → datetime-local 输入框的值（上海时间） */
+/** ISO → value for a datetime-local input (Shanghai time) */
 export function toLocalInput(iso?: string | null): string {
   if (!iso) return '';
   const d = new Date(iso);
@@ -57,7 +57,7 @@ export function toLocalInput(iso?: string | null): string {
   const g = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
   return `${g('year')}-${g('month')}-${g('day')}T${g('hour').replace('24', '00')}:${g('minute')}:${g('second')}`;
 }
-/** datetime-local 的值（按上海时间理解）→ ISO */
+/** datetime-local value (read as Shanghai time) → ISO */
 export function fromLocalInput(v: string): string | null {
   if (!v) return null;
   const d = new Date(v.length === 16 ? `${v}:00+08:00` : `${v}+08:00`);
@@ -67,7 +67,7 @@ export function minutesBetween(a?: string | null, b?: string | null): number | n
   if (!a || !b) return null;
   return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 60000);
 }
-/** 用时：不到 1 小时只显示 “x m”，否则 “x h x m” */
+/** Duration: "x m" under an hour, otherwise "x h x m" */
 export function fmtDurMs(ms: number): string {
   if (ms < 0) ms = 0;
   const m = Math.floor(ms / 60000);

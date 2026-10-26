@@ -8,7 +8,7 @@ import { fmtTimeSec } from '@/utils/time';
 import { type Leg, type Team } from '@/types';
 import Modal from './Modal.vue';
 
-/** 环节详情页底部：各队对本环节每种熔断的使用次数与倒计时；主办可修改（删除某次使用） */
+/** Bottom of the leg page: per-team use counts and countdowns for each cutoff of this leg; hosts may delete a use */
 const props = defineProps<{ leg: Leg }>();
 const auth = useAuth();
 const race = useRace();

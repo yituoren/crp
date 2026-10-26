@@ -43,7 +43,7 @@ function assignText(userId: number) {
   if (a.role === 'live') return '全赛段（只读）';
   return a.leg_ids?.length ? '' : '?';
 }
-/** 站点驻守的环节（带类型，供表格里显示 tag） */
+/** Legs a station covers (with type, for the tags in the table) */
 function stationLegs(userId: number) {
   const a = assignOf(userId);
   if (!a || a.role !== 'station') return [];

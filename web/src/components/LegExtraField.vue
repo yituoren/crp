@@ -4,7 +4,7 @@ import { useRace } from '@/stores/race';
 import { useRecord } from '@/composables/record';
 import type { Leg, Progress } from '@/types';
 
-// 环节附加信息：绕道选择 / 路障完成人 / 快进结果 / 回转·让路施加对象
+// Extra leg info: detour choice / roadblock person / fast-forward result / U-Turn or Yield target
 const props = defineProps<{ leg: Leg; teamId: number; progress: Progress | null; can: boolean }>();
 const race = useRace();
 const rec = useRecord();

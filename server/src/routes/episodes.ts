@@ -10,26 +10,26 @@ import { recomputeEliminations, lockFromAfterLastRecord } from '../elimination.j
 
 export const LEG_TYPES = ['SL', 'RI', 'TI', 'DT', 'RB', 'FF', 'Union', 'Shuffle', 'UT', 'YD', 'SB', 'FO', 'Trap', 'SQ', 'PS'] as const;
 export type RecordMode = 'none' | 'single' | 'full';
-/** 各类型环节的默认行为：是否需要站点人员、记录方式 */
+/** Defaults per leg type: whether station crew is needed, record mode */
 export const TYPE_DEFAULTS: Record<string, { staff: 0 | 1; mode: RecordMode }> = {
-  SL: { staff: 1, mode: 'full' },   // 起跑线：记出发
-  RI: { staff: 0, mode: 'full' },     // 路线信息：不排人不记时
+  SL: { staff: 1, mode: 'full' },   // Starting Line: departure
+  RI: { staff: 0, mode: 'full' },     // Route Info: no station, no time
   TI: { staff: 1, mode: 'full' },
   DT: { staff: 1, mode: 'full' },
   RB: { staff: 1, mode: 'full' },
-  FF: { staff: 1, mode: 'full' },     // 快进 Fast Forward
+  FF: { staff: 1, mode: 'full' },     // Fast Forward
   Union: { staff: 1, mode: 'full' },
-  Shuffle: { staff: 1, mode: 'full' },  // 洗牌：全员到齐后重新出发，记到达/出发
-  UT: { staff: 1, mode: 'full' },   // 回转点：打卡 + 施加对象
-  YD: { staff: 1, mode: 'full' },   // 让路点：打卡 + 施加对象
-  SB: { staff: 1, mode: 'full' },     // 减速带
-  FO: { staff: 1, mode: 'full' },     // 对抗 Face Off
+  Shuffle: { staff: 1, mode: 'full' },  // Shuffle: everyone regroups and restarts; arrival / departure
+  UT: { staff: 1, mode: 'full' },   // U-Turn: check-in + target team
+  YD: { staff: 1, mode: 'full' },   // Yield: check-in + target team
+  SB: { staff: 1, mode: 'full' },     // Speed Bump
+  FO: { staff: 1, mode: 'full' },     // Face Off
   Trap: { staff: 1, mode: 'full' },
-  SQ: { staff: 1, mode: 'full' },     // 支线：紧跟在一个主线环节之后，主线进行中可随时进入，支线计时期间主线暂停
-  PS: { staff: 1, mode: 'full' },   // 中继站：记签到
+  SQ: { staff: 1, mode: 'full' },     // Side quest: follows a main leg, can be entered while the main leg runs, the main leg's clock pauses meanwhile
+  PS: { staff: 1, mode: 'full' },   // Pit Stop: check-in
 };
 
-/** 支线必须紧跟在一个普通主线环节之后（不能跟在起跑线、中继站或另一条支线后面） */
+/** A side quest must directly follow an ordinary main leg (not the Starting Line, a pit stop or another side quest) */
 export function validateBranchPlacement(episodeId: number) {
   const legs = all<{ id: number; type: string; name: string }>('SELECT id, type, name FROM legs WHERE episode_id = ? ORDER BY sort, id', episodeId);
   legs.forEach((l, i) => {
@@ -65,13 +65,13 @@ export function loadEpisodes(eventId: number) {
   return episodes.map((e) => ({ ...e, budget: fromCents(e.budget), legs: legsByEp.get(e.id) ?? [] }));
 }
 
-/** 赛段必须属于当前比赛 */
+/** The episode must belong to the current event */
 export function episodeInEvent(c: Context, id: number) {
   const ep = get('SELECT * FROM episodes WHERE id = ?', id);
   if (!ep || ep.event_id !== (c.get('event') as EventRow).id) throw notFound('赛段不存在');
   return ep;
 }
-/** 赛段开始后（进行中或已结束），环节的增删、顺序、类型、淘汰与熔断设置只有管理员能改 */
+/** Once an episode has started (running or finished) only admins may add, delete or reorder legs or change type, elimination and cutoff settings */
 function assertStructureEditable(c: Context, episodeId: number) {
   const user = c.get('user');
   if (isAdminRole(user.role)) return;
@@ -85,7 +85,7 @@ export function legInEvent(c: Context, id: number) {
   return leg;
 }
 
-/** 环节列表：判定标准只给主办 / 管理员，以及该赛段里被排为这个环节站点的人看；其他人拿到的是 null */
+/** Leg list: judge criteria are visible only to hosts / admins and the crew assigned as station of that leg in the episode; others get null */
 episodeRoutes.get('/episodes', (c) => {
   const user = c.get('user');
   const episodes = loadEpisodes(c.get('event').id);
@@ -110,7 +110,7 @@ episodeRoutes.post('/episodes', hostOnly, async (c) => {
       code, str(b.name, 50) || code, b.budget === undefined ? 0 : money(b.budget, '经费'), count + 1, 'pending', str(b.notes), eventId,
     );
     const id = Number(r.lastInsertRowid);
-    // 固定结构：第一个赛段以 Starting Line 开头；每个赛段以中继站结尾
+    // Fixed structure: the first episode opens with a Starting Line, every episode ends with a Pit Stop
     if (count === 0) run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', id, 1, 'SL', '起跑线', 'full');
     run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode, can_eliminate, eliminate_count) VALUES (?,?,?,?,1,?,0,0)', id, 99, 'PS', '中继站', 'full');
     return id;
@@ -153,7 +153,7 @@ episodeRoutes.delete('/episodes/:id', hostOnly, (c) => {
   return c.json({ ok: true });
 });
 
-/** 开始赛段：状态改为进行中，记录开始时间，并给每支存活队伍发放本赛段经费（只发一次） */
+/** Start an episode: mark running, record the start time, issue the episode budget to every alive team (once) */
 episodeRoutes.post('/episodes/:id/start', hostOnly, (c) => {
   const id = intParam(c, 'id');
   const ep = episodeInEvent(c, id);
@@ -166,14 +166,14 @@ episodeRoutes.post('/episodes/:id/start', hostOnly, (c) => {
   return c.json({ ok: true, issuedBudgetTo: issued, alreadyStarted: !!ep.started_at });
 });
 
-/** 结束赛段：状态改为已结束，记录结束时间 */
-/** 发车计划：每支队伍的自动出发时间（设置了自动开始时间才有） */
+/** Finish an episode: mark finished and record the finish time */
+/** Departure plan: each team's automatic departure time (only when a start time is set) */
 episodeRoutes.get('/episodes/:id/departures', (c) => {
   const ep = episodeInEvent(c, intParam(c, 'id'));
   return c.json({ departures: departurePlan(ep as EpisodeRow) });
 });
 
-/** 重置赛段（测试用）：清掉本赛段及之后所有赛段的记录数据，赛段回到未开始；环节设置、排班、附件不动 */
+/** Reset an episode (testing): clear the records of this and all later episodes and set them back to pending; leg settings, schedule and attachments stay */
 episodeRoutes.post('/episodes/:id/reset', hostOnly, (c) => {
   const id = intParam(c, 'id');
   const ep = episodeInEvent(c, id);
@@ -184,7 +184,7 @@ episodeRoutes.post('/episodes/:id/reset', hostOnly, (c) => {
       for (const table of ['progress', 'penalties', 'pitstop_results', 'cutoff_uses', 'currency_ledger', 'item_log']) run(`DELETE FROM ${table} WHERE episode_id = ?`, e.id);
       run("UPDATE episodes SET status = 'pending', started_at = NULL, finished_at = NULL, depart_base = NULL WHERE id = ?", e.id);
     }
-    // 余额按剩余流水重算（经费发放、购买、熔断都在流水里）
+    // Recompute balances from the remaining ledger (budget issues, purchases and cutoffs are all ledger rows)
     for (const t of all<{ id: number }>('SELECT id FROM teams WHERE event_id = ?', eventId)) {
       const sum = get<{ s: number | null }>('SELECT SUM(delta) AS s FROM currency_ledger WHERE team_id = ?', t.id)?.s ?? 0;
       run('UPDATE teams SET currency = ? WHERE id = ?', sum, t.id);
@@ -201,7 +201,7 @@ episodeRoutes.post('/episodes/:id/finish', hostOnly, (c) => {
   const id = intParam(c, 'id');
   const ep = episodeInEvent(c, id);
   if (ep.status !== 'running') throw bad('只有进行中的赛段可以结束');
-  // 中继站之前仍在比赛的队伍（未退赛、未在更早的环节被淘汰）必须全部到达中继站
+  // Every team still racing before the pit stop (not withdrawn, not eliminated on an earlier leg) must have reached it
   const ps = get<{ id: number }>("SELECT id FROM legs WHERE episode_id = ? AND type = 'PS' ORDER BY sort DESC, id DESC LIMIT 1", id);
   if (ps) {
     const labels = teamLabelMap();
@@ -228,7 +228,7 @@ function legFields(b: any, before?: any) {
 function legFieldsRaw(b: any, before?: any) {
   const pick = (k: string, max = 5000) => (b[k] === undefined ? (before?.[k] ?? '') : str(b[k], max));
   const type = LEG_TYPES.includes(b.type) ? b.type : (before?.type ?? 'TI');
-  // 是否需要站点由类型查表决定（目前只有路线信息不需要）；所有环节都记录开始/结束两个时间
+  // Station need is looked up by type (only Route Info needs none); every leg records start and end times
   const needs_staff = (TYPE_DEFAULTS[type] ?? { staff: 1 }).staff;
   const record_mode = 'full';
   const minutes = (k: string) => (b[k] === undefined ? (before?.[k] ?? 0) : Math.max(0, int(b[k], 0)));
@@ -239,7 +239,7 @@ function legFieldsRaw(b: any, before?: any) {
     cutoff_start: minutes('cutoff_start'),
     cutoff_interval: minutes('cutoff_interval'),
     shop_open: b.shop_open === undefined ? (before?.shop_open ?? 0) : (b.shop_open ? 1 : 0),
-    // 中继站一定可淘汰（默认 2 人）；其他环节可选
+    // Pit stops may eliminate (legacy default 2); other legs optional
     can_eliminate: type === 'SQ' ? 0 : (b.can_eliminate === undefined ? (before?.can_eliminate ?? 0) : (b.can_eliminate ? 1 : 0)),
     eliminate_count: Math.max(0, b.eliminate_count === undefined ? (before?.eliminate_count ?? 0) : int(b.eliminate_count, 0)),
     name: b.name === undefined ? (before?.name ?? '') : str(b.name, 50) || (before?.name ?? '新环节'),
@@ -263,7 +263,7 @@ episodeRoutes.post('/episodes/:id/legs', hostOnly, async (c) => {
   assertStructureEditable(c, episodeId);
   const f = legFields(b);
   if (!f.name) f.name = '新环节';
-  // 新环节默认插在中继站之前
+  // new legs are inserted before the pit stop
   const ps = get('SELECT id, sort FROM legs WHERE episode_id = ? AND type = ? ORDER BY sort DESC LIMIT 1', episodeId, 'PS');
   const maxSort = get<{ m: number | null }>('SELECT MAX(sort) AS m FROM legs WHERE episode_id = ?', episodeId)!.m ?? 0;
   const sort = ps ? ps.sort : maxSort + 1;
@@ -303,7 +303,7 @@ episodeRoutes.put('/legs/:id', hostOnly, async (c) => {
   return c.json({ ok: true });
 });
 
-/** 熔断设置整表保存：有 id 的更新，没有的新增，列表里没有的删除（使用记录里存了名字快照） */
+/** Save the cutoff list as a whole: rows with an id are updated, others inserted, missing ones deleted (use records keep a name snapshot) */
 episodeRoutes.put('/legs/:id/cutoffs', hostOnly, async (c) => {
   const id = intParam(c, 'id');
   const leg = legInEvent(c, id);
@@ -355,7 +355,7 @@ episodeRoutes.put('/episodes/:id/legs/order', hostOnly, async (c) => {
   const sl = ordered.filter((id: number) => types.get(id) === 'SL');
   const ps = ordered.filter((id: number) => types.get(id) === 'PS');
   const mid = ordered.filter((id: number) => types.get(id) !== 'SL' && types.get(id) !== 'PS');
-  const finalOrder = [...sl, ...mid, ...ps]; // Starting Line 永远第一，中继站永远最后
+  const finalOrder = [...sl, ...mid, ...ps]; // Starting Line always first, Pit Stop always last
   finalOrder.forEach((legId: number, i: number) => {
     if (types.get(legId) !== 'SQ') return;
     const prev = i > 0 ? types.get(finalOrder[i - 1]!) : undefined;
@@ -369,7 +369,7 @@ episodeRoutes.put('/episodes/:id/legs/order', hostOnly, async (c) => {
   return c.json({ ok: true });
 });
 
-// ---------- 附件 ----------
+// ---------- Attachments ----------
 function removeAttachmentFiles(rows: { path: string }[]) {
   for (const r of rows) {
     try { fs.unlinkSync(path.join(UPLOAD_DIR, r.path)); } catch { /* ignore */ }

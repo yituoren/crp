@@ -28,7 +28,7 @@ dashboardRoutes.get('/dashboard/:episodeId', (c) => {
 
   const teamRows: any[] = teams.map((t) => {
     const ps = byTeam.get(t.id) ?? [];
-    let current: any = null; // 最靠后的有到达记录的环节
+    let current: any = null; // the furthest leg with a start record
     let lastActivity: string | null = null;
     for (const p of ps) {
       const stamp = p.completed_at ?? p.arrived_at;

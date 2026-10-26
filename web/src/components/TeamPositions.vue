@@ -10,10 +10,10 @@ import TeamStatus from './TeamStatus.vue';
 
 const race = useRace();
 const data = ref<any>(null);
-// 只在第一次请求返回前转圈；没有赛段或没有队伍时显示空状态而不是一直转
+// Spin only until the first response; with no episode or no teams show an empty state instead of spinning forever
 const loading = ref(true);
 let timer: number | undefined;
-// 行高按“12 支队伍正好填满表格区域”来算：不足 12 支下方留白（卡片白底），超过 12 支表内滚动
+// Row height is computed so 12 teams exactly fill the grid: fewer teams leave blank space, more teams scroll inside
 const ROWS = 12;
 const grid = ref<HTMLElement | null>(null);
 const rowH = ref(44);
@@ -24,7 +24,7 @@ function fitRows() {
   const avail = g.clientHeight - (head?.offsetHeight ?? 34);
   if (avail > 0) rowH.value = Math.max(32, Math.floor(avail / ROWS));
 }
-/** 大屏只看正在进行的赛段；没有进行中的就看下一个未开始的；都结束了看最后一个 */
+/** The live board shows the running episode; otherwise the next pending one; when all are finished, the last one */
 const liveEpisode = computed(() => {
   const eps = race.episodes;
   return eps.find((e) => e.status === 'running') ?? eps.find((e) => e.status === 'pending') ?? eps[eps.length - 1] ?? null;

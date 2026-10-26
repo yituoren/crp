@@ -8,11 +8,11 @@ interface Options {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: unknown;
   form?: FormData;
-  retries?: number; // 网络层失败时的重试次数
+  retries?: number; // retries on network failure
 }
 
 let onUnauthorized: (() => void) | null = null;
-/** 当前所在比赛的哈希。除全局接口（/auth /events /users /system /files /health）外，其余路径都自动加 /events/<hash> 前缀 */
+/** Hash of the current event. Every path except the global ones (/auth /events /users /system /files /health) gets the /events/<hash> prefix */
 let eventHash = '';
 export function setEventHash(h: string) { eventHash = h; }
 export function getEventHash() { return eventHash; }
@@ -49,7 +49,7 @@ export async function api<T = any>(path: string, opts: Options = {}): Promise<T>
       return data as T;
     } catch (e) {
       if (e instanceof ApiError) throw e;
-      lastErr = e; // 网络错误：重试
+      lastErr = e; // network error: retry
       if (attempt < retries) await sleep(500 * (attempt + 1));
     }
   }

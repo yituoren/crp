@@ -3,7 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '@/stores/auth';
 
-// 右上角账号：点用户名展开菜单（账号管理 / 退出登录），主页和比赛内共用
+// Account button in the top-right corner: click the name for a menu (account management / sign out); shared by the home page and events
 const props = defineProps<{ beforeLogout?: () => void }>();
 const auth = useAuth();
 const router = useRouter();

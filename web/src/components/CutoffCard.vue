@@ -7,7 +7,7 @@ import { useUi } from '@/stores/ui';
 import { fmtMoney, moneyMode, moneyUnit } from '@/utils/money';
 import { legName, type Leg } from '@/types';
 
-/** 跟队「我的」页：所跟队伍当前环节可用的熔断。未就绪显示倒计时，就绪可点击使用（货币模式显示消耗） */
+/** Follow's "Mine" page: cutoffs available on the team's current leg. Shows a countdown until ready, then a use button (with the cost in coin mode) */
 const props = withDefaults(defineProps<{ teamId: number; plain?: boolean }>(), { plain: false });
 const auth = useAuth();
 const race = useRace();
@@ -17,7 +17,7 @@ let timer: number | undefined;
 onMounted(() => { timer = window.setInterval(() => { now.value = Date.now() + auth.serverOffsetMs; }, 1000); });
 onUnmounted(() => clearInterval(timer));
 
-/** 当前进行中的环节（含支线）：有开始没结束的，取最靠后的 */
+/** Legs in progress (including side quests): started but not ended, furthest first */
 const currentLegs = computed<Leg[]>(() => {
   const ep = race.currentEpisode; if (!ep) return [];
   return ep.legs.filter((l) => { const p = race.progressOf(props.teamId, l.id); return !!p?.arrived_at && !p.completed_at && l.cutoffs.length > 0; });

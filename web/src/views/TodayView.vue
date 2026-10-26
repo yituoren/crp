@@ -26,7 +26,7 @@ const editing = ref<{ leg: Leg; progress: Progress | null } | null>(null);
 const ep = computed(() => race.currentEpisode);
 const my = computed(() => race.myAssignment);
 const myTeam = computed(() => (my.value?.team_id ? race.teamById.get(my.value.team_id) ?? null : null));
-// 站点可能驻守多个环节：按环节顺序从早到晚
+// A station may cover several legs: in leg order
 const myLegs = computed(() => (ep.value?.legs ?? []).filter((l) => (my.value?.leg_ids ?? []).includes(l.id)));
 
 const legRows = computed(() => {
@@ -49,7 +49,7 @@ const legRows = computed(() => {
   <div v-if="race.episodePending" class="alert alert-warning">{{ ep?.code }} 尚未开始。主办点「开始赛段」后才能记录时间、操作经费和罚时。</div>
   <div v-else-if="race.episodeFinished" class="alert alert-info">{{ ep?.code }} 已结束，所有记录已锁定，只有管理员可以修改。</div>
 
-  <!-- 我的分工：不再套卡片框。跟队 = 状态行 + 无边框大表格 + 灰底卡片（熔断 / 背包 / 货币 / 罚时）；站点 = 每个环节一段，横线分隔 -->
+  <!-- My assignment, no outer card. Follow = status line + borderless table + cards (current leg / bag / money / penalties); station = one section per leg, separated by rules -->
   <div class="my-work">
     <template v-if="my?.role === 'follow' && myTeam">
       <p class="my-work-head"><span class="badge badge-follow">跟队</span> 你本赛段跟随 <strong>{{ myTeam.label }}</strong>，当前余额 <strong class="text-warning">{{ fmtMoney(myTeam.currency) }} {{ moneyUnit() }}</strong></p>

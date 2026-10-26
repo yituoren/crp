@@ -6,8 +6,8 @@ import { useUi } from '@/stores/ui';
 import ItemLogTable from './ItemLogTable.vue';
 
 /**
- * 背包卡片：分开列出某队持有的各种物品，可多选后点「使用」，每件物品记一条「使用」流水，用掉的从背包里消失。
- * 跟队「我的」页直接放这张卡；经费页点队伍后在弹窗里复用。
+ * Bag card: lists a team's items separately; select several and click "use" to write one use record per item,
+ * used items disappear from the bag. Shown directly on the follow's "Mine" page and reused in a dialog on the money page.
  */
 const props = withDefaults(defineProps<{ teamId: number; title?: string; plain?: boolean }>(), { title: '本队背包', plain: false });
 const race = useRace();
@@ -53,7 +53,7 @@ async function useSelected() {
         <button class="btn btn-tonal btn-sm" :disabled="!selected.length || busy" @click="useSelected">使用</button>
       </div>
     </template>
-    <!-- 道具日志：获得与使用，与经费流水分开 -->
+    <!-- Item log: gains and uses, separate from the money ledger -->
     <div class="bag-log"><ItemLogTable :team-id="teamId" :limit="plain ? 10 : 0" /></div>
   </div>
 </template>

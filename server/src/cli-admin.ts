@@ -1,6 +1,6 @@
-// 创建或重置管理员账号（最高权限）。
-// 用法：npm run create-admin --workspace=server -- <用户名> <密码>
-// 服务器上请用 deploy/create-admin.sh（它会指定 DATA_DIR=/opt/crp/data）
+// Create or reset an admin account (highest privilege).
+// Usage: npm run create-admin --workspace=server -- <username> <password>
+// On the server use deploy/create-admin.sh (it sets DATA_DIR=/opt/crp/data)
 import bcrypt from 'bcryptjs';
 import { get, run, now } from './db.js';
 import { seed } from './seed.js';

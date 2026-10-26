@@ -17,11 +17,11 @@ const editing = ref<{ team: Team; progress: Progress | null } | null>(null);
 const rows = computed(() => {
   const list = props.onlyTeamId ? race.teams.filter((t) => t.id === props.onlyTeamId) : race.teams;
   return list.map((team) => {
-    const locked = (race.isLocked(team.id, props.leg.id) && !auth.isAdmin) || (race.branchLocked(team.id, props.leg.id) && !race.progressOf(team.id, props.leg.id)?.completed_at && !auth.isAdmin); // 淘汰/退赛之后的环节、主线已完成的未完成支线：只读留空（之前的环节显示记录但不可改）
+    const locked = (race.isLocked(team.id, props.leg.id) && !auth.isAdmin) || (race.branchLocked(team.id, props.leg.id) && !race.progressOf(team.id, props.leg.id)?.completed_at && !auth.isAdmin); // Legs after elimination / withdrawal and unfinished side quests of a completed main leg: read-only and empty (earlier legs show records but cannot be edited)
     return { team, p: race.progressOf(team.id, props.leg.id), locked, can: !locked && race.canRecord(team.id, props.leg.id), edit: !locked && race.canEdit(team.id), block: race.blockReason(team.id, props.leg.id) };
   });
 });
-/** 附加信息原地编辑：上一环节完成（本环节开始）后、本环节完成前允许；完成后只能通过“修改记录”弹窗改 */
+/** Inline editing of extra info: allowed after the previous leg completes (this leg starts) and before this leg completes; afterwards only through the edit dialog */
 const inline = (can: boolean, p: Progress | null) => can && !!p?.arrived_at && !p?.completed_at;
 const showTarget = computed(() => props.leg.type === 'UT' || props.leg.type === 'YD' || props.leg.type === 'Union');
 const targetLabel = computed(() => (props.leg.type === 'Union' ? '合作队伍' : '施加对象'));
@@ -29,7 +29,7 @@ const label = computed(() => endLabel(props.leg.type));
 const withStart = computed(() => hasStart(props.leg.type));
 const isBranch = computed(() => props.leg.type === 'SQ');
 const stateOf = (p: Progress | null) => (isBranch.value ? (p?.completed_at ? '已完成' : p?.arrived_at ? '进行中' : '未进入') : p?.completed_at ? `已${label.value}` : withStart.value && p?.arrived_at ? '进行中' : withStart.value ? '未开始' : `未${label.value}`);
-/** 记录按钮不可用的原因：顺序未到 / 附加信息没填 */
+/** Why the record button is disabled: out of order / extra info missing */
 const disabledReason = (p: Progress | null, block: string | null, teamId: number) => block ?? race.extraMissing(props.leg, p, teamId);
 
 function detourOptions(): string[] {

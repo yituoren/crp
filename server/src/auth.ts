@@ -13,7 +13,7 @@ export interface AuthUser {
   role: 'admin' | 'host' | 'crew';
 }
 export const isHostRole = (r: string) => r === 'host' || r === 'admin';
-/** 管理员：任何赛段状态下都可以修改数据 */
+/** Admin: may change data regardless of episode status */
 export const isAdminRole = (r: string) => r === 'admin';
 
 export interface EventRow {
@@ -30,31 +30,31 @@ export interface EventRow {
 }
 export type Env = { Variables: { user: AuthUser; event: EventRow } };
 
-// ---------- 比赛上下文 ----------
-/** 当前请求所在的比赛，放在 AsyncLocalStorage 里，金额格式、审计日志等处不用层层传参 */
+// ---------- Event context ----------
+/** Event of the current request, kept in AsyncLocalStorage so money formatting, audit logging etc. need no parameter threading */
 const eventStore = new AsyncLocalStorage<EventRow>();
 export const currentEvent = () => eventStore.getStore() ?? null;
-/** 在某个比赛的上下文里执行（定时任务等没有请求的场景） */
+/** Run a function inside an event context (for the scheduler and other request-less code) */
 export const withEvent = <T>(ev: EventRow, fn: () => T): T => eventStore.run(ev, fn);
-/** 用户在某个比赛里的角色：管理员恒为 admin；创建者 host；成员表里标了 host 的为 host；其余 crew */
+/** A user's role within an event: admins are always admin; the creator is host; members flagged host are host; everyone else is crew */
 export function roleIn(user: { id: number; username: string; role: string }, ev: EventRow): 'admin' | 'host' | 'crew' {
   if (user.role === 'admin') return 'admin';
   if (ev.owner_id && ev.owner_id === user.id) return 'host';
   const m = get<{ role: string }>('SELECT role FROM event_members WHERE event_id = ? AND user_id = ?', ev.id, user.id);
   return m?.role === 'host' ? 'host' : 'crew';
 }
-/** 是否已加入：只有管理员和创建者默认在内，其他人都要凭邀请码加入 */
+/** Membership check: only admins and the creator are in by default, everyone else joins with the invite code */
 export function isMember(user: { id: number; username: string; role: string }, ev: EventRow) {
   if (user.role === 'admin') return true;
   if (ev.owner_id && ev.owner_id === user.id) return true;
   return !!get('SELECT 1 FROM event_members WHERE event_id = ? AND user_id = ?', ev.id, user.id);
 }
-/** 凭邀请码加入：默认幕后 */
+/** Join with the invite code: crew by default */
 export function joinEvent(userId: number, eventId: number, role: 'host' | 'crew' = 'crew') {
   run('INSERT OR IGNORE INTO event_members(event_id, user_id, joined_at, role) VALUES (?,?,?,?)', eventId, userId, now(), role);
 }
 export const loadEvent = (hash: string) => get<EventRow>('SELECT * FROM events WHERE hash = ?', hash);
-/** /events/:hash 下的所有接口：解析比赛、校验成员、把用户角色换成该比赛内的角色 */
+/** Every route under /events/:hash: resolve the event, check membership, swap the user's role for the per-event role */
 export const eventContext: MiddlewareHandler<Env> = async (c, next) => {
   const ev = loadEvent(c.req.param('hash') ?? '');
   if (!ev) return c.json({ error: '比赛不存在' }, 404);
@@ -66,7 +66,7 @@ export const eventContext: MiddlewareHandler<Env> = async (c, next) => {
 };
 
 const COOKIE = 'crp_token';
-const TTL_SEC = 60 * 60 * 24 * 30; // 30 天
+const TTL_SEC = 60 * 60 * 24 * 30; // 30 days
 
 function loadSecret(): string {
   if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
@@ -86,7 +86,7 @@ export function clearToken(c: Context) {
   deleteCookie(c, COOKIE, { path: '/' });
 }
 
-/** 用户是否是任一比赛的主办或创建者（决定能否看到账号管理） */
+/** Whether the user hosts or created any event (controls the account-management entry) */
 export function hostAnywhere(userId: number): boolean {
   if (get('SELECT 1 FROM events WHERE owner_id = ?', userId)) return true;
   return !!get("SELECT 1 FROM event_members WHERE user_id = ? AND role = 'host'", userId);
@@ -121,12 +121,12 @@ export const adminOnly: MiddlewareHandler<Env> = async (c, next) => {
   await next();
 };
 
-/** 解析站点驻守的环节列表（兼容只有 leg_id 的旧数据） */
+/** Parse the list of legs a station is assigned to (compatible with old rows that only have leg_id) */
 export function parseLegIds(row: { leg_id: number | null; leg_ids?: string | null }): number[] {
   if (row.leg_ids) { try { const arr = JSON.parse(row.leg_ids); if (Array.isArray(arr)) return arr.map(Number).filter(Boolean); } catch { /* ignore */ } }
   return row.leg_id ? [row.leg_id] : [];
 }
-/** 当前用户在某赛段的排班 */
+/** The current user's assignment in an episode */
 export function getAssignment(episodeId: number, userId: number) {
   const row = get<{ role: 'follow' | 'station' | 'live'; team_id: number | null; leg_id: number | null; leg_ids: string | null }>(
     'SELECT role, team_id, leg_id, leg_ids FROM assignments WHERE episode_id = ? AND user_id = ?',
@@ -136,7 +136,7 @@ export function getAssignment(episodeId: number, userId: number) {
   return row ? { ...row, legIds: parseLegIds(row) } : undefined;
 }
 
-/** 时间记录只由跟队（所跟队伍）和主办操作；站点不记时间，只管罚时、经费、附件 */
+/** Time records are made only by follows (for their own team) and hosts; stations do not record time, they handle penalties, money and attachments */
 export function canRecordProgress(user: AuthUser, episodeId: number, teamId: number, _legId: number) {
   if (isHostRole(user.role)) return true;
   const a = getAssignment(episodeId, user.id);
@@ -144,17 +144,17 @@ export function canRecordProgress(user: AuthUser, episodeId: number, teamId: num
   return a.role === 'follow' && a.team_id === teamId;
 }
 
-/** 经费：主办任意；跟队仅本赛段所跟的队伍（排班按赛段生效，换队伍自动跟着变）；站点无经费权限 */
+/** Money: hosts any team; follows only the team they follow in this episode (assignments are per episode); stations have no money rights */
 export function canAdjustCurrency(user: AuthUser, episodeId: number, teamId?: number, legId?: number | null) {
   if (isHostRole(user.role)) return true;
   const a = getAssignment(episodeId, user.id);
   if (!a) return false;
   if (a.role === 'follow') return teamId !== undefined && a.team_id === teamId;
-  // 站点：本赛段任意队伍，但只能记在自己驻守的环节上（不能选“其他”）
+  // Station: any team in this episode, but only on the legs it is assigned to (cannot pick "other")
   if (a.role === 'station') return legId !== undefined && legId !== null && a.legIds.includes(legId);
   return false;
 }
-/** 罚时/补时：主办任意；站点本赛段任意队伍；跟队仅本赛段所跟的队伍 */
+/** Penalties / time credits: hosts any team; stations any team in this episode; follows only their own team */
 export function canManagePenalty(user: AuthUser, episodeId: number, teamId?: number) {
   if (isHostRole(user.role)) return true;
   const a = getAssignment(episodeId, user.id);
@@ -169,7 +169,7 @@ export function canUploadToLeg(user: AuthUser, episodeId: number, legId: number)
   return a?.role === 'station' && a.legIds.includes(legId);
 }
 
-/** 站在中继站的站点人员：当赛段拥有淘汰权限 */
+/** Station crew at the pit stop: may eliminate in the current episode */
 export function isPitstopStation(user: AuthUser, episodeId: number) {
   if (isHostRole(user.role)) return true;
   const a = getAssignment(episodeId, user.id);

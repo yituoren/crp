@@ -8,16 +8,16 @@ const EMPTY_EVENT: EventInfo = { id: 0, hash: '', name: '城市飞奔', teamSize
 
 export const useAuth = defineStore('auth', () => {
   const user = ref<User | null>(null);
-  /** 是否是任一比赛的主办（进比赛前能否看到账号管理） */
+  /** Whether the user hosts any event (account-management visibility before entering an event) */
   const hostAnywhere = ref(false);
-  /** 当前所在比赛的信息；不在比赛里时为空 */
+  /** Info of the current event; empty outside an event */
   const event = ref<EventInfo>({ ...EMPTY_EVENT });
   const ready = ref(false);
-  /** 服务器时间 - 本机时间（毫秒），用于给记录表单填默认时间 */
+  /** Server time minus local time (ms), used to prefill record forms */
   const serverOffsetMs = ref(0);
   const serverNow = () => new Date(Date.now() + serverOffsetMs.value);
   const isAdmin = computed(() => user.value?.role === 'admin');
-  /** 是否拥有主办权限：按当前比赛判断；管理员是全局角色，权限覆盖主办 */
+  /** Host rights in the current event; admin is global and includes host */
   const isHost = computed(() => isAdmin.value || event.value.myRole === 'host');
 
   async function fetchMe() {
@@ -32,7 +32,7 @@ export const useAuth = defineStore('auth', () => {
       ready.value = true;
     }
   }
-  /** 进入某个比赛：设置接口前缀并加载比赛信息 */
+  /** Enter an event: set the API prefix and load the event info */
   async function loadEvent(hash: string) {
     setEventHash(hash);
     const d = await api('/info');

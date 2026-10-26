@@ -10,12 +10,12 @@ import { prevEndTime, emptyProgress, chainAfterComplete, upsertProgress } from '
 
 export const progressRoutes = new Hono<Env>();
 
-/** 只有这些类型的环节是每支队伍都必须经过的；快进/减速带/回转/让路/对抗只有部分队伍会用 */
+/** Only these leg types are mandatory for every team; Fast Forward / Speed Bump / U-Turn / Yield / Face Off affect some teams only */
 const MANDATORY_TYPES = new Set(['SL', 'RI', 'TI', 'DT', 'RB', 'Union', 'Shuffle', 'Trap', 'PS']);
 
 /**
- * 检查队伍在某环节打卡前，前面的必经环节是否都已完成。
- * 返回未完成的环节名列表（空数组 = 可以打卡）。成功快进后，快进之后的环节不再要求。
+ * Check that every mandatory leg before this one is completed before the team records here.
+ * Returns the names of unfinished legs (empty = ok). After a successful Fast Forward later legs are not required.
  */
 export function missingPrerequisites(episodeId: number, teamId: number, legId: number): string[] {
   const legs = all('SELECT id, type, name, sort, record_mode FROM legs WHERE episode_id = ? ORDER BY sort, id', episodeId);
@@ -26,7 +26,7 @@ export function missingPrerequisites(episodeId: number, teamId: number, legId: n
   for (let i = 0; i < idx; i++) {
     const l = legs[i]!;
     const p = prog.get(l.id);
-    if (l.type === 'FF' && p?.ff_result === 'success') return []; // 成功快进：直接放行
+    if (l.type === 'FF' && p?.ff_result === 'success') return []; // successful Fast Forward: let it through
     if (!MANDATORY_TYPES.has(l.type)) continue;
     if (!p?.completed_at) missing.push(l.type === 'RI' ? `→ ${l.name}` : l.name);
   }
@@ -36,7 +36,7 @@ export function missingPrerequisites(episodeId: number, teamId: number, legId: n
 export function listCutoffUses(episodeId: number) {
   return all('SELECT * FROM cutoff_uses WHERE episode_id = ? ORDER BY used_at, id', episodeId);
 }
-/** 某队某种熔断下次可用的时间（毫秒）；null = 该队不在此环节进行中 */
+/** When a team's cutoff becomes available next (ms); null = the team is not currently on this leg */
 function cutoffReadyAt(teamId: number, leg: { id: number; episode_id: number }, cf: { id: number; start_min: number; interval_min: number }): number | null {
   const p = get<{ arrived_at: string | null; completed_at: string | null }>('SELECT arrived_at, completed_at FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', leg.episode_id, teamId, leg.id);
   if (!p?.arrived_at || p.completed_at) return null;
@@ -46,7 +46,7 @@ function cutoffReadyAt(teamId: number, leg: { id: number; episode_id: number }, 
   return ready;
 }
 
-/** 使用一次熔断：主办任意队伍；跟队仅所跟队伍。队伍必须在该环节进行中且倒计时已到；货币模式按设置扣币 */
+/** Use a cutoff once: hosts any team, follows their own. The team must be on the leg with the countdown elapsed; coin mode charges the configured cost */
 progressRoutes.post('/cutoffs/:id/use', async (c) => {
   const cutoffId = intParam(c, 'id');
   const user = c.get('user');
@@ -81,7 +81,7 @@ progressRoutes.post('/cutoffs/:id/use', async (c) => {
   return c.json({ id: Number(r.lastInsertRowid) });
 });
 
-/** 删除一条熔断使用记录（主办）：扣过的币一并反向 */
+/** Delete a cutoff use (host): the charge is reverted as well */
 progressRoutes.delete('/cutoff-uses/:id', hostOnly, (c) => {
   const id = intParam(c, 'id');
   const user = c.get('user');
@@ -117,7 +117,7 @@ progressRoutes.get('/episodes/:id/progress', (c) => {
 });
 
 /**
- * 记录动作。action:
+ * Record an action. action:
  *  arrive | complete | undo_arrive | undo_complete | detour | roadblock | ff | note
  */
 progressRoutes.post('/progress', async (c) => {
@@ -129,7 +129,7 @@ progressRoutes.post('/progress', async (c) => {
   episodeInEvent(c, episodeId);
   const leg = get<any>('SELECT * FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId);
   if (!leg) throw notFound('环节不存在');
-  if (action === 'single') action = 'complete'; // 旧客户端兼容：所有环节都记开始/结束
+  if (action === 'single') action = 'complete'; // old-client compatibility: every leg records start / end
   const episode = get<{ status: string; code: string }>('SELECT status, code FROM episodes WHERE id = ?', episodeId)!;
   if (!isAdminRole(user.role) && episode.status === 'pending') throw bad(`${episode.code} 尚未开始，开始赛段后才能记录`);
   { const r = editLockReason(user, episode, null); if (r) throw forbidden(r); }
@@ -153,12 +153,12 @@ progressRoutes.post('/progress', async (c) => {
   const team = get<{ id: number; status: string; locked_from_leg_id: number | null }>('SELECT * FROM teams WHERE id = ?', teamId);
   if (!team) throw notFound('队伍不存在');
   if (!canRecordProgress(user, episodeId, teamId, legId)) throw forbidden('你没有该队伍/站点的记录权限');
-  // 淘汰 / 退赛的队伍：所有记录只有管理员能改
+  // eliminated / withdrawn teams: only admins may change their records
   { const r = editLockReason(user, null, team); if (r) throw forbidden(r); }
   if (['undo_arrive', 'undo_complete'].includes(action) && !isHostRole(user.role)) throw forbidden('撤销记录仅主办可操作');
 
   const before = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, legId);
-  // 支线：只能在主线进行中进入；主线完成后普通幕后不能再改支线。主线：支线进行中不能记录完成
+  // Side quest: can only be entered while the main leg runs; after the main leg completes ordinary crew cannot edit it. Main leg: cannot complete while a side quest runs
   if (leg.type === 'SQ' && ['arrive', 'complete'].includes(action)) {
     const parent = parentLegOf(leg);
     const pp = parent ? get('SELECT arrived_at, completed_at FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, parent.id) : null;
@@ -171,7 +171,7 @@ progressRoutes.post('/progress', async (c) => {
     const bp = br ? get('SELECT arrived_at, completed_at FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, br.id) : null;
     if (bp?.arrived_at && !bp.completed_at) throw bad('支线进行中，请先记录结束支线');
   }
-  // 记录时间：前端弹表单让人确认/修改，默认服务器当前时间；不允许填未来时间
+  // Record time: the client shows a form defaulting to server time; the future is not allowed
   let t = now();
   const at = isoOrNull(b.at);
   if (at) {
@@ -182,7 +182,7 @@ progressRoutes.post('/progress', async (c) => {
     arrived_at: null, completed_at: null, detour_choice: null, roadblock_by: null, ff_result: null, target_team_id: null, note: '',
   };
   const next = { ...cur };
-  let already = false; // 幂等：重复点击/断网重试不报错，保留第一次的时间
+  let already = false; // Idempotent: repeated clicks / retries do not error and keep the first time
   switch (action) {
     case 'arrive':
       if (cur.arrived_at) already = true;
@@ -191,17 +191,17 @@ progressRoutes.post('/progress', async (c) => {
     case 'complete':
       if (cur.completed_at) already = true;
       else {
-        // 有附加信息的环节，必须先填完才能记录完成
+        // legs with extra info must have it filled before completion
         if (leg.type === 'DT' && !cur.detour_choice) throw bad('请先填写绕道选择');
         if (leg.type === 'RB' && !cur.roadblock_by) throw bad('请先填写路障完成人');
         if (leg.type === 'FF' && !cur.ff_result) throw bad('请先填写快进结果');
         if (leg.type === 'Union') {
-          // 联合：双方互选之后才能完成；任一方记录，另一方同时记录
+          // Union: both teams must pick each other first; either side's completion records both
           if (!cur.target_team_id) throw bad('请先选择合作队伍');
           const mate = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, cur.target_team_id, legId);
           if (!mate || mate.target_team_id !== teamId) throw bad('合作队伍尚未选择本队，双方互选后才能记录完成');
         }
-        // 开始时间自动 = 上一个已完成环节的结束时间（首个环节留空）；支线的开始时间来自“开始支线”，不自动接
+        // start time = the previous completed leg's end time (empty for the first leg); a side quest's start comes from "start side quest" and is not chained
         if (!next.arrived_at && leg.type !== 'SQ') next.arrived_at = prevEndTime(episodeId, teamId, leg.sort);
         if (next.arrived_at && t < next.arrived_at) throw bad(`完成时间不能早于开始时间（${next.arrived_at}）`);
         next.completed_at = t;
@@ -240,7 +240,7 @@ progressRoutes.post('/progress', async (c) => {
       upsertProgress(episodeId, teamId, legId, next, user.id);
       if (action === 'complete') chainAfterComplete(episodeId, teamId, leg.sort, next.completed_at, user.id, leg.type);
       if (action === 'complete' && leg.type === 'Union' && next.target_team_id) {
-        // 合作队伍同步记录完成（同一时间），之后两队各自继续
+        // the partner team is completed at the same time; both continue separately afterwards
         const mate = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, next.target_team_id, legId);
         if (mate && !mate.completed_at) {
           const mateNext = { ...mate, arrived_at: mate.arrived_at ?? prevEndTime(episodeId, mate.team_id, leg.sort), completed_at: next.completed_at };
@@ -259,8 +259,8 @@ progressRoutes.post('/progress', async (c) => {
   return c.json({ progress, already });
 });
 
-/** 上一个已完成环节的结束时间；没有则 null（首个环节的开始时间留空） */
-/** 支线紧跟在主线之后：主线 = 支线前一个环节；支线 = 主线后一个环节（若是支线） */
+/** End time of the previous completed leg; null when none (the first leg's start stays empty) */
+/** A side quest follows its main leg: parent = the leg before the side quest; branch = the leg after the main leg (if it is a side quest) */
 function parentLegOf(leg: { episode_id: number; sort: number; type: string }) {
   if (leg.type !== 'SQ') return null;
   return get<{ id: number; type: string }>('SELECT id, type FROM legs WHERE episode_id = ? AND sort < ? ORDER BY sort DESC, id DESC LIMIT 1', leg.episode_id, leg.sort) ?? null;
@@ -270,7 +270,7 @@ function branchLegOf(leg: { id: number; episode_id: number; sort: number; type: 
   const next = get<{ id: number; type: string }>('SELECT id, type FROM legs WHERE episode_id = ? AND sort > ? ORDER BY sort, id LIMIT 1', leg.episode_id, leg.sort);
   return next?.type === 'SQ' ? next : null;
 }
-/** 撤销完成后：下一个环节若只是自动带上了这个开始时间，也一并清掉 */
+/** After undoing a completion: clear the next leg's start time if it was only chained from this one */
 function unchainAfterUndo(episodeId: number, teamId: number, sort: number, oldEnd: string, userId: number, legType = '') {
   if (legType === 'SQ') return;
   const nextLeg = get("SELECT id FROM legs WHERE episode_id = ? AND sort > ? AND type != 'SQ' ORDER BY sort, id LIMIT 1", episodeId, sort);
@@ -278,18 +278,18 @@ function unchainAfterUndo(episodeId: number, teamId: number, sort: number, oldEn
   const np = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, nextLeg.id);
   if (np && !np.completed_at && np.arrived_at === oldEnd) upsertProgress(episodeId, teamId, nextLeg.id, { ...np, arrived_at: null }, userId);
 }
-/** 修改记录改了结束时间：下一个环节的开始时间若还是跟着旧值（或为空），同步成新值 */
+/** When an edit changes the end time: if the next leg's start still equals the old value (or is empty), move it to the new one */
 function rechainAfterEdit(episodeId: number, teamId: number, sort: number, oldEnd: string | null, newEnd: string | null, userId: number, legType = '') {
   if (oldEnd === newEnd || legType === 'SQ') return;
   const nextLeg = get("SELECT id FROM legs WHERE episode_id = ? AND sort > ? AND type != 'SQ' ORDER BY sort, id LIMIT 1", episodeId, sort);
   if (!nextLeg) return;
   const np = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, nextLeg.id) ?? emptyProgress();
   if (np.completed_at) return;
-  if (np.arrived_at && np.arrived_at !== oldEnd) return; // 下一环节的开始时间被人手动改过，不动
+  if (np.arrived_at && np.arrived_at !== oldEnd) return; // the next leg's start was edited by hand: leave it
   upsertProgress(episodeId, teamId, nextLeg.id, { ...np, arrived_at: newEnd }, userId);
 }
 
-/** 修改记录：主办任意；跟队可改所跟队伍在进行中赛段的已有记录（不能清空时间、不能填未来） */
+/** Edit a record: hosts any; follows may edit existing records of their own team in a running episode (cannot clear times or set the future) */
 progressRoutes.put('/progress/:episodeId/:teamId/:legId', async (c) => {
   const episodeId = intParam(c, 'episodeId'), teamId = intParam(c, 'teamId'), legId = intParam(c, 'legId');
   episodeInEvent(c, episodeId);
@@ -335,8 +335,8 @@ progressRoutes.put('/progress/:episodeId/:teamId/:legId', async (c) => {
   return c.json({ ok: true });
 });
 
-// ---------- 罚时 ----------
-/** 补罚时：minutes 为正是增加罚时，为负是减少罚时。主办与本赛段站点人员可操作 */
+// ---------- Penalties ----------
+/** Penalty: positive minutes add a penalty, negative minutes credit time. Hosts and this episode's station crew may do it */
 progressRoutes.post('/episodes/:id/penalties', async (c) => {
   const episodeId = intParam(c, 'id');
   episodeInEvent(c, episodeId);
@@ -364,7 +364,7 @@ progressRoutes.post('/episodes/:id/penalties', async (c) => {
   return c.json({ id: Number(r.lastInsertRowid) });
 });
 
-/** 撤销一条罚时/补时：只有发出这条记录的本人和主办可以撤销 */
+/** Revert a penalty / credit: only its author or a host */
 progressRoutes.post('/penalties/:id/revert', (c) => {
   const id = intParam(c, 'id');
   const user = c.get('user');
@@ -388,7 +388,7 @@ progressRoutes.post('/penalties/:id/revert', (c) => {
   return c.json({ id: newId });
 });
 
-// ---------- 终点结算 ----------
+// ---------- Pit-stop results ----------
 export function pitstopRows(episodeId: number) {
   const psLeg = get('SELECT id FROM legs WHERE episode_id = ? AND type = ? ORDER BY sort DESC LIMIT 1', episodeId, 'PS');
   const labels = teamLabelMap();
@@ -410,7 +410,7 @@ export function pitstopRows(episodeId: number) {
       rank: null as number | null, eliminated: !!psLeg && t.eliminated_leg_id === psLeg.id, note: r?.note ?? '',
     };
   });
-  // 名次实时计算：有最终成绩且未退赛的队伍按最终成绩排序；签到、罚时、补时一变名次就变
+  // Ranks are live: teams with a final time that are not withdrawn sort by it; check-ins, penalties and credits change ranks immediately
   rows
     .filter((r) => r.final_time && r.team_status !== 'withdrawn')
     .sort((a, b) => a.final_time!.localeCompare(b.final_time!))

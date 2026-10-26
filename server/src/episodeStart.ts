@@ -8,12 +8,12 @@ export const SYSTEM_USER: AuthUser = { id: 0, username: 'system', displayName: '
 
 export type EpisodeRow = { id: number; event_id: number; code: string; sort: number; status: string; budget: number; started_at: string | null; start_at: string | null; depart_base: string | null; inherit_rank: number; start_gap_min: number };
 
-/** 开始赛段：状态改为进行中，记录开始时间，并给每支存活队伍发放本赛段经费（只发一次）。返回发了经费的队伍名 */
+/** Start an episode: mark it running, record the start time and issue the episode budget to every alive team (once). Returns the names of the teams that received money */
 export function startEpisodeNow(ep: EpisodeRow, user: AuthUser, t: string): string[] {
   const issued: string[] = [];
   const labels = teamLabelMap();
   tx(() => {
-    // 发车基准 = 本次开始的时刻（自动开始时就是设定时间）；之后各队按计划自动记录出发
+    // departure base = this start moment (the set time for a scheduled start); departures are then recorded per the plan
     run("UPDATE episodes SET status = 'running', started_at = COALESCE(started_at, ?), depart_base = COALESCE(depart_base, ?) WHERE id = ?", t, t, ep.id);
     if (!ep.started_at && ep.budget > 0) {
       for (const team of all("SELECT id, name, currency FROM teams WHERE status = 'alive' AND event_id = ? ORDER BY sort, id", ep.event_id)) {
@@ -32,15 +32,16 @@ export function startEpisodeNow(ep: EpisodeRow, user: AuthUser, t: string): stri
   return issued;
 }
 
-/** 上一个赛段（按顺序） */
+/** The previous episode in order */
 export function previousEpisode(ep: EpisodeRow) {
   return get<EpisodeRow>('SELECT * FROM episodes WHERE event_id = ? AND (sort < ? OR (sort = ? AND id < ?)) ORDER BY sort DESC, id DESC LIMIT 1', ep.event_id, ep.sort, ep.sort, ep.id) ?? null;
 }
 
 /**
- * 发车计划：每支存活队伍的出发时间，基准 = 赛段实际开始时刻（自动开始 = 设定时间；手动开始 = 点击时刻；未开始 = 设定时间）。
- *  - 继承上一赛段名次且设了发车间隔：按名次先后，第 1 名在基准时间出发，之后每队晚一个间隔
- *  - 否则所有队伍在基准时间一起出发
+ * Departure plan: departure time per alive team, based on the actual start moment (scheduled start = the set time;
+ * manual start = click time; not started = the set time).
+ *  - Inheriting the previous ranking with a gap: in rank order, 1st departs at the base time, each next team one gap later
+ *  - Otherwise every team departs at the base time
  */
 export function departurePlan(ep: EpisodeRow): { teamId: number; at: string }[] {
   const baseIso = ep.depart_base ?? ep.start_at;
@@ -54,7 +55,7 @@ export function departurePlan(ep: EpisodeRow): { teamId: number; at: string }[] 
   return order.map((teamId, i) => ({ teamId, at: new Date(base + i * ep.start_gap_min * 60000).toISOString() }));
 }
 
-/** 自动发车：到点后给该队记录本赛段第一个环节的开始时间（起跑线的开始 = 出发，任务完成后由跟队记录完成）。已有记录的不动 */
+/** Automatic departure: when due, record the start time of the episode's first leg for the team (for the Starting Line the start is the departure; the follow records completion later). Existing records are left alone */
 export function recordDeparture(ep: EpisodeRow, teamId: number, at: string): boolean {
   const first = get<{ id: number; sort: number; type: string }>("SELECT id, sort, type FROM legs WHERE episode_id = ? AND type != 'SQ' ORDER BY sort, id LIMIT 1", ep.id);
   if (!first) return false;

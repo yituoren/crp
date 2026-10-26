@@ -7,7 +7,7 @@ export interface EventSummary { id: number; hash: string; name: string; joined: 
 export const LEG_TYPES = ['SL', 'RI', 'TI', 'DT', 'RB', 'FF', 'Union', 'Shuffle', 'UT', 'YD', 'SB', 'FO', 'Trap', 'SQ', 'PS'] as const;
 export type LegType = (typeof LEG_TYPES)[number];
 export type RecordMode = 'none' | 'single' | 'full';
-/** 类型缩写的显示文字：SL 显示为 Starting Line，其余用缩写 */
+/** Display text of a type code: SL shows as Starting Line, others as their code */
 export const typeCode = (t: LegType): string => (t === 'SL' ? 'Starting Line' : t);
 export const LEG_TYPE_LABEL: Record<LegType, string> = {
   SL: '起跑线', RI: '路线信息', TI: '任务点', DT: '绕道', RB: '路障', FF: '快进/捷径', Union: '联合', Shuffle: '洗牌', UT: '回转点', YD: '让路点', SB: '减速带', FO: '对抗', Trap: '陷阱', SQ: '支线', PS: '中继站',
@@ -17,16 +17,16 @@ export const TYPE_DEFAULTS: Record<LegType, { staff: boolean; mode: RecordMode }
   RB: { staff: true, mode: 'full' }, FF: { staff: true, mode: 'full' }, Union: { staff: true, mode: 'full' }, Shuffle: { staff: true, mode: 'full' }, UT: { staff: true, mode: 'full' },
   YD: { staff: true, mode: 'full' }, SB: { staff: true, mode: 'full' }, FO: { staff: true, mode: 'full' }, Trap: { staff: true, mode: 'full' }, SQ: { staff: true, mode: 'full' }, PS: { staff: true, mode: 'full' },
 };
-/** 每个环节只手动记一次“结束”时间，按类型叫法不同：起跑线=出发，路线信息=到达，中继站=签到，其余=完成 */
+/** Each leg records one manual "end" time, named by type: Route Info = arrival, Pit Stop = check-in, others = completion */
 export const END_LABEL: Partial<Record<LegType, string>> = { RI: '到达', PS: '签到', SQ: '结束' };
-/** 开始列的叫法：起跑线叫“出发”（由系统按发车时间自动记录），其余叫“开始” */
+/** Label of the start column: "departure" for the Starting Line (recorded by the departure plan), "start" otherwise */
 export const startLabel = (t: LegType) => (t === 'SL' ? '出发' : '开始');
 export const endLabel = (t: LegType) => END_LABEL[t] ?? '完成';
-/** 首个环节（起跑线）没有开始时间 */
-export const hasStart = (_t: LegType) => true; // 所有环节都有开始与结束两个时间（起跑线的开始 = 出发）
-/** 路线信息和中继站的“名称”栏填的是目的地：RI 显示时自动加箭头，PS 直接显示 */
+/** Whether the leg has a start time */
+export const hasStart = (_t: LegType) => true; // every leg has a start and an end time (the Starting Line's start is the departure)
+/** Route Info and Pit Stop names are destinations: RI shows an arrow, PS shows the name as is */
 export const isDestinationLeg = (t: LegType) => t === 'RI' || t === 'PS';
-/** 类型名：中继站在最后一个赛段里叫“终点” */
+/** Type label: the pit stop of the last episode is called "finish" */
 export const legTypeLabel = (t: LegType, lastEpisode: boolean) => (t === 'PS' && lastEpisode ? '终点' : LEG_TYPE_LABEL[t]);
 export const legName = (l: { type: LegType; name: string }) => (l.type === 'RI' ? `→ ${l.name}` : l.name);
 export const RECORD_MODE_LABEL: Record<RecordMode, string> = { none: '不记录时间', single: '只记一次（出发/打卡/签到）', full: '记开始与完成' };

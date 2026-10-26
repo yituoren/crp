@@ -1,4 +1,4 @@
-// 全局注册的组件类型（main.ts 里 app.component 注册）
+// Types for globally registered components (app.component in main.ts)
 import Icon from './components/Icon.vue';
 import MSelect from './components/MSelect.vue';
 

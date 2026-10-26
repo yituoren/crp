@@ -5,7 +5,7 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/login', component: () => import('@/views/LoginView.vue'), meta: { public: true } },
-    // 进比赛之前：个人主页、账号管理、改密
+    // Before entering an event: home, account management
     {
       path: '/',
       component: () => import('@/components/PlainLayout.vue'),
@@ -15,7 +15,7 @@ export const router = createRouter({
         { path: 'password', redirect: '/account' },
       ],
     },
-    // 比赛内：/e/<hash>/...
+    // Inside an event: /e/<hash>/...
     {
       path: '/e/:hash',
       component: () => import('@/components/AppLayout.vue'),

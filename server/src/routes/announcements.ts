@@ -8,14 +8,14 @@ export const announcementRoutes = new Hono<Env>();
 announcementRoutes.get('/announcements', (c) => {
   const ev = c.get('event');
   const me = get('SELECT last_read_id FROM ann_reads WHERE user_id = ? AND event_id = ?', c.get('user').id, ev.id);
-  // 置顶的在前（按置顶时间倒序），其余按发布时间倒序
+  // pinned first (newest pin first), then by publish time descending
   return c.json({
     announcements: all('SELECT * FROM announcements WHERE event_id = ? ORDER BY (pinned_at IS NULL), pinned_at DESC, id DESC LIMIT 200', ev.id),
     lastReadId: me?.last_read_id ?? 0,
   });
 });
 
-/** 标记已读到某条公告（按账号 + 比赛存，换设备也生效） */
+/** Mark announcements read up to an id (stored per account + event, so it follows the user across devices) */
 announcementRoutes.post('/announcements/read', async (c) => {
   const { id } = await body(c);
   const n = int(id, 0);
@@ -32,7 +32,7 @@ announcementRoutes.post('/announcements', hostOnly, async (c) => {
   const content = str(b.content, 2000);
   if (!content) throw bad('内容不能为空');
   const level = ['info', 'warning', 'urgent'].includes(b.level) ? b.level : 'info';
-  const audience = str(b.audience, 50) || 'all'; // 通知对象：预留，暂只支持 all
+  const audience = str(b.audience, 50) || 'all'; // audience: reserved, only "all" for now
   const r = run(
     'INSERT INTO announcements(content, level, created_by, created_at, audience, event_id) VALUES (?,?,?,?,?,?)',
     content, level, c.get('user').displayName, now(), audience, c.get('event').id,
@@ -48,7 +48,7 @@ function own(c: any, id: number) {
   return a;
 }
 
-/** 置顶 / 取消置顶 */
+/** Pin / unpin */
 announcementRoutes.post('/announcements/:id/pin', hostOnly, async (c) => {
   const id = intParam(c, 'id');
   own(c, id);

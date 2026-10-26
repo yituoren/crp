@@ -33,8 +33,8 @@ console.log(`[seed] events=${seeded.events} episodes=${seeded.episodes} teams=${
 
 const app = new Hono<Env>();
 app.use(logger());
-app.use(compress()); // gzip/br：JSON 与 JS 体积压到 1/4 左右
-// 带哈希的静态资源可以永久缓存
+app.use(compress()); // gzip/br: JSON and JS shrink to roughly a quarter
+// hashed static assets can be cached forever
 app.use('/assets/*', async (c, next) => {
   await next();
   c.header('Cache-Control', 'public, max-age=31536000, immutable');
@@ -50,14 +50,14 @@ const api = new Hono<Env>();
 api.route('/auth', authRoutes);
 api.get('/health', (c) => c.json({ ok: true, time: new Date().toISOString() }));
 
-// 进比赛之前：比赛列表 / 加入、账号管理、系统级备份
+// Before entering an event: event list / join, account management, system backups
 const secured = new Hono<Env>();
 secured.use('*', authRequired);
 secured.route('/', eventListRoutes);
 secured.route('/', userRoutes);
 secured.route('/', systemRoutes);
 secured.route('/', fileRoutes);
-// 比赛内：/api/events/:hash/...，所有数据接口都挂在比赛下
+// Inside an event: /api/events/:hash/..., every data route hangs off the event
 const inEvent = new Hono<Env>();
 inEvent.use('*', eventContext);
 inEvent.route('/', eventInfoRoutes);
@@ -74,7 +74,7 @@ api.route('/', secured);
 app.route('/api', api);
 app.notFound((c) => (c.req.path.startsWith('/api/') ? c.json({ error: '接口不存在' }, 404) : c.text('Not found', 404)));
 
-// 静态前端（生产模式：web 构建产物复制到 server/public）
+// Static front end (production: the web build is copied into server/public)
 if (fs.existsSync(PUBLIC_DIR)) {
   const rel = path.relative(process.cwd(), PUBLIC_DIR);
   app.use('/*', serveStatic({ root: rel }));

@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import LegTag from './LegTag.vue';
 import type { LegType } from '@/types';
 
-// Material 风格下拉：按钮 + 浮动菜单，菜单 fixed 定位不受滚动容器裁剪；空间不够时向上弹
+// Material-style select: a button plus a floating menu; the menu is fixed-positioned so scroll containers do not clip it, and opens upward when short on space
 type Val = string | number | null | undefined;
 const props = withDefaults(defineProps<{
   modelValue: Val;
@@ -11,9 +11,9 @@ const props = withDefaults(defineProps<{
   placeholder?: string;
   disabled?: boolean;
   sm?: boolean;
-  /** 描边字段样式：放在文本输入框旁边或表单里时用，与输入框对齐；默认是 Gemini 式的无边框灰色胶囊 */
+  /** Field variant for use next to inputs or inside forms, aligned with inputs; the default is a Gemini-style borderless grey pill */
   outlined?: boolean;
-  /** 搜索筛选条（Gmail 式）：细边框圆角矩形，选中后高亮 */
+  /** Search filter chip (Gmail style): thin outline, highlighted when a value is set */
   chip?: boolean;
   title?: string;
 }>(), { placeholder: '请选择', disabled: false, sm: false, outlined: false, chip: false });
@@ -25,7 +25,7 @@ const selected = computed(() => props.options.find((o) => String(o.value) === St
 const label = computed(() => selected.value?.label ?? props.placeholder);
 const isEmpty = computed(() => !selected.value);
 
-const sheet = () => window.innerWidth <= 760; // 手机：菜单改为底部面板
+const sheet = () => window.innerWidth <= 760; // phones: the menu becomes a bottom sheet
 function place() {
   if (sheet()) { menuStyle.value = {}; return; }
   const btn = root.value?.querySelector('.sel-btn') as HTMLElement | null;
@@ -35,7 +35,7 @@ function place() {
   const below = window.innerHeight - r.bottom;
   const top = below >= menuH + 8 || r.top < menuH ? r.bottom + 4 : r.top - menuH - 4;
   menuStyle.value = { position: 'fixed', top: `${top}px`, left: `${r.left}px`, minWidth: `${Math.max(r.width, 120)}px` };
-  // 菜单渲染后再量一次宽度，超出右边缘就往左挪
+  // measure the menu after render and shift it left when it overflows the right edge
   nextTick(() => { const w = menu.value?.offsetWidth ?? 0; const left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)); if (left !== r.left) menuStyle.value = { ...menuStyle.value, left: `${left}px` }; });
 }
 function toggleOpen() { if (props.disabled) return; open.value = !open.value; if (open.value) place(); }

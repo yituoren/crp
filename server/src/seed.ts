@@ -5,8 +5,8 @@ const DEFAULT_HOSTS = (process.env.HOST_USERNAMES ?? '阳秋,云缨,云影').spl
 const randomHash = () => [...crypto.getRandomValues(new Uint8Array(4))].map((b) => b.toString(16).padStart(2, '0')).join('');
 
 export function seed() {
-  // ---- 比赛 ----
-  // 首次升级到多比赛：把原来的全局设置变成 1 号比赛（开发用），再建一个空白的测试赛；不提供页面上的创建/删除通道
+  // ---- Events ----
+  // First upgrade to multi-event: turn the old global settings into event 1 (development) and add an empty test event
   if (!get('SELECT 1 FROM events LIMIT 1')) {
     const name = getSetting('event_name') || process.env.EVENT_NAME || 'BJ20 全明星赛';
     const hosts = (getSetting('hosts') || DEFAULT_HOSTS.join(',')).split(',').map((s) => s.trim()).filter(Boolean).join(',');
@@ -18,13 +18,13 @@ export function seed() {
         randomHash(), name, 'dev', hosts, teamSize, currency, rbGap, now());
       run('INSERT INTO events(hash, name, invite_code, hosts, team_size, currency_mode, rb_gap, created_at) VALUES (?,?,?,?,?,?,?,?)',
         randomHash(), '测试赛', 'test', hosts, 2, 'yuan', 2, now());
-      // 已注册的账号默认都加入开发用比赛，保持升级前后可用
+      // existing accounts join the development event so nothing breaks after the upgrade
       for (const u of all('SELECT id FROM users')) run('INSERT OR IGNORE INTO event_members(event_id, user_id, joined_at) VALUES (1, ?, ?)', u.id, now());
     });
   }
-  // 旧的“主办即全局 host 角色”不再使用：主办由各比赛的成员角色决定
+  // the old global host role is gone: hosts are decided by per-event member roles
   run("UPDATE users SET role = 'crew' WHERE role = 'host'");
-  // 一次性：把旧的主办名单转成成员角色（名单里的账号设为该比赛的主办成员），然后清空名单
+  // One-off: convert the legacy host list into member roles (listed accounts become host members), then clear the list
   if (getSetting('event_roles') !== 'v1') {
     tx(() => {
       for (const ev of all('SELECT id, hosts FROM events')) {
@@ -38,7 +38,7 @@ export function seed() {
     });
     setSetting('event_roles', 'v1');
   }
-  // 旧的公告已读位置（users.ann_read_id）搬到按比赛存的 ann_reads（只对 1 号比赛）
+  // move the old read position (users.ann_read_id) into the per-event ann_reads table (event 1 only)
   for (const u of all('SELECT id, ann_read_id FROM users WHERE ann_read_id > 0')) {
     run('INSERT OR IGNORE INTO ann_reads(user_id, event_id, last_read_id) VALUES (?,1,?)', u.id, u.ann_read_id);
     run('UPDATE users SET ann_read_id = 0 WHERE id = ?', u.id);
@@ -63,7 +63,7 @@ export function seed() {
       for (let i = 1; i <= 12; i++) run('INSERT INTO teams(code, name, members, status, currency, sort, event_id) VALUES (?,?,?,?,?,?,1)', `T${i}`, String(i).padStart(2, '0'), '[]', 'alive', 0, i);
     });
   }
-  // 一次性：类型缩写更正——快进由 FO 改为 FF，对抗由 PK 改为 FO（先改快进再改对抗，避免混淆）
+  // One-off: fix type codes — Fast Forward FO → FF, Face Off PK → FO (Fast Forward first to avoid a clash)
   if (getSetting('leg_types') !== 'v2') {
     tx(() => {
       run("UPDATE legs SET type = 'FF' WHERE type = 'FO'");
@@ -71,7 +71,7 @@ export function seed() {
     });
     setSetting('leg_types', 'v2');
   }
-  // 一次性：把默认队名“队伍N”改成两位编号“NN”
+  // One-off: rename default team names "队伍N" to two-digit numbers "NN"
   if (getSetting('team_names') !== 'v1') {
     for (const t of all('SELECT id, name FROM teams')) {
       const m = /^队伍(\d+)$/.exec(t.name);
@@ -79,7 +79,7 @@ export function seed() {
     }
     setSetting('team_names', 'v1');
   }
-  // 一次性规范旧数据：每个赛段末尾必须有中继站；只有第一个赛段保留 Starting Line
+  // One-off cleanup: every episode must end with a Pit Stop; only the first episode keeps a Starting Line
   if (getSetting('legs_structure') !== 'v1') {
     tx(() => {
       const eps = all('SELECT id, event_id FROM episodes ORDER BY event_id, sort, id');
@@ -96,14 +96,14 @@ export function seed() {
           run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,1,?)', ep.id, 1, 'SL', '起跑线', 'full');
         }
         if (idx > 0) {
-          // 非首赛段的 Starting Line：没有记录的直接删除，有记录的改为任务点保留数据
+          // Starting Lines outside the first episode: delete when unrecorded, otherwise turn into a Task to keep the data
           for (const l of legs.filter((x) => x.type === 'SL')) {
             const used = get('SELECT 1 FROM progress WHERE leg_id = ? LIMIT 1', l.id);
             if (used) run("UPDATE legs SET type = 'TI', record_mode = 'full' WHERE id = ?", l.id);
             else run('DELETE FROM legs WHERE id = ?', l.id);
           }
         }
-        // 重新排序：SL 第一、PS 最后
+        // reorder: SL first, PS last
         const cur = all('SELECT id, type FROM legs WHERE episode_id = ? ORDER BY sort, id', ep.id);
         const order = [...cur.filter((l) => l.type === 'SL'), ...cur.filter((l) => l.type !== 'SL' && l.type !== 'PS'), ...cur.filter((l) => l.type === 'PS')];
         order.forEach((l, i) => run('UPDATE legs SET sort = ? WHERE id = ?', i + 1, l.id));

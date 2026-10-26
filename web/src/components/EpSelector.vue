@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRace } from '@/stores/race';
 const race = useRace();
-// 进行中：绿点；已结束：整个标签变灰，不加符号
+// running: green dot; finished: the whole tab turns grey, no symbol
 
 </script>
 

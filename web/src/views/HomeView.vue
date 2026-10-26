@@ -13,7 +13,7 @@ const auth = useAuth();
 const ui = useUi();
 const router = useRouter();
 
-// 列表数据
+// List data
 const events = ref<EventSummary[]>([]);
 const loading = ref(true);
 async function load() {
@@ -21,19 +21,19 @@ async function load() {
   try { const d = await api('/events'); events.value = d.all; } catch (e) { ui.error(e); } finally { loading.value = false; }
 }
 
-// 左侧栏：相当于预置的筛选条件（我的比赛 = 只看已加入）；手机上是抽屉
+// Sidebar: acts as a preset filter (my events = joined only); a drawer on phones
 const tab = ref<'mine' | 'all'>('mine');
 const drawer = ref(false);
 function pickTab(t: 'mine' | 'all') { tab.value = t; drawer.value = false; }
 const mineCount = computed(() => events.value.filter((e) => e.joined).length);
 
-// 展示形式：卡片 / 条目，记住上次选择
+// View mode: cards / rows, remembered
 const VIEW_KEY = 'crp.home.view';
 const view = ref<'cards' | 'list'>('cards');
 try { if (localStorage.getItem(VIEW_KEY) === 'list') view.value = 'list'; } catch { /* ignore */ }
 watch(view, (v) => { try { localStorage.setItem(VIEW_KEY, v); } catch { /* ignore */ } });
 
-// 顶部搜索：名字 / 主办 关键词 + 三个条件筛选
+// Top search: name / host keyword plus three filters
 const q = ref('');
 const filter = reactive({ time: '' as '' | '7' | '30' | '365', role: '' as '' | 'host' | 'crew' | 'none', status: '' as '' | 'pending' | 'running' | 'finished' });
 const TIME_OPTIONS = [{ value: '', label: '不限时间' }, { value: '7', label: '最近一周' }, { value: '30', label: '最近一个月' }, { value: '365', label: '最近一年' }];
@@ -55,7 +55,7 @@ const roleText = (e: EventSummary) => (!e.joined ? (e.pending ? '待审核' : '�
 const STATUS_TEXT = { pending: '未开始', running: '进行中', finished: '已结束' } as const;
 const snippet = (e: EventSummary) => [e.ownerName ? `主办 ${e.ownerName}` : '', `${e.memberCount} 名幕后`, `${e.episodeCount} 个赛段`].filter(Boolean).join(' · ');
 
-// 点击一行：已加入直接进入；未加入弹出申请（邀请码 + 说明），主办审核通过后才成为成员
+// Row click: joined events open directly; otherwise a join request dialog (invite code + note), membership after host approval
 const joining = ref<EventSummary | null>(null);
 const code = ref('');
 const note = ref('');
@@ -76,7 +76,7 @@ async function join() {
   } catch (e) { ui.error(e); }
 }
 
-// 创建比赛：先只填名称和邀请码，其余在赛事设置里改
+// Create event: only name and invite code here, the rest in the event settings
 const creating = ref(false);
 const form = reactive({ name: '', inviteCode: '' });
 function openCreate() { Object.assign(form, { name: '', inviteCode: '' }); creating.value = true; drawer.value = false; }

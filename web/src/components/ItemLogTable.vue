@@ -7,7 +7,7 @@ import { fmtDateTime } from '@/utils/time';
 import { legName, type ItemLogEntry } from '@/types';
 import LegTag from './LegTag.vue';
 
-/** 道具日志：获得（购买同步）与使用，与经费流水分开。使用记录可撤销（物品回到背包）；购买请到经费流水撤销，这里会同步 */
+/** Item log: gains (mirrored from purchases) and uses, separate from the money ledger. Uses can be reverted (item returns to the bag); purchases are reverted in the ledger and synced here */
 const props = withDefaults(defineProps<{ teamId?: number; limit?: number }>(), { limit: 0 });
 const race = useRace();
 const ui = useUi();

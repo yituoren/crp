@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Material Icons（Apache 2.0）内嵌 SVG 路径，不依赖外部字体，国内访问不受影响
+// Inline SVG paths from Material Icons (Apache 2.0): no external font, so it works everywhere
 const PATHS: Record<string, string> = {
   arrow_back: 'M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z',
   arrow_upward: 'M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z',

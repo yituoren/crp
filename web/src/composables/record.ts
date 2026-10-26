@@ -5,7 +5,7 @@ import { useUi } from '@/stores/ui';
 import { fmtTime, fmtTimeSec, toLocalInput, fromLocalInput } from '@/utils/time';
 import { endLabel, legName } from '@/types';
 
-/** 进度记录动作（带确认） */
+/** Progress actions (with confirmation) */
 export function useRecord() {
   const race = useRace();
   const ui = useUi();
@@ -19,7 +19,7 @@ export function useRecord() {
     return d;
   }
 
-  /** 弹时间表单（默认服务器当前时间），返回 ISO；取消返回 null */
+  /** Show the time form (defaults to server time); returns ISO or null when cancelled */
   async function pickTime(title: string, message: string): Promise<string | null> {
     const v = await ui.askTime(title, message, toLocalInput(auth.serverNow().toISOString()));
     if (v === null) return null;
@@ -28,7 +28,7 @@ export function useRecord() {
     return iso;
   }
 
-  /** 记录本环节的结束时间（出发/到达/签到/完成）；开始时间由服务端自动接上一个环节 */
+  /** Record this leg's end time (departure / arrival / check-in / completion); the server chains the start time from the previous leg */
   async function complete(teamId: number, legId: number) {
     const team = race.teamById.get(teamId)?.label ?? '';
     const leg = race.legById.get(legId);
@@ -41,7 +41,7 @@ export function useRecord() {
       ui.toast(d.already ? `已有${label}记录：${f(d.progress.completed_at)}` : `${label}时间已记录：${f(d.progress.completed_at)}`);
     } catch (e) { ui.error(e); }
   }
-  /** 支线：开始支线 = arrive，结束支线 = complete；主线在支线进行期间暂停计时 */
+  /** Side quest: start = arrive, end = complete; the main leg's clock pauses meanwhile */
   async function branch(kind: 'start' | 'end', teamId: number, legId: number) {
     const team = race.teamById.get(teamId)?.label ?? '';
     const leg = race.legById.get(legId);

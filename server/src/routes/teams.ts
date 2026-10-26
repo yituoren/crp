@@ -6,7 +6,7 @@ import { audit, body, str, int, intParam, notify, bad, notFound, money } from '.
 
 export const teamRoutes = new Hono<Env>();
 
-/** members 列存 JSON 数组；兼容旧的自由文本（按 / & 、 , 空格拆分） */
+/** members is a JSON array; old free text is split on / & 、 , and spaces */
 export function parseMembers(raw: unknown): string[] {
   if (Array.isArray(raw)) return raw.map((x) => String(x ?? '').trim()).filter(Boolean);
   const s = String(raw ?? '').trim();
@@ -14,12 +14,12 @@ export function parseMembers(raw: unknown): string[] {
   if (s.startsWith('[')) { try { return parseMembers(JSON.parse(s)); } catch { /* fallthrough */ } }
   return s.split(/[\/&、,，\s]+/).map((x) => x.trim()).filter(Boolean);
 }
-/** 队伍显示名：填了成员就显示「编号 A&B&C」，否则只显示编号 */
+/** Team label: "number A&B&C" when members are filled in, otherwise just the number */
 export const teamLabel = (name: string, members: string[]) => (members.length ? `${name} ${members.join('&')}` : name);
 export function teamLabelMap(): Map<number, string> {
   return new Map(all('SELECT id, name, members FROM teams').map((t) => [t.id, teamLabel(t.name, parseMembers(t.members))]));
 }
-/** 每队各成员完成路障的次数（跨赛段），用于路障人选限制 */
+/** Roadblock counts per member per team (across episodes), used for the roadblock limit */
 function rbCountsByTeam() {
   const m = new Map<number, Record<string, number>>();
   for (const r of all(
@@ -31,7 +31,7 @@ function rbCountsByTeam() {
   }
   return m;
 }
-/** 每队背包：道具日志里未撤销的获得减去使用，按物品计数 */
+/** Team bags: non-reverted gains minus uses in the item log, counted per item */
 export function inventoryByTeam(eventId: number) {
   const m = new Map<number, { name: string; count: number }[]>();
   for (const r of all(
@@ -44,7 +44,7 @@ export function inventoryByTeam(eventId: number) {
   }
   return m;
 }
-/** 某队某物品的持有数 */
+/** How many of an item a team holds */
 export function inventoryCount(teamId: number, itemName: string): number {
   return get<{ n: number | null }>('SELECT SUM(delta) AS n FROM item_log WHERE team_id = ? AND item_name = ? AND reverted = 0 AND reverts_id IS NULL', teamId, itemName)?.n ?? 0;
 }
@@ -57,12 +57,12 @@ export const listTeams = (eventId: number) => {
   });
 };
 const pad2 = (n: number) => String(n).padStart(2, '0');
-/** 队伍编号由顺序自动生成（01、02…），不可手动修改；顺序变化、新增、删除后重新编号 */
+/** Team numbers are generated from the order (01, 02…) and cannot be edited; renumbered after reorder, insert or delete */
 function renumberTeams(eventId: number) {
   all<{ id: number }>('SELECT id FROM teams WHERE event_id = ? ORDER BY sort, id', eventId).forEach((t, i) => run('UPDATE teams SET sort = ?, name = ? WHERE id = ?', i + 1, pad2(i + 1), t.id));
 }
 
-/** 队伍必须属于当前比赛 */
+/** The team must belong to the current event */
 export function teamInEvent(c: Context, id: number) {
   const t = get('SELECT * FROM teams WHERE id = ?', id);
   if (!t || t.event_id !== (c.get('event') as EventRow).id) throw notFound('队伍不存在');
@@ -75,7 +75,7 @@ teamRoutes.post('/teams', hostOnly, async (c) => {
   const b = await body(c);
   const eventId = c.get('event').id;
   const count = get<{ n: number }>('SELECT COUNT(*) AS n FROM teams WHERE event_id = ?', eventId)!.n;
-  const name = pad2(count + 1); // 编号按顺序自动生成
+  const name = pad2(count + 1); // numbers are generated from the order
   let code = str(b.code, 20) || `T${count + 1}`;
   while (get('SELECT 1 FROM teams WHERE code = ? AND event_id = ?', code, eventId)) code = code + '_';
   const currency = b.currency === undefined ? 0 : money(b.currency, '货币');
@@ -89,7 +89,7 @@ teamRoutes.post('/teams', hostOnly, async (c) => {
   return c.json({ id: Number(r.lastInsertRowid) });
 });
 
-/** 拖动换序：ids 为新的顺序；没列出的队伍按原顺序排在后面；之后重新编号 */
+/** Drag reorder: ids is the new order; teams not listed keep their relative order after it; then renumber */
 teamRoutes.put('/teams/order', hostOnly, async (c) => {
   const eventId = c.get('event').id;
   const { ids } = await body(c);
@@ -110,19 +110,19 @@ teamRoutes.put('/teams/:id', hostOnly, async (c) => {
   const id = intParam(c, 'id');
   const before = teamInEvent(c, id);
   const b = await body(c);
-  const name = before.name; // 编号由顺序决定，不接受修改
+  const name = before.name; // the number comes from the order and cannot be changed
   const members = b.members === undefined ? before.members : JSON.stringify(parseMembers(b.members).slice(0, 20));
-  // 状态只能手动改为“退赛”或从退赛“恢复”；淘汰由环节规则自动计算，没有手动入口
+  // status can only be set to withdrawn or restored from it; elimination is computed from leg rules, no manual entry
   if (b.status !== undefined && !['alive', 'withdrawn'].includes(b.status)) throw bad('淘汰由环节的淘汰规则自动判定，不能手动设置');
   if (b.status === 'alive' && before.status === 'eliminated') throw bad('淘汰状态由记录自动计算，修改记录后会自动恢复');
   const status = b.status === undefined ? before.status : b.status;
-  const sort = before.sort; // 顺序通过 PUT /teams/order 调整
+  const sort = before.sort; // order is changed through PUT /teams/order
   let locked: number | null = before.locked_from_leg_id ?? null;
-  if (status === 'withdrawn' && before.status !== 'withdrawn') locked = lockFromAfterLastRecord(c.get('event').id, id); // 退赛：保留之前记录，之后环节锁定
+  if (status === 'withdrawn' && before.status !== 'withdrawn') locked = lockFromAfterLastRecord(c.get('event').id, id); // withdrawal: earlier records stay, later legs are locked
   if (status === 'alive' && before.status === 'withdrawn') locked = null;
   run('UPDATE teams SET name = ?, members = ?, status = ?, sort = ?, locked_from_leg_id = ?, eliminated_leg_id = CASE WHEN ? = \'withdrawn\' THEN NULL ELSE eliminated_leg_id END WHERE id = ?', name, members, status, sort, locked, status, id);
   audit(c.get('user'), 'update', 'team', id, before, { name, members, status, sort, locked_from_leg_id: locked });
-  recomputeEliminations(c.get('event').id); // 退赛/恢复会改变参与计算的队伍
+  recomputeEliminations(c.get('event').id); // withdrawing / restoring changes which teams take part
   notify('teams');
   return c.json({ ok: true });
 });
@@ -131,7 +131,7 @@ teamRoutes.delete('/teams/:id', hostOnly, (c) => {
   const id = intParam(c, 'id');
   const before = teamInEvent(c, id);
   tx(() => {
-    // 该队的全部记录一起删除：进度、罚时、结算、经费流水、作为施加/合作对象的引用、排班里的跟队
+    // delete everything of the team: progress, penalties, results, ledger, references as target / partner, follow assignments
     run('DELETE FROM progress WHERE team_id = ?', id);
     run('UPDATE progress SET target_team_id = NULL WHERE target_team_id = ?', id);
     run('DELETE FROM penalties WHERE team_id = ?', id);
@@ -147,7 +147,7 @@ teamRoutes.delete('/teams/:id', hostOnly, (c) => {
   return c.json({ ok: true });
 });
 
-/** 重置全部队伍：状态恢复存活、货币清零（不改队名） */
+/** Reset all teams: alive again, balance zero (names untouched) */
 teamRoutes.post('/teams/reset', hostOnly, (c) => {
   tx(() => {
     run('UPDATE teams SET status = ?, currency = 0, eliminated_leg_id = NULL, locked_from_leg_id = NULL WHERE event_id = ?', 'alive', c.get('event').id);

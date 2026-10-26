@@ -27,7 +27,7 @@ ledgerRoutes.get('/ledger', (c) => {
   return c.json({ ledger: rows.map((r) => ({ ...r, team_name: labels.get(r.team_id) ?? r.team_name, delta: fromCents(r.delta), balance_after: fromCents(r.balance_after) })) });
 });
 
-/** 内部记一笔流水（不做权限校验，调用方负责）：返回流水 id */
+/** Internal: write a ledger row (no permission check, the caller is responsible); returns the row id */
 export function addLedgerEntry(opts: { episodeId: number | null; teamId: number; delta: number; reason: string; legId: number | null; kind: 'shop' | 'cutoff' | 'other'; user: { id: number; displayName: string } }) {
   const team = get<{ currency: number }>('SELECT currency FROM teams WHERE id = ?', opts.teamId);
   if (!team) throw notFound('队伍不存在');
@@ -41,7 +41,7 @@ export function addLedgerEntry(opts: { episodeId: number | null; teamId: number;
     return Number(r.lastInsertRowid);
   });
 }
-/** 内部反向一笔流水（不做权限校验）：已撤销过则忽略 */
+/** Internal: revert a ledger row (no permission check); ignored when already reverted */
 export function revertLedgerEntry(id: number, user: { id: number; displayName: string }) {
   const orig = get('SELECT * FROM currency_ledger WHERE id = ?', id);
   if (!orig || orig.reverted || orig.reverts_id) return;
@@ -67,14 +67,14 @@ ledgerRoutes.post('/ledger', async (c) => {
   let delta = kind === 'shop' ? 0 : money(b.delta);
   let reason = str(b.reason, 200) || '手动调整';
   if (kind === 'cutoff') {
-    // 熔断：只能扣除
+    // cutoff: deductions only
     if (delta >= 0) throw bad('熔断只能扣除');
     reason = `熔断${str(b.reason, 200) ? '：' + str(b.reason, 200) : ''}`;
   }
   let item: { id: number; name: string; price: number } | null = null;
   if (!teamId) throw bad('缺少队伍');
   if (kind === 'shop') {
-    // 商店购买：只有货币模式；金额固定为商品价格，只能扣除；必须选在开放商店的环节
+    // shop purchase: coin mode only; amount fixed to the item price, deduction only; must be on a shop-open leg
     if (currencyMode() !== 'coin') throw bad('只有货币模式的比赛才有商店');
     item = get<{ id: number; name: string; price: number }>('SELECT id, name, price FROM shop_items WHERE id = ? AND event_id = ?', int(b.itemId, 0), c.get('event').id) ?? null;
     if (!item) throw notFound('商品不存在');
@@ -88,7 +88,7 @@ ledgerRoutes.post('/ledger', async (c) => {
   const epRow = episodeId ? get<{ status: string; code: string }>('SELECT status, code FROM episodes WHERE id = ?', episodeId) : null;
   if (epRow?.status === 'pending' && !isAdminRole(user.role)) throw bad(`${epRow.code} 尚未开始，开始赛段后才能操作经费`);
   { const r = editLockReason(user, epRow, team as { status: string }); if (r) throw forbidden(r); }
-  const legId = int(b.legId, 0) || null; // 环节为空 = “其他”，只有主办能选（与罚时一致）
+  const legId = int(b.legId, 0) || null; // no leg = "other", hosts only (same as penalties)
   if (!legId && !isHostRole(user.role)) throw forbidden('“其他”环节只能由主办选择，请选择具体环节');
   const legRow = legId ? get('SELECT id, shop_open FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId ?? 0) : null;
   if (legId && !legRow) throw notFound('环节不存在');
@@ -104,7 +104,7 @@ ledgerRoutes.post('/ledger', async (c) => {
       episodeId, teamId, delta, balance, reason, user.id, user.displayName, now(), legId, kind, item?.id ?? null, item?.name ?? null,
     );
     const newId = Number(r.lastInsertRowid);
-    // 购买同步写一条道具“获得”
+    // mirror the purchase as an item "gained" row
     if (kind === 'shop' && item) run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, ledger_id, operator_id, operator_name, created_at) VALUES (?,?,?,?,1,?,?,?,?,?)', episodeId, teamId, legId, item.name, 'buy', newId, user.id, user.displayName, now());
     return newId;
   });
@@ -114,7 +114,7 @@ ledgerRoutes.post('/ledger', async (c) => {
   return c.json({ id, balance: fromCents(balance) });
 });
 
-/** 撤销一条经费变动：只有发出这条记录的本人和主办可以撤销 */
+/** Revert a money change: only its author or a host may do so */
 ledgerRoutes.post('/ledger/:id/revert', (c) => {
   const id = int(c.req.param('id'), 0);
   const user = c.get('user');
@@ -138,12 +138,12 @@ ledgerRoutes.post('/ledger/:id/revert', (c) => {
     return Number(r.lastInsertRowid);
   });
   audit(user, 'currency_revert', 'ledger', id, { delta: fromCents(orig.delta) }, { revertId: newId, balance: fromCents(balance) });
-  // 购买被撤销 = 那件道具的“获得”作废：道具日志同步写一条反向记录
+  // reverting a purchase voids that item's "gained" row: write the matching reverse row in the item log
   if (orig.kind === 'shop') {
     const got = get<{ id: number }>('SELECT id FROM item_log WHERE ledger_id = ? AND reverts_id IS NULL AND reverted = 0', id);
     if (got) tx(() => { run('UPDATE item_log SET reverted = 1 WHERE id = ?', got.id); run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, ledger_id, operator_id, operator_name, created_at, reverts_id) VALUES (?,?,?,?,-1,?,?,?,?,?,?)', orig.episode_id, orig.team_id, orig.leg_id ?? null, orig.item_name, 'buy', newId, user.id, user.displayName, now(), got.id); });
   }
-  // 熔断扣币被撤销 = 那次使用作废：删掉使用记录，倒计时按剩余记录重算
+  // reverting a cutoff charge voids that use: delete the use record so the countdown is recomputed from what remains
   if (orig.kind === 'cutoff') {
     const u = get<{ id: number }>('SELECT id FROM cutoff_uses WHERE ledger_id = ?', id);
     if (u) { run('DELETE FROM cutoff_uses WHERE id = ?', u.id); audit(user, 'cutoff_use_delete', 'team', orig.team_id, { useId: u.id, byLedgerRevert: id }); notify('progress', orig.episode_id); }
@@ -153,7 +153,7 @@ ledgerRoutes.post('/ledger/:id/revert', (c) => {
   return c.json({ id: newId, balance: fromCents(balance) });
 });
 
-// ================= 道具日志：获得（购买同步）、使用、撤销 =================
+// ================= Item log: gains (mirrored from purchases), uses, reverts =================
 export function listItemLog(eventId: number, episodeId?: number | null, teamId?: number | null) {
   const conds = ['t.event_id = ?']; const params: (number | string)[] = [eventId];
   if (episodeId) { conds.push('l.episode_id = ?'); params.push(episodeId); }
@@ -166,7 +166,7 @@ export function listItemLog(eventId: number, episodeId?: number | null, teamId?:
 }
 ledgerRoutes.get('/item-log', (c) => c.json({ items: listItemLog(c.get('event').id, Number(c.req.query('episodeId')) || null, Number(c.req.query('teamId')) || null) }));
 
-/** 使用一件背包物品：不动余额，只记道具日志；自动记在该队当前进行中的环节上 */
+/** Use one bag item: no balance change, only an item-log row; attributed to the team's current leg */
 ledgerRoutes.post('/items/use', async (c) => {
   const user = c.get('user');
   const b = await body(c);
@@ -192,7 +192,7 @@ ledgerRoutes.post('/items/use', async (c) => {
   return c.json({ id: Number(r.lastInsertRowid) });
 });
 
-/** 撤销一条道具使用：物品回到背包。购买的“获得”请从经费流水撤销（会同步） */
+/** Revert an item use: the item returns to the bag. Purchases are reverted through the ledger (which syncs here) */
 ledgerRoutes.post('/item-log/:id/revert', (c) => {
   const id = int(c.req.param('id'), 0);
   const user = c.get('user');

@@ -55,14 +55,14 @@ export const isoOrNull = (v: unknown): string | null => {
   return d.toISOString();
 };
 export const currencyMode = (): 'yuan' | 'coin' => (currentEvent()?.currency_mode === 'coin' ? 'coin' : 'yuan');
-/** 金额格式化（服务端提示用）：经费两位小数，货币整数 */
+/** Money formatting for server messages: cash with 2 decimals, coins as integers */
 export function fmtMoneyServer(cents: number): string {
   const v = cents / 100;
   return currencyMode() === 'coin' ? `${Math.round(v)} 币` : `${v.toFixed(2)} 元`;
 }
 /**
- * 统一锁定规则：赛段已结束，或队伍已淘汰 / 退赛，所有记录（时间、罚时、经费、结算）只有管理员能改。
- * 返回不能改的原因；null 表示没被这条规则拦住
+ * Unified lock rule: once an episode is finished, or a team is eliminated / withdrawn, every record (times, penalties,
+ * money, results) is admin only. Returns the reason, or null when this rule does not block.
  */
 export function editLockReason(user: { role: string }, episode: { status: string; code: string } | null | undefined, team: { status: string } | null | undefined): string | null {
   if (user.role === 'admin') return null;

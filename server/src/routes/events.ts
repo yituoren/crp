@@ -3,10 +3,10 @@ import { all, get, run, tx, now, fromCents } from '../db.js';
 import { hostOnly, adminOnly, isMember, joinEvent, loadEvent, roleIn, type Env, type EventRow } from '../auth.js';
 import { audit, body, str, int, intParam, bad, notFound, notify, money } from '../util.js';
 
-/** 进比赛之前的接口：比赛列表、加入 */
+/** Routes used before entering an event: list and join */
 export const eventListRoutes = new Hono<Env>();
 
-/** 比赛整体状态：有进行中的赛段 = 进行中；赛段全部结束 = 已结束；否则未开始 */
+/** Overall event status: any running episode = running; all finished = finished; otherwise pending */
 function eventStatus(eventId: number): 'pending' | 'running' | 'finished' {
   const eps = all<{ status: string }>('SELECT status FROM episodes WHERE event_id = ?', eventId);
   if (eps.some((e) => e.status === 'running')) return 'running';
@@ -25,7 +25,7 @@ function summary(ev: EventRow, user: { id: number; username: string; role: strin
   };
 }
 
-/** 我的比赛 + 公共赛事（全部比赛，未加入的需要邀请码） */
+/** My events + all events (events not joined need an invite code) */
 eventListRoutes.get('/events', (c) => {
   const user = c.get('user');
   const rows = all<EventRow>('SELECT * FROM events ORDER BY id DESC').map((ev) => summary(ev, user));
@@ -35,7 +35,7 @@ eventListRoutes.get('/events', (c) => {
 const randomHash = () => [...crypto.getRandomValues(new Uint8Array(4))].map((b) => b.toString(16).padStart(2, '0')).join('');
 const randomCode = () => { const a = 'abcdefghjkmnpqrstuvwxyz23456789'; return [...crypto.getRandomValues(new Uint8Array(6))].map((b) => a[b % a.length]).join(''); };
 
-/** 创建比赛：任何登录用户都可以，创建者自动成为该比赛的主办 */
+/** Create an event: any signed-in user; the creator becomes its host */
 eventListRoutes.post('/events', async (c) => {
   const user = c.get('user');
   const b = await body(c);
@@ -62,7 +62,7 @@ eventListRoutes.post('/events', async (c) => {
   return c.json({ event: summary(ev, user) });
 });
 
-/** 凭邀请码申请加入（可附说明），由主办 / 管理员审核通过后才成为成员 */
+/** Apply with the invite code (optional note); membership starts once a host / admin approves */
 eventListRoutes.post('/events/join', async (c) => {
   const user = c.get('user');
   const b = await body(c);
@@ -79,7 +79,7 @@ eventListRoutes.post('/events/join', async (c) => {
   return c.json({ event: summary(ev, user) });
 });
 
-/** 比赛内：比赛信息与设置 */
+/** Inside an event: info and settings */
 export const eventInfoRoutes = new Hono<Env>();
 
 function info(ev: EventRow, user: { id: number; username: string; role: string }) {
@@ -91,7 +91,7 @@ function info(ev: EventRow, user: { id: number; username: string; role: string }
     teamSize: Math.max(1, ev.team_size || 1),
     currencyMode: ev.currency_mode === 'coin' ? 'coin' : 'yuan',
     rbGap: Math.max(0, ev.rb_gap ?? 2),
-    inviteCode: role === 'crew' ? undefined : ev.invite_code, // 邀请码只给主办看
+    inviteCode: role === 'crew' ? undefined : ev.invite_code, // invite code is only shown to hosts
     ownerId: ev.owner_id ?? null,
     myRole: role,
   };
@@ -120,12 +120,12 @@ eventInfoRoutes.put('/info', hostOnly, async (c) => {
   return c.json({ event: info(loadEvent(ev.hash)!, c.get('user')) });
 });
 
-// ---------- 商店（货币模式）：商品与价格由主办在赛事设置里维护 ----------
+// ---------- Shop (coin mode): items and prices are maintained by hosts in the event settings ----------
 export function listShopItems(eventId: number) {
   return all<{ id: number; name: string; price: number; sort: number }>('SELECT id, name, price, sort FROM shop_items WHERE event_id = ? ORDER BY sort, id', eventId).map((i) => ({ ...i, price: fromCents(i.price) }));
 }
 eventInfoRoutes.get('/shop/items', (c) => c.json({ items: listShopItems(c.get('event').id) }));
-/** 整体保存商品列表：有 id 的更新，没有的新增，列表里没有的删除（流水里存了物品名快照，删除不影响历史） */
+/** Save the shop items as a whole: rows with an id are updated, others inserted, missing ones deleted (ledger rows keep a name snapshot, so history survives) */
 eventInfoRoutes.put('/shop/items', hostOnly, async (c) => {
   const ev = c.get('event');
   const b = await body(c);
@@ -151,7 +151,7 @@ eventInfoRoutes.put('/shop/items', hostOnly, async (c) => {
   return c.json({ items: listShopItems(ev.id) });
 });
 
-/** 比赛成员（排班用）：已加入的人 + 创建者 + 管理员 */
+/** Event members (for scheduling): joined users + creator + admins */
 eventInfoRoutes.get('/members', (c) => {
   const ev = c.get('event');
   const users = all<{ id: number; username: string; displayName: string; role: string; disabled: number }>('SELECT id, username, display_name AS displayName, role, disabled FROM users ORDER BY username')
@@ -161,8 +161,8 @@ eventInfoRoutes.get('/members', (c) => {
   return c.json({ users });
 });
 
-/** 设置 / 取消主办：主办可操作；管理员和创建者的身份固定，不能改自己 */
-/** 申请名单：待审核的加入申请 */
+/** Grant / revoke host: hosts may do it; admins and the creator are fixed, and nobody changes themselves */
+/** Join requests awaiting review */
 eventInfoRoutes.get('/join-requests', hostOnly, (c) => {
   const ev = c.get('event');
   const requests = all(
@@ -208,7 +208,7 @@ eventInfoRoutes.put('/members/:userId', hostOnly, async (c) => {
   return c.json({ ok: true });
 });
 
-/** 本比赛的操作日志（管理员） */
+/** This event's audit log (admin) */
 eventInfoRoutes.get('/audit', adminOnly, (c) => {
   const ev = c.get('event');
   const limit = Math.min(int(c.req.query('limit'), 200) || 200, 1000);
