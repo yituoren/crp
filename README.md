@@ -43,7 +43,7 @@ If you install packages through a mirror such as npmmirror, run `npm run lock:fi
 
 ## Deployment
 
-Tested on Ubuntu 22.04 / Debian 12:
+Tested on Ubuntu 22.04 / Debian 12 / Debian 13:
 
 ```bash
 git clone https://github.com/yituoren/crp.git /opt/crp

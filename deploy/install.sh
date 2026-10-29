@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# First-time deploy script (run as root on the server). Ubuntu 22.04 / 24.04 / Debian 12.
+# First-time deploy script (run as root on the server). Ubuntu 22.04 / 24.04 / Debian 12 / 13.
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/yituoren/crp/main/deploy/install.sh | bash -s -- https://github.com/yituoren/crp.git
 # Or git clone into /opt/crp first, then: bash /opt/crp/deploy/install.sh
