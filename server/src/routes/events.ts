@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Hono } from 'hono';
 import { all, get, run, tx, now, fromCents, UPLOAD_DIR } from '../db.js';
-import { hostOnly, isMember, joinEvent, loadEvent, roleIn, type Env, type EventRow } from '../auth.js';
+import { hostOnly, adminOnly, isMember, joinEvent, loadEvent, roleIn, type Env, type EventRow } from '../auth.js';
+import { exportEvent, importEvent, parseEventFile } from '../eventTransfer.js';
 import { audit, body, str, int, intParam, bad, notFound, notify, notifyEventDeleted, money } from '../util.js';
 
 /** Routes used before entering an event: list and join */
@@ -62,6 +63,22 @@ eventListRoutes.post('/events', async (c) => {
   const ev = loadEvent(hash)!;
   audit(user, 'create', 'event', id, undefined, { hash, name, inviteCode, teamSize, currencyMode });
   return c.json({ event: summary(ev, user) });
+});
+
+/** Import an event file exported by this system as a new event; any signed-in user, who becomes its host */
+const MAX_EVENT_FILE = 200 * 1024 * 1024;
+eventListRoutes.post('/events/import', async (c) => {
+  const user = c.get('user');
+  const form = await c.req.parseBody();
+  const file = form['file'];
+  if (!(file instanceof File)) throw bad('请选择比赛文件');
+  if (file.size > MAX_EVENT_FILE) throw bad('文件过大');
+  const dump = parseEventFile(Buffer.from(await file.arrayBuffer()));
+  const { id, hash, skippedUsers } = importEvent(dump, user);
+  const ev = loadEvent(hash)!;
+  audit(user, 'import', 'event', id, undefined, { hash, name: ev.name, from: dump.event?.hash, exportedAt: dump.exportedAt, skippedUsers });
+  notify('admin');
+  return c.json({ event: summary(ev, user), skippedUsers });
 });
 
 /** Apply with the invite code (optional note); membership starts once a host / admin approves */
@@ -210,8 +227,24 @@ eventInfoRoutes.put('/members/:userId', hostOnly, async (c) => {
   return c.json({ ok: true });
 });
 
-/** This event's audit log (hosts and admin) */
-eventInfoRoutes.get('/audit', hostOnly, (c) => {
+/** Download the whole event as a file that can be imported on any server (hosts and admin) */
+eventInfoRoutes.get('/export', hostOnly, (c) => {
+  const ev = c.get('event');
+  const buf = exportEvent(ev.id);
+  audit(c.get('user'), 'export', 'event', ev.id, undefined, { name: ev.name, size: buf.length });
+  const stamp = now().slice(0, 10);
+  const filename = `${ev.name}_${stamp}.crp`;
+  return new Response(new Uint8Array(buf), {
+    headers: {
+      'Content-Type': 'application/gzip',
+      'Content-Disposition': `attachment; filename="event_${stamp}.crp"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+      'Cache-Control': 'no-store',
+    },
+  });
+});
+
+/** This event's audit log (admin) */
+eventInfoRoutes.get('/audit', adminOnly, (c) => {
   const ev = c.get('event');
   const limit = Math.min(int(c.req.query('limit'), 200) || 200, 1000);
   const offset = int(c.req.query('offset'), 0);

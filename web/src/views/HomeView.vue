@@ -91,6 +91,30 @@ async function create() {
   } catch (e) { ui.error(e); }
 }
 
+// Import a .crp file exported from any server as a new event; the importer becomes its host
+const importInput = ref<HTMLInputElement | null>(null);
+const importing = ref(false);
+function pickImport() { if (!importing.value) importInput.value?.click(); }
+async function onImportFile(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = ''; // picking the same file again still fires change
+  if (!file) return;
+  if (!file.name.toLowerCase().endsWith('.crp')) { ui.toast('请选择本系统导出的 .crp 比赛文件', 'error'); return; }
+  importing.value = true;
+  try {
+    const form = new FormData();
+    form.append('file', file);
+    // No automatic retry: a lost response must not create the event twice
+    const d = await api('/events/import', { method: 'POST', form, retries: 0 });
+    creating.value = false;
+    const skipped: string[] = d.skippedUsers ?? [];
+    ui.toast(skipped.length ? `已导入「${d.event.name}」，${skipped.length} 个账号在本服务器不存在，相关排班已略过` : `已导入「${d.event.name}」`);
+    await auth.fetchMe();
+    router.push({ name: 'today', params: { hash: d.event.hash } });
+  } catch (err) { ui.error(err); } finally { importing.value = false; }
+}
+
 onMounted(() => {
   auth.leaveEvent();
   setUnauthorizedHandler(() => { auth.user = null; router.replace('/login'); });
@@ -166,6 +190,10 @@ onMounted(() => {
   <Modal v-if="creating" title="创建比赛" small @close="creating = false">
     <div class="form-group"><label>赛事名称</label><input v-model="form.name" placeholder="如 BJ20 全明星赛" autofocus @keyup.enter="create" /></div>
     <div class="form-group"><label>邀请码<span class="text-gray text-sm">（留空自动生成）</span></label><input v-model="form.inviteCode" placeholder="如 bj20" @keyup.enter="create" /></div>
-    <div class="modal-actions"><button class="btn btn-text" @click="creating = false">取消</button><button class="btn" @click="create">创建</button></div>
+    <div class="modal-actions">
+      <button class="btn btn-text modal-actions-start" :disabled="importing" title="导入 .crp 比赛文件" @click="pickImport"><Icon name="upload" size="18" />{{ importing ? '导入中…' : '导入' }}</button>
+      <input ref="importInput" type="file" accept=".crp" hidden @change="onImportFile" />
+      <button class="btn btn-text" @click="creating = false">取消</button><button class="btn" @click="create">创建</button>
+    </div>
   </Modal>
 </template>

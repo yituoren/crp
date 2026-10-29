@@ -30,6 +30,7 @@ All endpoints live under `/api`. Requests and responses are JSON unless noted. E
 | GET | `/events` | any | `{ mine, all }`; each `{ id, hash, name, joined, pending, role, ownerName, memberCount, episodeCount, status, createdAt }` |
 | POST | `/events` | any | `{ name, inviteCode? }` → creates event, caller becomes host, returns `{ event }` |
 | POST | `/events/join` | any | `{ code, hash?, note? }` → creates a pending join request (code must match) |
+| POST | `/events/import` | signed in | multipart `file` (a `.crp` export, ≤ 200 MB) → new event with a new hash, the caller as owner and host; accounts are matched by username and `skippedUsers` lists the ones missing here (their schedule rows are dropped, other references cleared) |
 
 ## Users and system (admin only, except where noted)
 
@@ -58,7 +59,8 @@ All endpoints live under `/api`. Requests and responses are JSON unless noted. E
 | POST | `/join-requests/:id/reject` | host | |
 | GET | `/shop/items` | member | coin mode shop items |
 | PUT | `/shop/items` | host | `{ items: [{ id?, name, price }] }` (missing ids are deleted) |
-| GET | `/audit?limit=` | host | this event's audit log |
+| GET | `/export` | host | downloads the event as a `.crp` file (gzip JSON, `format: 'crp-event-v1'`, attachments embedded; no accounts) |
+| GET | `/audit?limit=` | admin | this event's audit log |
 | DELETE | `/` (the event itself) | host | `{ name }` must equal the event name; deletes episodes, legs, attachments and their files, teams, records, ledger, item log, announcements, shop items, members and join requests (accounts and audit rows are kept), then emits `event-deleted` |
 
 ## Episodes and legs

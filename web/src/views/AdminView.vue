@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onMounted, reactive, ref, watch } from 'vue';
-import { api } from '@/api';
+import { api, apiPath } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
@@ -57,7 +57,7 @@ async function decide(r: { id: number; username: string }, action: 'approve' | '
 }
 watch(() => race.users, () => { if (tab.value === 'members') loadRequests(); });
 
-// This event's audit log (hosts and admin)
+// This event's audit log (admin)
 const audit = ref<any[]>([]);
 const auditTotal = ref(0);
 async function loadAudit() { const d = await api('/audit?limit=200'); audit.value = d.logs; auditTotal.value = d.total; }
@@ -82,14 +82,32 @@ async function deleteEvent() {
   } catch (e) { ui.error(e); } finally { deleteBusy.value = false; }
 }
 
-onMounted(() => { fill(); if (auth.isHost) loadAudit(); });
+// Export the whole event as a .crp file (download through a blob so errors can be shown as toasts)
+const exporting = ref(false);
+async function exportEvent() {
+  if (exporting.value) return;
+  exporting.value = true;
+  try {
+    const res = await fetch(apiPath('/export'), { credentials: 'same-origin' });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `导出失败（${res.status}）`);
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${auth.event.name}_${new Date().toISOString().slice(0, 10)}.crp`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    ui.toast('已导出比赛文件');
+  } catch (e) { ui.error(e); } finally { exporting.value = false; }
+}
+
+onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
 </script>
 
 <template>
   <div class="nav">
     <a href="#" :class="{ 'router-link-active': tab === 'settings' }" @click.prevent="tab = 'settings'">赛事设置</a>
     <a href="#" :class="{ 'router-link-active': tab === 'members' }" @click.prevent="tab = 'members'; race.loadUsers(); loadRequests()">成员与主办</a>
-    <a v-if="auth.isHost" href="#" :class="{ 'router-link-active': tab === 'audit' }" @click.prevent="tab = 'audit'; loadAudit()">操作日志</a>
+    <a v-if="auth.isHost" href="#" :class="{ 'router-link-active': tab === 'audit' }" @click.prevent="tab = 'audit'; if (auth.isAdmin) loadAudit()">数据管理</a>
   </div>
 
   <div v-if="tab === 'settings'" class="settings">
@@ -170,15 +188,23 @@ onMounted(() => { fill(); if (auth.isHost) loadAudit(); });
     </div>
   </div>
 
-  <div v-if="tab === 'audit'" class="card danger-zone">
-    <div class="danger-zone-text">
+  <div v-if="tab === 'audit'" class="card action-card">
+    <div class="action-card-text">
+      <div class="settings-title">导出比赛</div>
+      <div class="text-sm text-gray">把本比赛的全部数据和附件打包成一个 .crp 文件，可以在任意服务器的「创建比赛」里导入成一场新比赛。不包含账号和密码。</div>
+    </div>
+    <button class="btn btn-tonal" :disabled="exporting" @click="exportEvent"><Icon name="download" size="18" />{{ exporting ? '导出中…' : '导出比赛' }}</button>
+  </div>
+
+  <div v-if="tab === 'audit'" class="card action-card">
+    <div class="action-card-text">
       <div class="settings-title">删除比赛</div>
       <div class="text-sm text-gray">永久删除本比赛的赛段、环节、附件、队伍、进度、经费、背包、公告和成员关系，无法恢复。账号不受影响。</div>
     </div>
     <button class="btn btn-danger" @click="openDelete"><Icon name="delete" size="18" />删除比赛</button>
   </div>
 
-  <div v-if="tab === 'audit'" class="card">
+  <div v-if="tab === 'audit' && auth.isAdmin" class="card">
     <div class="card-header"><span>本比赛操作日志（最近 200 条 / 共 {{ auditTotal }}）</span><button class="btn btn-text btn-sm" @click="loadAudit"><Icon name="refresh" size="16" />刷新</button></div>
     <div class="scroll-table">
       <table v-mobile-table class="table table-dense">

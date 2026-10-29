@@ -41,9 +41,9 @@ fi
 mkdir -p "$WEBROOT"
 rm -f /etc/nginx/sites-enabled/default
 
-# Shared proxy settings: WebSocket upgrade for Socket.IO, long timeouts, 10 MB uploads plus headroom
+# Shared proxy settings: WebSocket upgrade for Socket.IO, long timeouts; bodies up to 200 MB for event-file imports (the app limits attachments to 10 MB itself)
 cat > /etc/nginx/snippets/crp-proxy.conf <<EOF
-client_max_body_size 12m;
+client_max_body_size 200m;
 location /.well-known/acme-challenge/ { root $WEBROOT; }
 location / {
   proxy_pass http://127.0.0.1:$APP_PORT;
