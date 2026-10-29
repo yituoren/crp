@@ -228,11 +228,11 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .tag-SB { background: #FFCC01; color: #3D3000; }     /* Speed Bump */
 .tag-Trap { background: #7B4E33; }                   /* Trap */
 .tag-SQ { background: #BF1463; }                     /* Side Quest */
+.tag-Shuffle { background: #6618CC; }                /* Shuffle */
 /* Types without artwork: colours chosen not to clash with the above */
-.tag-UT { background: #4338CA; }                     /* U-Turn */
+.tag-UT { background: #78716C; }                     /* U-Turn */
 .tag-YD { background: #0E7490; }                     /* Yield */
 .tag-PS { background: #1E293B; }                     /* Pit Stop */
-.tag-Shuffle { background: #6B7280; }                /* Shuffle */
 
 /* Episode selector */
 .ep-selector { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; scrollbar-width: none; }
