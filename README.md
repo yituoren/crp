@@ -86,4 +86,4 @@ deploy/               install.sh update.sh backup.sh create-admin.sh crp.service
 docs/                 user-manual.md (中文), api.md, templates/cards (clue card artwork)
 ```
 
-Clue-card artwork lives in `docs/templates/cards/`, one 700 × 494 sRGB PNG per leg type named by its code (`SL RI TI DT RB FF Union FO SB SQ Trap`). Leg type tag colours are sampled from these cards; types without artwork (U-Turn, Yield, Pit Stop, Shuffle) use colours chosen not to clash.
+Clue-card artwork lives in `docs/templates/cards/`, one 700 × 494 sRGB PNG per leg type named by its code (`StartingLine RI TI DT RB FF Union FO SB SQ Trap`; the Starting Line card uses its full name instead of `SL`). Leg type tag colours are sampled from these cards; types without artwork (U-Turn, Yield, Pit Stop, Shuffle) use colours chosen not to clash.
