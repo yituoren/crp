@@ -5,9 +5,13 @@
 set -euo pipefail
 cd /opt/crp
 EXPECT="${1:-}"
-SOURCES=(https://gitee.com/yituoren/crp.git origin)
+GITEE_URL=https://gitee.com/yituoren/crp.git
+SOURCES=(gitee origin)
 echo "==> Pulling latest code"
-git config --global --add safe.directory /opt/crp >/dev/null 2>&1 || true
+git config --global --get-all safe.directory 2>/dev/null | grep -qx /opt/crp || git config --global --add safe.directory /opt/crp
+# Pull through named remotes so their tracking refs stay current; main tracks Gitee, the source normally used
+git remote get-url gitee >/dev/null 2>&1 || git remote add gitee "$GITEE_URL"
+git config branch.main.remote gitee
 # A source counts only if the pull succeeds and, when a hash was given, lands on it (the mirror can lag a minute behind GitHub)
 on_expected() { [ -z "$EXPECT" ] || [ "$(git rev-parse HEAD)" = "$(git rev-parse --verify --quiet "$EXPECT^{commit}" || echo none)" ]; }
 pulled=
