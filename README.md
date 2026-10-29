@@ -50,7 +50,7 @@ git clone https://github.com/yituoren/crp.git /opt/crp
 bash /opt/crp/deploy/install.sh          # add --cn on a mainland China server
 ```
 
-The script installs Node 22 and sqlite3, adds 2 GB of swap on small instances, creates the `crp` user, builds, registers the `crp` systemd service on port 80 and adds a daily 04:00 backup. With `--cn`, Node.js and npm packages come from npmmirror (the global npm registry is set to it, so later `update.sh` runs use it too; `package-lock.json` keeps the official URLs).
+The script installs Node 22 and sqlite3, adds 2 GB of swap on small instances, creates the `crp` user, builds, registers the `crp` systemd service on port 80 and adds a daily 04:00 backup. With `--cn`, apt (on Debian) and Node.js come from the TUNA mirror, and npm packages from npmmirror since TUNA has no npm registry (the global npm registry is set to it, so later `update.sh` runs use it too; `package-lock.json` keeps the official URLs).
 
 ```bash
 systemctl status crp                 # status

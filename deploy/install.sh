@@ -2,8 +2,9 @@
 # First-time deploy script (run as root on the server). Ubuntu 22.04 / 24.04 / Debian 12 / 13.
 # Usage:
 #   git clone https://github.com/yituoren/crp.git /opt/crp && bash /opt/crp/deploy/install.sh [--cn]
-# --cn: server in mainland China. Node.js and npm packages are downloaded from npmmirror instead of
-#       nodesource / registry.npmjs.org (package-lock.json keeps the official URLs; npm rewrites the host).
+# --cn: server in mainland China. apt (Debian) and Node.js come from the TUNA mirror (mirrors.tuna.tsinghua.edu.cn);
+#       npm packages come from npmmirror because TUNA has no npm registry (package-lock.json keeps the official
+#       URLs; npm rewrites the host).
 set -euo pipefail
 
 CN=0
@@ -17,6 +18,26 @@ done
 APP_DIR=/opt/crp
 DATA_DIR=/opt/crp/data
 NODE_MAJOR=22
+
+TUNA=https://mirrors.tuna.tsinghua.edu.cn
+if [ "$CN" = 1 ] && [ -f /etc/debian_version ] && grep -q '^ID=debian' /etc/os-release; then
+  CODENAME=$(. /etc/os-release && echo "$VERSION_CODENAME")
+  echo "==> Switching apt to the TUNA mirror ($CODENAME)"
+  for f in /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources; do [ -f "$f" ] && mv "$f" "$f.bak-crp"; done
+  cat > /etc/apt/sources.list.d/debian.sources <<SRC
+Types: deb
+URIs: $TUNA/debian
+Suites: $CODENAME $CODENAME-updates
+Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb
+URIs: $TUNA/debian-security
+Suites: $CODENAME-security
+Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+SRC
+fi
 
 echo "==> Installing system packages"
 apt-get update -y
@@ -32,7 +53,7 @@ fi
 if ! command -v node >/dev/null 2>&1 || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt "$NODE_MAJOR" ]; then
   echo "==> Installing Node.js $NODE_MAJOR (node:sqlite requires >= 22.13)"
   if [ "$CN" = 1 ]; then
-    BASE="https://npmmirror.com/mirrors/node/latest-v${NODE_MAJOR}.x"
+    BASE="$TUNA/nodejs-release/latest-v${NODE_MAJOR}.x"
     ARCH=$(uname -m | sed 's/x86_64/x64/; s/aarch64/arm64/')
     FILE=$(curl -fsSL "$BASE/SHASUMS256.txt" | awk '{print $2}' | grep "linux-${ARCH}.tar.xz$")
     curl -fsSL "$BASE/$FILE" -o /tmp/node.tar.xz
