@@ -273,6 +273,8 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .cutoff-edit .hm-row input { min-width: 48px; padding-left: 8px; padding-right: 8px; text-align: center; }
 .cutoff-edit .hm-row span { white-space: nowrap; }
 .cutoff-empty { margin-bottom: 12px; }
+.shop-edit-qty input { width: 88px; flex: none; text-align: center; }
+.shop-edit-qty span { white-space: nowrap; }
 .cutoff-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--gray-100); }
 .cutoff-row:last-child { border-bottom: none; }
 .cutoff-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -717,6 +719,7 @@ html, body { overscroll-behavior: none; }
 .shop-grid { display: flex; flex-direction: column; gap: 8px; }
 .shop-tile { height: 48px; cursor: pointer; }
 .shop-tile .bag-tile-name { flex: 1; }
+.shop-tile.sold-out { opacity: .5; cursor: not-allowed; }
 .shop-qty { display: inline-flex; align-items: center; gap: 2px; width: 92px; justify-content: flex-end; visibility: hidden; flex: none; }
 .shop-qty.show { visibility: visible; }
 .shop-step { width: 28px; height: 28px; border-radius: 50%; border: none; background: var(--surface); color: var(--gray-700); box-shadow: var(--shadow-1); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }

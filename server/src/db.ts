@@ -189,6 +189,16 @@ CREATE TABLE IF NOT EXISTS shop_items (
   sort INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
 );
+-- Per-leg shop stock: which event items a leg sells and how many; remaining = quantity minus non-reverted purchases on that leg
+CREATE TABLE IF NOT EXISTS leg_shop_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  leg_id INTEGER NOT NULL REFERENCES legs(id) ON DELETE CASCADE,
+  shop_item_id INTEGER NOT NULL,
+  quantity INTEGER,                            -- null = unlimited
+  sort INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  UNIQUE(leg_id, shop_item_id)
+);
 CREATE TABLE IF NOT EXISTS announcements (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   content TEXT NOT NULL,
@@ -285,6 +295,15 @@ ensureColumn('currency_ledger', 'kind', "TEXT NOT NULL DEFAULT 'other'");
 ensureColumn('currency_ledger', 'item_id', 'INTEGER');
 ensureColumn('currency_ledger', 'item_name', 'TEXT');
 ensureColumn('legs', 'shop_open', 'INTEGER NOT NULL DEFAULT 0');
+// Shop stock per leg: legs opened before stock lists existed sold every event item without limit; keep that, then shop_open mirrors "has stock rows"
+if (get('SELECT 1 FROM legs l WHERE l.shop_open = 1 AND NOT EXISTS (SELECT 1 FROM leg_shop_items s WHERE s.leg_id = l.id) LIMIT 1')) {
+  db.exec(`
+    INSERT INTO leg_shop_items(leg_id, shop_item_id, quantity, sort, created_at)
+      SELECT l.id, i.id, NULL, i.sort, strftime('%Y-%m-%dT%H:%M:%fZ', 'now') FROM legs l JOIN episodes e ON e.id = l.episode_id JOIN shop_items i ON i.event_id = e.event_id
+      WHERE l.shop_open = 1 AND NOT EXISTS (SELECT 1 FROM leg_shop_items s WHERE s.leg_id = l.id);
+    UPDATE legs SET shop_open = EXISTS (SELECT 1 FROM leg_shop_items s WHERE s.leg_id = legs.id);
+  `);
+}
 // Automatic elimination: leg flag + count; teams record where they were eliminated and from which leg they are locked (no records after elimination / withdrawal)
 run("UPDATE legs SET type = 'SQ' WHERE type = 'BR'"); // side quest code BR → SQ
 // Items moved to their own log: mirror ledger purchases (kind=shop) as "gained", move uses (kind=use) into the item log and delete them from the ledger

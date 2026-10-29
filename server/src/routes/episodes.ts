@@ -42,6 +42,15 @@ export const episodeRoutes = new Hono<Env>();
 
 const MAX_UPLOAD = 10 * 1024 * 1024;
 
+/** Shop stock of legs: event item, price and remaining count (quantity minus purchases on that leg that are not reverted; null quantity = unlimited) */
+export function shopStock(where: string, ...params: number[]) {
+  return all<{ id: number; leg_id: number; item_id: number; name: string; price: number; quantity: number | null; sold: number }>(
+    `SELECT s.id, s.leg_id, s.shop_item_id AS item_id, i.name, i.price, s.quantity,
+       (SELECT COUNT(*) FROM currency_ledger c WHERE c.kind = 'shop' AND c.leg_id = s.leg_id AND c.item_id = s.shop_item_id AND c.reverts_id IS NULL AND c.reverted = 0) AS sold
+     FROM leg_shop_items s JOIN shop_items i ON i.id = s.shop_item_id WHERE ${where} ORDER BY s.sort, s.id`, ...params,
+  ).map((r) => ({ ...r, price: fromCents(r.price), remaining: r.quantity === null ? null : Math.max(0, r.quantity - r.sold) }));
+}
+
 export function loadEpisodes(eventId: number) {
   const episodes = all('SELECT * FROM episodes WHERE event_id = ? ORDER BY sort, id', eventId);
   const legs = all('SELECT l.* FROM legs l JOIN episodes e ON e.id = l.episode_id WHERE e.event_id = ? ORDER BY l.episode_id, l.sort, l.id', eventId);
@@ -56,11 +65,16 @@ export function loadEpisodes(eventId: number) {
     if (!cutoffsByLeg.has(cf.leg_id)) cutoffsByLeg.set(cf.leg_id, []);
     cutoffsByLeg.get(cf.leg_id)!.push({ id: cf.id, name: cf.name, start_min: cf.start_min, interval_min: cf.interval_min, cost: fromCents(cf.cost) });
   }
+  const shopByLeg = new Map<number, any[]>();
+  for (const it of shopStock('s.leg_id IN (SELECT l.id FROM legs l JOIN episodes e ON e.id = l.episode_id WHERE e.event_id = ?)', eventId)) {
+    if (!shopByLeg.has(it.leg_id)) shopByLeg.set(it.leg_id, []);
+    shopByLeg.get(it.leg_id)!.push(it);
+  }
   const legsByEp = new Map<number, any[]>();
   for (const l of legs) {
     if (!legsByEp.has(l.episode_id)) legsByEp.set(l.episode_id, []);
     const norm = {};
-    legsByEp.get(l.episode_id)!.push({ ...l, ...norm, attachments: attByLeg.get(l.id) ?? [], cutoffs: cutoffsByLeg.get(l.id) ?? [] });
+    legsByEp.get(l.episode_id)!.push({ ...l, ...norm, attachments: attByLeg.get(l.id) ?? [], cutoffs: cutoffsByLeg.get(l.id) ?? [], shop: shopByLeg.get(l.id) ?? [] });
   }
   return episodes.map((e) => ({ ...e, budget: fromCents(e.budget), legs: legsByEp.get(e.id) ?? [] }));
 }
@@ -238,7 +252,7 @@ function legFieldsRaw(b: any, before?: any) {
     record_mode,
     cutoff_start: minutes('cutoff_start'),
     cutoff_interval: minutes('cutoff_interval'),
-    shop_open: b.shop_open === undefined ? (before?.shop_open ?? 0) : (b.shop_open ? 1 : 0),
+    shop_open: before?.shop_open ?? 0, // maintained by PUT /legs/:id/shop
     // Pit stops may eliminate (legacy default 2); other legs optional
     can_eliminate: type === 'SQ' ? 0 : (b.can_eliminate === undefined ? (before?.can_eliminate ?? 0) : (b.can_eliminate ? 1 : 0)),
     eliminate_count: Math.max(0, b.eliminate_count === undefined ? (before?.eliminate_count ?? 0) : int(b.eliminate_count, 0)),
@@ -328,6 +342,36 @@ episodeRoutes.put('/legs/:id/cutoffs', hostOnly, async (c) => {
     for (const old of before) if (!keep.has(old.id)) run('DELETE FROM leg_cutoffs WHERE id = ?', old.id);
   });
   audit(c.get('user'), 'update', 'leg_cutoffs', id, before, items);
+  notify('episodes', leg.episode_id);
+  return c.json({ ok: true });
+});
+
+/** Save the leg's shop stock as a whole: [{ item_id, quantity (null = unlimited) }]; the shop is open exactly when the list is not empty */
+episodeRoutes.put('/legs/:id/shop', hostOnly, async (c) => {
+  const id = intParam(c, 'id');
+  const leg = legInEvent(c, id);
+  const b = await body(c);
+  if (!Array.isArray(b.items)) throw bad('items 必须是数组');
+  const seen = new Set<number>();
+  const items = b.items.map((it: any, i: number) => {
+    const itemId = int(it.item_id, 0);
+    if (!itemId || !get('SELECT 1 FROM shop_items WHERE id = ? AND event_id = ?', itemId, c.get('event').id)) throw bad('请选择赛事设置里已有的商品');
+    if (seen.has(itemId)) throw bad('同一种商品只能添加一次');
+    seen.add(itemId);
+    const q = it.quantity === null || it.quantity === undefined || it.quantity === '' ? null : Number(it.quantity);
+    if (q !== null && !(Number.isInteger(q) && q >= 0)) throw bad('数量必须是非负整数，留空表示不限');
+    return { item_id: itemId, quantity: q, sort: i };
+  });
+  const before = all<{ shop_item_id: number; quantity: number | null }>('SELECT shop_item_id, quantity FROM leg_shop_items WHERE leg_id = ? ORDER BY sort, id', id);
+  const same = before.length === items.length && before.every((o, i) => o.shop_item_id === items[i].item_id && o.quantity === items[i].quantity);
+  if (same) return c.json({ ok: true });
+  assertStructureEditable(c, leg.episode_id);
+  tx(() => {
+    run('DELETE FROM leg_shop_items WHERE leg_id = ?', id);
+    for (const it of items) run('INSERT INTO leg_shop_items(leg_id, shop_item_id, quantity, sort, created_at) VALUES (?,?,?,?,?)', id, it.item_id, it.quantity, it.sort, now());
+    run('UPDATE legs SET shop_open = ? WHERE id = ?', items.length ? 1 : 0, id);
+  });
+  audit(c.get('user'), 'update', 'leg_shop_items', id, before, items);
   notify('episodes', leg.episode_id);
   return c.json({ ok: true });
 });

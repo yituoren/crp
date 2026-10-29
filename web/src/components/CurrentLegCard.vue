@@ -31,7 +31,7 @@ const currentLeg = computed<Leg | null>(() => {
 });
 const canUse = computed(() => race.canAdjustCurrencyFor(props.teamId) && !race.episodePending);
 const showTransport = computed(() => currentLeg.value?.type === 'RI');
-const showShop = computed(() => isCoin.value && !!currentLeg.value?.shop_open && race.shopItems.length > 0);
+const showShop = computed(() => isCoin.value && (currentLeg.value?.shop.length ?? 0) > 0);
 const showCutoff = computed(() => (race.currentEpisode?.legs ?? []).some((l) => { const p = race.progressOf(props.teamId, l.id); return !!p?.arrived_at && !p.completed_at && l.cutoffs.length > 0; }));
 const nothing = computed(() => !showTransport.value && !showCutoff.value);
 

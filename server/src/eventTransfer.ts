@@ -44,6 +44,7 @@ function selectEventTables(eventId: number): Record<string, Row[]> {
     episodes: all('SELECT * FROM episodes WHERE event_id = ? ORDER BY id', eventId),
     legs: all(`SELECT * FROM legs WHERE episode_id IN (${ep}) ORDER BY id`, eventId),
     leg_cutoffs: all(`SELECT * FROM leg_cutoffs WHERE leg_id IN (${lg}) ORDER BY id`, eventId),
+    leg_shop_items: all(`SELECT * FROM leg_shop_items WHERE leg_id IN (${lg}) ORDER BY id`, eventId),
     attachments: all(`SELECT * FROM attachments WHERE leg_id IN (${lg}) ORDER BY id`, eventId),
     teams: all('SELECT * FROM teams WHERE event_id = ? ORDER BY id', eventId),
     assignments: all(`SELECT * FROM assignments WHERE episode_id IN (${ep}) ORDER BY id`, eventId),
@@ -152,6 +153,14 @@ export function importEvent(d: Dump, me: AuthUser): { id: number; hash: string; 
     copy('episodes', (r) => ({ ...r, event_id: evId, start_at: r.status === 'pending' && r.start_at && r.start_at <= nowIso ? null : r.start_at }));
     copy('legs', (r) => ({ ...r, episode_id: ref('episodes', r.episode_id) }));
     copy('leg_cutoffs', (r) => ({ ...r, leg_id: ref('legs', r.leg_id) }));
+    copy('leg_shop_items', (r) => { const leg = ref('legs', r.leg_id), item = ref('shop_items', r.shop_item_id); return leg && item ? { ...r, leg_id: leg, shop_item_id: item } : null; });
+    // Files from before per-leg stock: an open shop sold every item without limit
+    if (!d.tables.leg_shop_items) {
+      run(`INSERT INTO leg_shop_items(leg_id, shop_item_id, quantity, sort, created_at)
+             SELECT l.id, i.id, NULL, i.sort, ? FROM legs l JOIN episodes e ON e.id = l.episode_id JOIN shop_items i ON i.event_id = e.event_id
+             WHERE e.event_id = ? AND l.shop_open = 1`, now(), evId);
+    }
+    run('UPDATE legs SET shop_open = EXISTS (SELECT 1 FROM leg_shop_items s WHERE s.leg_id = legs.id) WHERE episode_id IN (SELECT id FROM episodes WHERE event_id = ?)', evId);
     copy('attachments', (r) => {
       const leg = ref('legs', r.leg_id);
       const data = d.files?.[r.path];

@@ -34,7 +34,7 @@ export const RECORD_MODE_LABEL: Record<RecordMode, string> = { none: '不记录�
 export interface Attachment { id: number; leg_id: number; filename: string; mime: string; size: number; url: string; created_at: string }
 export interface Leg {
   id: number; episode_id: number; sort: number; type: LegType; name: string; description: string; address: string; map_url: string;
-  clue_text: string; judge_criteria: string | null; open_time: string; close_time: string; detour_a: string; detour_b: string; needs_staff: number; record_mode: RecordMode; cutoff_start: number; cutoff_interval: number; shop_open: number; can_eliminate: number; eliminate_count: number; attachments: Attachment[]; cutoffs: Cutoff[];
+  clue_text: string; judge_criteria: string | null; open_time: string; close_time: string; detour_a: string; detour_b: string; needs_staff: number; record_mode: RecordMode; cutoff_start: number; cutoff_interval: number; shop_open: number; can_eliminate: number; eliminate_count: number; attachments: Attachment[]; cutoffs: Cutoff[]; shop: LegShopItem[];
 }
 export interface Episode { id: number; code: string; name: string; budget: number; sort: number; status: 'pending' | 'running' | 'finished'; notes: string; started_at: string | null; finished_at: string | null; start_at: string | null; inherit_rank: number; start_gap_min: number; legs: Leg[] }
 export interface Team { id: number; code: string; name: string; members: string[]; label: string; status: 'alive' | 'eliminated' | 'withdrawn'; currency: number; sort: number; rbCounts: Record<string, number>; inventory: { name: string; count: number }[]; eliminated_leg_id: number | null; locked_from_leg_id: number | null }
@@ -47,6 +47,8 @@ export interface Penalty { id: number; episode_id: number; team_id: number; team
 export interface Cutoff { id: number; name: string; start_min: number; interval_min: number; cost: number }
 export interface CutoffUse { id: number; episode_id: number; leg_id: number; team_id: number; cutoff_id: number; cutoff_name: string; used_at: string; used_by: number | null; used_by_name: string; ledger_id: number | null }
 export interface ShopItem { id: number; name: string; price: number; sort: number }
+/** One item a leg's shop sells: quantity null = unlimited; remaining = quantity minus purchases on this leg */
+export interface LegShopItem { id: number; item_id: number; name: string; price: number; quantity: number | null; sold: number; remaining: number | null }
 export interface PitstopRow {
   team_id: number; team_code: string; team_name: string; team_status: Team['status']; checkin_at: string | null; checkin_source: 'manual' | 'progress' | null;
   penalty_minutes: number; final_time: string | null; rank: number | null; eliminated: boolean; note: string;

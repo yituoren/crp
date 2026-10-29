@@ -3,6 +3,7 @@ import { all, get, run, tx, now, fromCents } from '../db.js';
 import { canAdjustCurrency, type Env, isAdminRole, isHostRole } from '../auth.js';
 import { audit, body, str, int, notify, bad, forbidden, notFound, money, currencyMode, editLockReason } from '../util.js';
 import { teamLabelMap, inventoryCount } from './teams.js';
+import { shopStock } from './episodes.js';
 
 export const ledgerRoutes = new Hono<Env>();
 
@@ -98,6 +99,12 @@ ledgerRoutes.post('/ledger', async (c) => {
   }
   const balance = team.currency + delta;
   const id = tx(() => {
+    // stock is checked inside the transaction so two crews cannot sell the last unit twice
+    if (kind === 'shop' && item) {
+      const stock = shopStock('s.leg_id = ? AND s.shop_item_id = ?', legId!, item.id)[0];
+      if (!stock) throw bad(`本环节的商店不卖「${item.name}」`);
+      if (stock.remaining === 0) throw bad(`「${item.name}」在本环节已售罄`);
+    }
     run('UPDATE teams SET currency = ? WHERE id = ?', balance, teamId);
     const r = run(
       'INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at, leg_id, kind, item_id, item_name) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
@@ -109,6 +116,7 @@ ledgerRoutes.post('/ledger', async (c) => {
     return newId;
   });
   audit(user, kind === 'shop' ? 'shop_buy' : 'currency', 'team', teamId, { currency: fromCents(team.currency) }, { delta: fromCents(delta), balance: fromCents(balance), reason, item: item?.name });
+  if (kind === 'shop') notify('episodes', episodeId); // remaining stock is part of the leg data
   notify('ledger', episodeId);
   notify('teams');
   return c.json({ id, balance: fromCents(balance) });
@@ -148,6 +156,7 @@ ledgerRoutes.post('/ledger/:id/revert', (c) => {
     const u = get<{ id: number }>('SELECT id FROM cutoff_uses WHERE ledger_id = ?', id);
     if (u) { run('DELETE FROM cutoff_uses WHERE id = ?', u.id); audit(user, 'cutoff_use_delete', 'team', orig.team_id, { useId: u.id, byLedgerRevert: id }); notify('progress', orig.episode_id); }
   }
+  if (orig.kind === 'shop') notify('episodes', orig.episode_id); // the unit goes back into the leg's stock
   notify('ledger', orig.episode_id);
   notify('teams');
   return c.json({ id: newId, balance: fromCents(balance) });

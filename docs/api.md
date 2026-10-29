@@ -58,7 +58,7 @@ All endpoints live under `/api`. Requests and responses are JSON unless noted. E
 | POST | `/join-requests/:id/approve` | host | approves and adds as crew |
 | POST | `/join-requests/:id/reject` | host | |
 | GET | `/shop/items` | member | coin mode shop items |
-| PUT | `/shop/items` | host | `{ items: [{ id?, name, price }] }` (missing ids are deleted) |
+| PUT | `/shop/items` | host | `{ items: [{ id?, name, price }] }` (missing ids are deleted, and removed from every leg's stock) |
 | GET | `/export` | host | downloads the event as a `.crp` file (gzip JSON, `format: 'crp-event-v1'`, attachments embedded; no accounts) |
 | GET | `/audit?limit=` | admin | this event's audit log |
 | DELETE | `/` (the event itself) | host | `{ name }` must equal the event name; deletes episodes, legs, attachments and their files, teams, records, ledger, item log, announcements, shop items, members and join requests (accounts and audit rows are kept), then emits `event-deleted` |
@@ -76,16 +76,17 @@ All endpoints live under `/api`. Requests and responses are JSON unless noted. E
 | POST | `/episodes/:id/reset` | host | testing: clears records of this and later episodes |
 | GET | `/episodes/:id/departures` | member | planned departure time per team |
 | POST | `/episodes/:id/legs` | host¹ | leg fields (see below) |
-| PUT | `/legs/:id` | host¹ | leg fields; structural fields (type, can_eliminate, eliminate_count, shop_open) locked after start |
+| PUT | `/legs/:id` | host¹ | leg fields; structural fields (type, can_eliminate, eliminate_count) locked after start |
 | DELETE | `/legs/:id` | host¹ | |
 | PUT | `/episodes/:id/legs/order` | host¹ | `{ ids: [legId…] }` |
 | PUT | `/legs/:id/cutoffs` | host¹ | `{ items: [{ id?, name, start_min, interval_min, cost }] }` |
+| PUT | `/legs/:id/shop` | host¹ | `{ items: [{ item_id, quantity }] }` (event shop item ids, each at most once; `quantity` null = unlimited); replaces the leg's stock, and the leg's `shop_open` becomes "list not empty" |
 | POST | `/legs/:id/attachments` | host / station of the leg | multipart `file` (image or PDF, ≤ 10 MB) |
 | DELETE | `/attachments/:id` | host / station of the leg | |
 
 ¹ After an episode has started (running or finished) these are admin only.
 
-Leg fields: `type` (one of `SL RI TI DT RB FF Union Shuffle UT YD SB FO Trap SQ PS`), `name`, `description`, `address`, `map_url`, `clue_text`, `judge_criteria`, `open_time`, `close_time`, `detour_a`, `detour_b`, `shop_open`, `can_eliminate`, `eliminate_count`. A side quest (`SQ`) must directly follow a main leg.
+Leg fields: `type` (one of `SL RI TI DT RB FF Union Shuffle UT YD SB FO Trap SQ PS`), `name`, `description`, `address`, `map_url`, `clue_text`, `judge_criteria`, `open_time`, `close_time`, `detour_a`, `detour_b`, `can_eliminate`, `eliminate_count`. In `GET /episodes` each leg also carries `cutoffs` and `shop: [{ id, item_id, name, price, quantity, sold, remaining }]` (`remaining` = quantity minus non-reverted purchases on that leg, null when unlimited); `shop_open` is read-only and set by `PUT /legs/:id/shop`. A side quest (`SQ`) must directly follow a main leg.
 
 ## Teams
 
@@ -126,7 +127,7 @@ Leg fields: `type` (one of `SL RI TI DT RB FF Union Shuffle UT YD SB FO Trap SQ 
 | Method | Path | Role | Body / notes |
 |---|---|---|---|
 | GET | `/ledger?episodeId=&teamId=` | member | currency ledger |
-| POST | `/ledger` | host / follow of the team / station on its own legs | `{ episodeId, teamId, kind: 'other'|'shop'|'cutoff', delta?, reason?, legId?, itemId? }`; shop purchases need coin mode and a shop-open leg, and also write an item-log "+1" |
+| POST | `/ledger` | host / follow of the team / station on its own legs | `{ episodeId, teamId, kind: 'other'|'shop'|'cutoff', delta?, reason?, legId?, itemId? }`; shop purchases need coin mode, a leg whose stock lists the item and a remaining count above 0 (reverting a purchase returns the unit), and also write an item-log "+1" |
 | POST | `/ledger/:id/revert` | author or host | reverting a purchase refunds and removes the item (refused if already used); reverting a cutoff row deletes that use |
 | GET | `/item-log?episodeId=&teamId=` | member | item gains and uses (coin mode) |
 | POST | `/items/use` | host / follow of the team | `{ episodeId, teamId, itemName, legId? }` — one item per call, no money change |

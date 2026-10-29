@@ -7,7 +7,7 @@ import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
 import { LEG_TYPES, LEG_TYPE_LABEL, legTypeLabel, type LegType, legName, isDestinationLeg } from '@/types';
 import { fmtDurMs } from '@/utils/time';
-import { moneyMode } from '@/utils/money';
+import { moneyMode, fmtMoney, moneyUnit } from '@/utils/money';
 import { reactive } from 'vue';
 import { useAuth } from '@/stores/auth';
 import LegTag from '@/components/LegTag.vue';
@@ -27,24 +27,36 @@ const auth = useAuth();
 // ---- Host / admin: inline editing ----
 const isFixed = computed(() => leg.value?.type === 'SL' || leg.value?.type === 'PS');
 const selectableTypes = LEG_TYPES.filter((t) => t !== 'SL' && t !== 'PS');
-const form = reactive({ type: 'TI' as LegType, name: '', description: '', address: '', map_url: '', clue_text: '', judge_criteria: '', open_time: '', close_time: '', detour_a: '', detour_b: '', shop_open: false, can_eliminate: false, eliminate_count: '' as number | '' });
+const form = reactive({ type: 'TI' as LegType, name: '', description: '', address: '', map_url: '', clue_text: '', judge_criteria: '', open_time: '', close_time: '', detour_a: '', detour_b: '', can_eliminate: false, eliminate_count: '' as number | '' });
 // Cutoff list: name, start, interval (minutes), cost in coin mode; saved as a whole with the leg
 const cutoffs = ref<{ id: number; name: string; start: number; interval: number; cost: string }[]>([]);
 function addCutoff() { cutoffs.value.push({ id: 0, name: '', start: 0, interval: 0, cost: '' }); }
 function removeCutoff(i: number) { cutoffs.value.splice(i, 1); }
+// Shop stock (coin mode): items picked from the event's shop list, each with a quantity (blank = unlimited); saved as a whole with the leg
+const shop = ref<{ itemId: number | ''; quantity: number | '' }[]>([]);
+function addShopItem() { shop.value.push({ itemId: '', quantity: '' }); }
+function removeShopItem(i: number) { shop.value.splice(i, 1); }
+/** Items not yet picked in another row */
+function shopItemOptions(i: number) {
+  const taken = new Set(shop.value.filter((_, k) => k !== i).map((r) => r.itemId));
+  return race.shopItems.filter((it) => !taken.has(it.id)).map((it) => ({ value: it.id, label: `${it.name}（${fmtMoney(it.price)} ${moneyUnit()}）` }));
+}
+const soldOf = (itemId: number | '') => leg.value?.shop.find((s) => s.item_id === itemId)?.sold ?? 0;
 const dirty = ref(false);
 let filling = false;
 function fillForm() {
   const l = leg.value; if (!l) return;
   filling = true;
-  Object.assign(form, { type: l.type, name: l.name, description: l.description, address: l.address, map_url: l.map_url, clue_text: l.clue_text, judge_criteria: l.judge_criteria ?? '', open_time: l.open_time, close_time: l.close_time, detour_a: l.detour_a, detour_b: l.detour_b, shop_open: !!l.shop_open, can_eliminate: !!l.can_eliminate, eliminate_count: l.eliminate_count || '' });
+  Object.assign(form, { type: l.type, name: l.name, description: l.description, address: l.address, map_url: l.map_url, clue_text: l.clue_text, judge_criteria: l.judge_criteria ?? '', open_time: l.open_time, close_time: l.close_time, detour_a: l.detour_a, detour_b: l.detour_b, can_eliminate: !!l.can_eliminate, eliminate_count: l.eliminate_count || '' });
   cutoffs.value = (l.cutoffs ?? []).map((c) => ({ id: c.id, name: c.name, start: c.start_min, interval: c.interval_min, cost: c.cost ? String(c.cost) : '' }));
+  shop.value = (l.shop ?? []).map((s) => ({ itemId: s.item_id, quantity: s.quantity ?? '' }));
   dirty.value = false;
   setTimeout(() => { filling = false; }, 0);
 }
 watch(leg, () => { if (!dirty.value) fillForm(); }, { immediate: true });
 watch(form, () => { if (!filling) dirty.value = true; }, { deep: true });
 watch(cutoffs, () => { if (!filling) dirty.value = true; }, { deep: true });
+watch(shop, () => { if (!filling) dirty.value = true; }, { deep: true });
 watch(() => form.can_eliminate, (on) => { if (!on) form.eliminate_count = ''; });
 watch(() => form.eliminate_count, (n) => { if (n !== '' && !(Number(n) >= 1)) form.eliminate_count = ''; });
 async function saveLeg() {
@@ -53,9 +65,13 @@ async function saveLeg() {
   const mins = (m: number) => Math.max(0, Math.round(Number(m) || 0));
   const body = { ...form };
   const items = cutoffs.value.map((c) => ({ id: c.id || undefined, name: c.name.trim(), start_min: mins(c.start), interval_min: mins(c.interval), cost: c.cost || 0 }));
+  const shopRows = shop.value.filter((r) => r.itemId !== '');
+  if (shopRows.some((r) => r.quantity !== '' && !(Number.isInteger(Number(r.quantity)) && Number(r.quantity) >= 0))) { ui.toast('商品数量必须是非负整数，留空表示不限', 'error'); return; }
+  const shopItems = shopRows.map((r) => ({ item_id: r.itemId, quantity: r.quantity === '' ? null : Number(r.quantity) }));
   try {
     await api(`/legs/${leg.value.id}`, { method: 'PUT', body });
     if (race.structureEditable) await api(`/legs/${leg.value.id}/cutoffs`, { method: 'PUT', body: { items } });
+    if (race.structureEditable && moneyMode() === 'coin') await api(`/legs/${leg.value.id}/shop`, { method: 'PUT', body: { items: shopItems } });
     await race.loadEpisodes(); fillForm(); ui.toast('环节已保存');
   } catch (e) { ui.error(e); }
 }
@@ -109,7 +125,6 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
               </div>
               <div class="form-group"><label>{{ isDestinationLeg(form.type) ? '目的地' : '名称' }}</label><input v-model="form.name" :placeholder="form.type === 'RI' ? '目的地名称，显示时自动加箭头' : form.type === 'PS' ? '中继站所在地' : ''" /></div>
             </div>
-            <label v-if="moneyMode() === 'coin'" class="check-row"><input v-model="form.shop_open" type="checkbox" :disabled="!race.structureEditable" /> 本环节开放商店</label>
           </div>
           <div v-if="form.type !== 'SQ'" class="edit-section">
             <div class="edit-section-title">淘汰</div>
@@ -126,6 +141,18 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
               <div class="hm-row cutoff-edit-times"><input v-model.number="c.start" type="number" min="0" step="1" inputmode="numeric" title="开始时间（分钟）" :disabled="!race.structureEditable" /><span>m 开始，间隔</span><input v-model.number="c.interval" type="number" min="0" step="1" inputmode="numeric" title="间隔时间（分钟）" :disabled="!race.structureEditable" /><span>m</span></div>
             </div>
             <div v-if="!cutoffs.length" class="text-sm text-gray cutoff-empty">没有熔断</div>
+          </div>
+          <div v-if="moneyMode() === 'coin'" class="edit-section">
+            <div class="edit-section-head"><span class="edit-section-title">商店</span><button v-if="race.structureEditable && shop.length < race.shopItems.length" class="btn btn-text btn-sm" @click="addShopItem"><Icon name="add" size="16" />添加商品</button></div>
+            <div v-for="(r, i) in shop" :key="i" class="cutoff-edit">
+              <div class="cutoff-edit-top">
+                <MSelect v-model="r.itemId" outlined class="cutoff-name" placeholder="选择商品" :disabled="!race.structureEditable" :options="shopItemOptions(i)" />
+                <button v-if="race.structureEditable" class="icon-btn icon-btn-sm icon-btn-danger" title="删除" @click="removeShopItem(i)"><Icon name="delete" size="18" /></button>
+              </div>
+              <div class="hm-row shop-edit-qty"><span>数量</span><input v-model.number="r.quantity" type="number" min="0" step="1" inputmode="numeric" placeholder="不限" :disabled="!race.structureEditable" /><span>件</span><span v-if="soldOf(r.itemId)" class="text-xs text-gray">已售 {{ soldOf(r.itemId) }}</span></div>
+            </div>
+            <div v-if="!race.shopItems.length" class="text-sm text-gray cutoff-empty">赛事设置里还没有商品，先到「后台 → 赛事设置」添加</div>
+            <div v-else-if="!shop.length" class="text-sm text-gray cutoff-empty">本环节不开放商店</div>
           </div>
           <div class="edit-section">
             <div class="edit-section-title">地点与时间</div>
@@ -165,7 +192,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
         <div>
           <div v-if="leg.address" class="mb-2">地址：{{ leg.address }} <a v-if="leg.map_url" :href="leg.map_url" target="_blank">打开地图</a></div>
           <div v-if="leg.open_time || leg.close_time" class="mb-2">开放时间：{{ leg.open_time || '-' }} ~ {{ leg.close_time || '-' }}</div>
-          <div v-if="leg.shop_open && moneyMode() === 'coin'" class="mb-2"><span class="badge badge-info">开放商店</span></div>
+          <div v-if="leg.shop.length && moneyMode() === 'coin'" class="mb-2">商店：<span v-for="it in leg.shop" :key="it.id" class="badge" :class="it.remaining === 0 ? 'badge-crew' : 'badge-info'" style="margin-right: 6px">{{ it.name }} · {{ it.remaining === null ? '不限' : it.remaining === 0 ? '售罄' : `剩 ${it.remaining}` }}</span></div>
           <div v-if="leg.can_eliminate" class="mb-2"><span class="badge badge-urgent">淘汰 {{ leg.eliminate_count }} 队</span><span class="text-gray text-sm"> 所有队伍到达后，最后到的 {{ leg.eliminate_count }} 队自动淘汰</span></div>
           <div v-if="leg.cutoffs.length" class="mb-2">熔断：<span v-for="c in leg.cutoffs" :key="c.id" class="badge badge-info" style="margin-right: 6px">{{ c.name }} · {{ fmtDurMs(c.start_min * 60000) }} 起 · 每 {{ fmtDurMs(c.interval_min * 60000) }}{{ moneyMode() === 'coin' && c.cost ? ` · ${c.cost} 币` : '' }}</span></div>
           <div v-if="leg.type === 'DT'" class="mb-2">绕道：A「{{ leg.detour_a || '未填写' }}」 / B「{{ leg.detour_b || '未填写' }}」</div>

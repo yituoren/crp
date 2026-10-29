@@ -163,7 +163,13 @@ eventInfoRoutes.put('/shop/items', hostOnly, async (c) => {
         keep.add(Number(r.lastInsertRowid));
       }
     }
-    for (const old of before) if (!keep.has(old.id)) run('DELETE FROM shop_items WHERE id = ?', old.id);
+    for (const old of before) {
+      if (keep.has(old.id)) continue;
+      run('DELETE FROM shop_items WHERE id = ?', old.id);
+      // a deleted item leaves every leg's stock; legs left without stock close their shop
+      run('DELETE FROM leg_shop_items WHERE shop_item_id = ?', old.id);
+    }
+    run(`UPDATE legs SET shop_open = EXISTS (SELECT 1 FROM leg_shop_items s WHERE s.leg_id = legs.id) WHERE episode_id IN (SELECT id FROM episodes WHERE event_id = ?)`, ev.id);
   });
   audit(c.get('user'), 'update', 'shop_items', ev.id, before, items);
   notify('admin');

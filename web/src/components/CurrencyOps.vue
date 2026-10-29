@@ -10,7 +10,7 @@ import { legName } from '@/types';
 /**
  * Money operation form (shared by the follow's "Mine" page and the money page)
  * - with a fixed teamId the team select is hidden; otherwise the teams the user may operate are listed (hosts all, follows their own)
- * - coin mode adds a "kind": shop purchase / other. For purchases the reason field becomes an item select, the amount is the price, deduction only, and a shop-open leg is required
+ * - coin mode adds a "kind": shop purchase / other. For purchases a shop-open leg is required and the reason field becomes a select of that leg's stock; the amount is the price, deduction only
  */
 const props = defineProps<{ teamId?: number; legId?: number }>(); // legId: pinned to one leg (station's "Mine" page)
 const auth = useAuth();
@@ -35,10 +35,12 @@ const legOptions = computed(() => {
 });
 const kindOptions = computed(() => [
   { value: 'other', label: '其他（非熔断）' },
-  ...(isCoin.value && race.shopItems.length ? [{ value: 'shop', label: '商店购买' }] : []),
+  ...(isCoin.value && legs.value.some((l) => l.shop.length) ? [{ value: 'shop', label: '商店购买' }] : []),
 ]);
-const item = computed(() => (form.itemId === '' ? null : race.shopItems.find((i) => i.id === Number(form.itemId)) ?? null));
-const itemOptions = computed(() => race.shopItems.map((i) => ({ value: i.id, label: `${i.name}（${fmtMoney(i.price)} ${moneyUnit()}）` })));
+const stock = computed(() => (form.legId === '' ? [] : race.legById.get(Number(form.legId))?.shop ?? []));
+const item = computed(() => { const s = form.itemId === '' ? null : stock.value.find((i) => i.item_id === Number(form.itemId)); return s ? { id: s.item_id, name: s.name, price: s.price } : null; });
+const itemOptions = computed(() => stock.value.map((i) => ({ value: i.item_id, label: `${i.name}（${fmtMoney(i.price)} ${moneyUnit()} · ${i.remaining === null ? '不限' : i.remaining === 0 ? '售罄' : `剩 ${i.remaining}`}）`, disabled: i.remaining === 0 })));
+watch(() => form.legId, () => { if (form.kind === 'shop') form.itemId = ''; });
 const canOperate = computed(() => !race.episodePending && (team.value ? race.canAdjustCurrencyFor(team.value.id) : race.canAdjustCurrency));
 watch(() => form.kind, () => { form.legId = props.legId ?? ''; form.itemId = ''; form.amount = ''; form.reason = ''; });
 
@@ -53,7 +55,7 @@ async function apply(sign: 1 | -1) {
     try {
       await api('/ledger', { method: 'POST', body: { episodeId: ep.value?.id, teamId: t.id, kind: 'shop', itemId: item.value.id, legId: form.legId } });
       form.itemId = '';
-      await Promise.all([race.loadTeams(), race.loadLedger()]);
+      await Promise.all([race.loadTeams(), race.loadLedger(), race.loadEpisodes()]);
       ui.toast(`已购买 ${item.value?.name ?? ''}`);
     } catch (e) { ui.error(e); }
     return;
@@ -97,7 +99,7 @@ async function apply(sign: 1 | -1) {
       <div class="ops-main">
         <input v-if="form.kind === 'shop'" :value="item ? fmtMoney(item.price) : ''" class="ops-amount" :placeholder="moneyUnit() === '币' ? '数量' : '金额'" disabled />
         <input v-else v-model="form.amount" type="number" :inputmode="isCoin ? 'numeric' : 'decimal'" min="0" step="1" class="ops-amount" :placeholder="moneyUnit() === '币' ? '数量' : '金额'" />
-        <MSelect v-if="form.kind === 'shop'" v-model="form.itemId" outlined class="ops-reason" placeholder="选择商品" :options="itemOptions" />
+        <MSelect v-if="form.kind === 'shop'" v-model="form.itemId" outlined class="ops-reason" :placeholder="form.legId === '' ? '先选择环节' : '选择商品'" :options="itemOptions" />
         <input v-else v-model="form.reason" class="ops-reason" :placeholder="form.kind === 'cutoff' ? '熔断说明（可不填）' : '原因（如：任务奖励、买线索）'" />
         <button class="btn btn-tonal" :disabled="form.kind !== 'other'" :title="form.kind === 'shop' ? '商店购买只能扣除' : form.kind === 'cutoff' ? '熔断只能扣除' : ''" @click="apply(1)"><Icon name="add" size="18" />增加</button>
         <button class="btn btn-tonal btn-tonal-danger" :disabled="form.kind === 'shop' && !item" @click="apply(-1)">扣除</button>
