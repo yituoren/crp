@@ -5,7 +5,7 @@ import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { fmtMoney, parseMoney, moneyUnit, moneyLabel, moneyMode } from '@/utils/money';
-import { legName } from '@/types';
+import { legName, stockText } from '@/types';
 
 /**
  * Money operation form (shared by the follow's "Mine" page and the money page)
@@ -39,7 +39,7 @@ const kindOptions = computed(() => [
 ]);
 const stock = computed(() => (form.legId === '' ? [] : race.legById.get(Number(form.legId))?.shop ?? []));
 const item = computed(() => { const s = form.itemId === '' ? null : stock.value.find((i) => i.item_id === Number(form.itemId)); return s ? { id: s.item_id, name: s.name, price: s.price } : null; });
-const itemOptions = computed(() => stock.value.map((i) => ({ value: i.item_id, label: `${i.name}（${fmtMoney(i.price)} ${moneyUnit()} · ${i.remaining === null ? '不限' : i.remaining === 0 ? '售罄' : `剩 ${i.remaining}`}）`, disabled: i.remaining === 0 })));
+const itemOptions = computed(() => stock.value.map((i) => ({ value: i.item_id, label: `${i.name}（${fmtMoney(i.price)} ${moneyUnit()} · ${stockText(i)}）`, disabled: i.remaining === 0 })));
 watch(() => form.legId, () => { if (form.kind === 'shop') form.itemId = ''; });
 const canOperate = computed(() => !race.episodePending && (team.value ? race.canAdjustCurrencyFor(team.value.id) : race.canAdjustCurrency));
 watch(() => form.kind, () => { form.legId = props.legId ?? ''; form.itemId = ''; form.amount = ''; form.reason = ''; });

@@ -49,6 +49,8 @@ export interface CutoffUse { id: number; episode_id: number; leg_id: number; tea
 export interface ShopItem { id: number; name: string; price: number; sort: number }
 /** One item a leg's shop sells: quantity null = unlimited; remaining = quantity minus purchases on this leg */
 export interface LegShopItem { id: number; item_id: number; name: string; price: number; quantity: number | null; sold: number; remaining: number | null }
+/** "已售 n · 剩 m" / "已售 n · 售罄" / "已售 n · 不限" */
+export function stockText(s: LegShopItem) { return `已售 ${s.sold} · ${s.remaining === null ? '不限' : s.remaining === 0 ? '售罄' : `剩 ${s.remaining}`}`; }
 export interface PitstopRow {
   team_id: number; team_code: string; team_name: string; team_status: Team['status']; checkin_at: string | null; checkin_source: 'manual' | 'progress' | null;
   penalty_minutes: number; final_time: string | null; rank: number | null; eliminated: boolean; note: string;

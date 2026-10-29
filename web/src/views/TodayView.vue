@@ -14,7 +14,7 @@ import CurrencyOps from '@/components/CurrencyOps.vue';
 import CurrentLegCard from '@/components/CurrentLegCard.vue';
 import BagCard from '@/components/BagCard.vue';
 import ProgressEditModal from '@/components/ProgressEditModal.vue';
-import { type Leg, type Progress, legName } from '@/types';
+import { type Leg, type Progress, legName, stockText } from '@/types';
 import { endLabel, hasStart } from '@/types';
 import { fmtMoney, moneyUnit, moneyMode } from '@/utils/money';
 
@@ -101,6 +101,7 @@ const legRows = computed(() => {
         </div>
         <p v-if="l.address" class="text-sm text-gray">地址：{{ l.address }} <a v-if="l.map_url" :href="l.map_url" target="_blank">地图</a></p>
         <p v-if="l.open_time || l.close_time" class="text-sm text-gray">开放时间：{{ l.open_time || '-' }} ~ {{ l.close_time || '-' }}</p>
+        <p v-if="moneyMode() === 'coin' && l.shop.length" class="text-sm text-gray">商店：{{ l.shop.map((s) => `${s.name} ${stockText(s)}`).join('；') }}</p>
         <div v-if="l.judge_criteria" class="alert alert-info pre">判定标准：{{ l.judge_criteria }}</div>
         <RecordTable :leg="l" />
         <PenaltyPanel :leg-id="l.id" />

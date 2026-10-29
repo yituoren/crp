@@ -5,6 +5,7 @@ import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { fmtMoney, moneyUnit } from '@/utils/money';
 import Modal from './Modal.vue';
+import { stockText } from '@/types';
 
 /**
  * Shop dialog: items are tiles like the bag; selecting one shows a quantity stepper on its right (the space is reserved
@@ -46,7 +47,7 @@ async function buy() {
       <div v-for="it in stock" :key="it.id" class="bag-tile shop-tile" :class="{ on: !!qty[it.id], 'sold-out': it.remaining === 0 }" role="button" :tabindex="it.remaining === 0 ? -1 : 0" :aria-disabled="it.remaining === 0" @click="toggle(it.id)" @keyup.enter="toggle(it.id)">
         <span class="bag-tile-check"><Icon v-if="qty[it.id]" name="check" size="16" /></span>
         <span class="bag-tile-name">{{ it.name }}</span>
-        <span class="bag-tile-count">{{ fmtMoney(it.price) }} {{ moneyUnit() }} · {{ it.remaining === null ? '不限' : it.remaining === 0 ? '售罄' : `剩 ${it.remaining}` }}</span>
+        <span class="bag-tile-count">{{ fmtMoney(it.price) }} {{ moneyUnit() }} · {{ stockText(it) }}</span>
         <span class="shop-qty" :class="{ show: !!qty[it.id] }" @click.stop>
           <button type="button" class="shop-step" :disabled="!qty[it.id]" aria-label="减少" @click="step(it.id, -1)"><Icon name="remove" size="16" /></button>
           <span class="shop-num">{{ qty[it.id] ?? '' }}</span>
