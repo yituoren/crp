@@ -10,9 +10,9 @@ WorkingDirectory=/opt/crp/server
 Environment=NODE_ENV=production
 Environment=PORT=80
 Environment=DATA_DIR=/opt/crp/data
-# Optional: host list and event name (only used on first initialization)
+# Optional: host list and event name, only used when a legacy single-event database is migrated
 # Environment=HOST_USERNAMES=阳秋,云缨,云影
-# Environment=EVENT_NAME=BJ20 全明星赛
+# Environment=EVENT_NAME=CRP
 ExecStart=/usr/bin/node dist/index.js
 Restart=always
 RestartSec=3
