@@ -69,11 +69,10 @@ async function resetAll() {
         <span style="font-weight: 500; font-size: 16px">{{ t.label }}</span>
         <TeamStatus :status="t.status" />
       </div>
-      <div class="text-sm text-gray mt-1">
-        <template v-if="t.status === 'eliminated' && t.eliminated_leg_id">在「{{ race.legById.get(t.eliminated_leg_id) ? legName(race.legById.get(t.eliminated_leg_id)!) : '-' }}」被淘汰</template>
-        <template v-else-if="t.status === 'withdrawn'">已退赛，之后的环节不再记录</template>
-        <template v-else>{{ t.members.length ? t.members.join('、') : '未登记成员' }}</template>
-      </div>
+      <!-- The title already lists the members, so the subtitle only explains the status or a missing roster -->
+      <div v-if="t.status === 'eliminated' && t.eliminated_leg_id" class="text-sm text-gray mt-1">在「{{ race.legById.get(t.eliminated_leg_id) ? legName(race.legById.get(t.eliminated_leg_id)!) : '-' }}」被淘汰</div>
+      <div v-else-if="t.status === 'withdrawn'" class="text-sm text-gray mt-1">已退赛，之后的环节不再记录</div>
+      <div v-else-if="!t.members.length" class="text-sm text-gray mt-1">未登记成员</div>
       <div v-if="auth.isHost" class="flex mt-2" style="gap: 2px 4px">
         <button class="btn btn-text btn-sm" @click="open(t)"><Icon name="edit" size="16" />编辑</button>
         <button v-if="t.status === 'withdrawn'" class="btn btn-tonal btn-sm" @click="setStatus(t, 'alive')">恢复</button>
