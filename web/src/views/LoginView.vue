@@ -31,7 +31,7 @@ async function submit() {
 <template>
   <div class="login-wrap">
     <div class="login-box">
-      <h2>城市飞奔<br /><span class="login-sub">幕后指挥系统</span></h2>
+      <h2>城市飞奔<br /><span class="login-sub">幕后管理系统</span></h2>
       <form @submit.prevent="submit">
         <div class="form-group">
           <label>幕后ID</label>

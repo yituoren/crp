@@ -24,7 +24,7 @@ function goBack() {
       <header class="page-header">
         <div class="appbar-left">
           <button class="icon-btn" title="返回" aria-label="返回" @click="goBack"><Icon name="arrow_back" size="22" /></button>
-          <h1><router-link to="/" class="plain-title">城市飞奔 幕后指挥系统</router-link></h1>
+          <h1><router-link to="/" class="plain-title">城市飞奔 幕后管理系统</router-link></h1>
         </div>
         <AccountMenu />
       </header>

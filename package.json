@@ -2,7 +2,7 @@
   "name": "crp",
   "private": true,
   "version": "0.1.0",
-  "description": "城市飞奔 BJ20 全明星赛 · 幕后指挥系统",
+  "description": "城市飞奔 BJ20 全明星赛 · 幕后管理系统",
   "workspaces": [
     "server",
     "web"
