@@ -65,7 +65,9 @@
   .alert { padding: 10px 12px 10px 38px; font-size: 13px; }
   .my-work { gap: 10px; }
   .grid { gap: 10px; }
-  .grid-2, .grid-3, .grid-4, .grid-cards { grid-template-columns: 1fr; }
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  /* Card lists: two columns on most phones (cards from 150px, so 360px-wide phones fit two), one on very narrow screens */
+  .grid-cards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .leg-item { padding: 12px 14px; }
 
   /* Touch sizes: 48px inputs, 16px text (prevents iOS focus zoom) */
