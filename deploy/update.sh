@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Pull latest code, rebuild and restart (run as root on the server)
+# Pull latest code, rebuild and restart (run as root on the server). Each pull attempt is capped at 60 s because GitHub can hang from mainland servers.
 set -euo pipefail
 cd /opt/crp
 echo "==> Pulling latest code"
 git config --global --add safe.directory /opt/crp >/dev/null 2>&1 || true
 for i in 1 2 3 4 5; do
-  git pull --ff-only && break
+  timeout 60 git pull --ff-only && break
   [ "$i" = 5 ] && { echo "git pull failed 5 times"; exit 1; }
   echo "git pull failed, retrying in 5s ($i/5)"; sleep 5
 done
