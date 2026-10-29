@@ -1,0 +1,29 @@
+# Mirror every pushed branch to Gitee so mainland servers can pull from there (deploy/update.sh tries Gitee first).
+# Needs the GITEE_SSH_KEY secret: a private key whose public half is added to the Gitee account's SSH keys.
+name: Sync to Gitee
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+concurrency:
+  group: sync-gitee
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Push to Gitee
+        env:
+          GITEE_SSH_KEY: ${{ secrets.GITEE_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$GITEE_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -t ed25519 gitee.com >> ~/.ssh/known_hosts 2>/dev/null
+          git remote add gitee git@gitee.com:yituoren/crp.git
+          # GitHub is the source of truth, so overwrite the branch on Gitee
+          git push --force gitee "HEAD:refs/heads/${GITHUB_REF_NAME}"
+          git push gitee --tags

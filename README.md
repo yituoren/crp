@@ -55,9 +55,15 @@ The script installs Node 22 and sqlite3, adds 2 GB of swap on small instances, c
 ```bash
 systemctl status crp                 # status
 journalctl -u crp -f                 # live logs
-bash /opt/crp/deploy/update.sh       # pull, rebuild, restart
+bash /opt/crp/deploy/update.sh       # pull (Gitee mirror first, then GitHub), rebuild, restart
 bash /opt/crp/deploy/backup.sh       # backup now into /opt/crp/backups
 bash /opt/crp/deploy/create-admin.sh <username> <password>
+```
+
+GitHub is often unreachable from mainland servers, so `.github/workflows/sync-gitee.yml` mirrors every push to `gitee.com/yituoren/crp` (secret `GITEE_SSH_KEY`, whose public key is in the Gitee account's SSH keys) and `update.sh` pulls from Gitee first. To be sure the server builds exactly what you pushed, pass the commit hash from your machine; the script then waits for a source that has that commit and refuses to build anything else:
+
+```bash
+ssh root@<server> "bash /opt/crp/deploy/update.sh $(git rev-parse main)"
 ```
 
 All state lives in `/opt/crp/data/` (`crp.db`, `uploads/`, `jwt-secret.txt`); copy that folder to migrate. `docker compose up -d --build` is an alternative that also listens on port 80 with data in `./data`.
