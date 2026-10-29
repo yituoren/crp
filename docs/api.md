@@ -10,7 +10,7 @@ All endpoints live under `/api`. Requests and responses are JSON unless noted. E
 - Assignment roles inside an episode (`follow`, `station`, `live`) further narrow what crews may do; checks are server-side.
 - Lock rule: once an episode is finished, or a team is eliminated / withdrawn, its records can only be changed by an admin. Before an episode starts, only admins can record.
 - Money is sent and returned as numbers in the event's unit (yuan with 2 decimals, or whole coins); stored as integer cents.
-- Live updates: the server emits Socket.IO `invalidate` events `{ scope, episodeId }` with scope in `episodes | teams | assignments | progress | ledger | announcements | admin | pitstop`.
+- Live updates: the server emits Socket.IO `invalidate` events `{ scope, episodeId }` with scope in `episodes | teams | assignments | progress | ledger | announcements | admin | pitstop`. When an event is deleted it emits `event-deleted` `{ hash }`; clients inside that event return to the home page.
 
 ## Auth (`/api/auth`)
 
@@ -58,7 +58,8 @@ All endpoints live under `/api`. Requests and responses are JSON unless noted. E
 | POST | `/join-requests/:id/reject` | host | |
 | GET | `/shop/items` | member | coin mode shop items |
 | PUT | `/shop/items` | host | `{ items: [{ id?, name, price }] }` (missing ids are deleted) |
-| GET | `/audit?limit=` | admin | this event's audit log |
+| GET | `/audit?limit=` | host | this event's audit log |
+| DELETE | `/` (the event itself) | host | `{ name }` must equal the event name; deletes episodes, legs, attachments and their files, teams, records, ledger, item log, announcements, shop items, members and join requests (accounts and audit rows are kept), then emits `event-deleted` |
 
 ## Episodes and legs
 

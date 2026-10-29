@@ -32,6 +32,11 @@ export function notify(scope: Scope, episodeId?: number | null) {
   io?.emit('invalidate', { scope, episodeId: episodeId ?? null });
 }
 
+/** Tell every client that an event is gone, so anyone inside it is sent back to the home page */
+export function notifyEventDeleted(hash: string) {
+  io?.emit('event-deleted', { hash });
+}
+
 export function intParam(c: Context, name: string): number {
   const v = Number(c.req.param(name));
   if (!Number.isInteger(v)) throw bad(`参数 ${name} 无效`);

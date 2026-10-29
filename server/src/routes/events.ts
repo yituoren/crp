@@ -1,7 +1,9 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { Hono } from 'hono';
-import { all, get, run, tx, now, fromCents } from '../db.js';
-import { hostOnly, adminOnly, isMember, joinEvent, loadEvent, roleIn, type Env, type EventRow } from '../auth.js';
-import { audit, body, str, int, intParam, bad, notFound, notify, money } from '../util.js';
+import { all, get, run, tx, now, fromCents, UPLOAD_DIR } from '../db.js';
+import { hostOnly, isMember, joinEvent, loadEvent, roleIn, type Env, type EventRow } from '../auth.js';
+import { audit, body, str, int, intParam, bad, notFound, notify, notifyEventDeleted, money } from '../util.js';
 
 /** Routes used before entering an event: list and join */
 export const eventListRoutes = new Hono<Env>();
@@ -208,8 +210,8 @@ eventInfoRoutes.put('/members/:userId', hostOnly, async (c) => {
   return c.json({ ok: true });
 });
 
-/** This event's audit log (admin) */
-eventInfoRoutes.get('/audit', adminOnly, (c) => {
+/** This event's audit log (hosts and admin) */
+eventInfoRoutes.get('/audit', hostOnly, (c) => {
   const ev = c.get('event');
   const limit = Math.min(int(c.req.query('limit'), 200) || 200, 1000);
   const offset = int(c.req.query('offset'), 0);
@@ -219,3 +221,37 @@ eventInfoRoutes.get('/audit', adminOnly, (c) => {
   });
 });
 
+
+/**
+ * Delete the whole event (hosts and admin). The body must repeat the event name as a confirmation.
+ * Removes episodes (with legs, attachments, cutoffs, progress, penalties, pit stop results, assignments),
+ * teams (with ledger, item log, cutoff uses), announcements, shop items, members and join requests,
+ * plus the uploaded attachment files. Accounts are kept; audit rows stay for the system-wide log.
+ */
+eventInfoRoutes.delete('/', hostOnly, async (c) => {
+  const ev = c.get('event');
+  const b = await body(c);
+  if (String(b.name ?? '').trim() !== ev.name) throw bad('比赛名称不一致，未删除');
+  const files = all<{ path: string }>(
+    'SELECT a.path FROM attachments a JOIN legs l ON l.id = a.leg_id JOIN episodes e ON e.id = l.episode_id WHERE e.event_id = ?', ev.id,
+  ).map((r) => r.path);
+  const counts = {
+    episodes: get<{ n: number }>('SELECT COUNT(*) AS n FROM episodes WHERE event_id = ?', ev.id)!.n,
+    teams: get<{ n: number }>('SELECT COUNT(*) AS n FROM teams WHERE event_id = ?', ev.id)!.n,
+    attachments: files.length,
+  };
+  tx(() => {
+    run('DELETE FROM cutoff_uses WHERE episode_id IN (SELECT id FROM episodes WHERE event_id = ?)', ev.id);
+    run('DELETE FROM currency_ledger WHERE team_id IN (SELECT id FROM teams WHERE event_id = ?)', ev.id);
+    run('DELETE FROM item_log WHERE team_id IN (SELECT id FROM teams WHERE event_id = ?)', ev.id);
+    run('DELETE FROM episodes WHERE event_id = ?', ev.id); // cascades to legs and everything hanging off episodes / legs
+    run('DELETE FROM teams WHERE event_id = ?', ev.id);
+    run('DELETE FROM announcements WHERE event_id = ?', ev.id);
+    run('DELETE FROM shop_items WHERE event_id = ?', ev.id);
+    run('DELETE FROM events WHERE id = ?', ev.id); // cascades to members, join requests, announcement read marks
+    audit(c.get('user'), 'delete', 'event', ev.id, { name: ev.name, hash: ev.hash, ...counts });
+  });
+  for (const f of files) { try { fs.unlinkSync(path.join(UPLOAD_DIR, f)); } catch { /* already gone */ } }
+  notifyEventDeleted(ev.hash);
+  return c.json({ ok: true });
+});

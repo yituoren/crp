@@ -731,3 +731,10 @@ html, body { overscroll-behavior: none; }
 .cl-amount { width: 110px; flex: none; height: 38px; }
 .cl-confirm { flex: none; min-width: 64px; }
 @media (max-width: 640px) { .cl-tiles { flex-basis: 100%; } .cl-amount { flex: 1; width: auto; } }
+
+/* Delete-event card on the audit tab: text on the left, red button on the right; stacks on phones */
+.danger-zone { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.danger-zone-text { min-width: 0; }
+.danger-zone-text .settings-title { margin-bottom: 4px; }
+.danger-zone .btn { flex: none; }
+@media (max-width: 640px) { .danger-zone { flex-direction: column; align-items: stretch; } }

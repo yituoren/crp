@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue';
+import { nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
+import { useRouter } from 'vue-router';
+import Modal from '@/components/Modal.vue';
+import { expectEventDeletion } from '@/realtime';
 import { fmtDateTime } from '@/utils/time';
 
 const auth = useAuth();
@@ -54,20 +57,39 @@ async function decide(r: { id: number; username: string }, action: 'approve' | '
 }
 watch(() => race.users, () => { if (tab.value === 'members') loadRequests(); });
 
-// This event's audit log (admin)
+// This event's audit log (hosts and admin)
 const audit = ref<any[]>([]);
 const auditTotal = ref(0);
 async function loadAudit() { const d = await api('/audit?limit=200'); audit.value = d.logs; auditTotal.value = d.total; }
 const short = (s: string | null) => (s ? (s.length > 120 ? s.slice(0, 120) + '…' : s) : '');
 
-onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
+// Delete the whole event: the name must be typed again to enable the button
+const router = useRouter();
+const deleting = ref(false);
+const deleteName = ref('');
+const deleteBusy = ref(false);
+const deleteInput = ref<HTMLInputElement | null>(null);
+async function openDelete() { deleteName.value = ''; deleting.value = true; await nextTick(); deleteInput.value?.focus(); }
+async function deleteEvent() {
+  if (deleteName.value.trim() !== auth.event.name || deleteBusy.value) return;
+  deleteBusy.value = true;
+  expectEventDeletion(auth.event.hash);
+  try {
+    await api('', { method: 'DELETE', body: { name: deleteName.value.trim() } });
+    deleting.value = false;
+    ui.toast(`已删除比赛「${auth.event.name}」`);
+    router.replace('/');
+  } catch (e) { ui.error(e); } finally { deleteBusy.value = false; }
+}
+
+onMounted(() => { fill(); if (auth.isHost) loadAudit(); });
 </script>
 
 <template>
   <div class="nav">
     <a href="#" :class="{ 'router-link-active': tab === 'settings' }" @click.prevent="tab = 'settings'">赛事设置</a>
     <a href="#" :class="{ 'router-link-active': tab === 'members' }" @click.prevent="tab = 'members'; race.loadUsers(); loadRequests()">成员与主办</a>
-    <a v-if="auth.isAdmin" href="#" :class="{ 'router-link-active': tab === 'audit' }" @click.prevent="tab = 'audit'; loadAudit()">操作日志</a>
+    <a v-if="auth.isHost" href="#" :class="{ 'router-link-active': tab === 'audit' }" @click.prevent="tab = 'audit'; loadAudit()">操作日志</a>
   </div>
 
   <div v-if="tab === 'settings'" class="settings">
@@ -148,6 +170,14 @@ onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
     </div>
   </div>
 
+  <div v-if="tab === 'audit'" class="card danger-zone">
+    <div class="danger-zone-text">
+      <div class="settings-title">删除比赛</div>
+      <div class="text-sm text-gray">永久删除本比赛的赛段、环节、附件、队伍、进度、经费、背包、公告和成员关系，无法恢复。账号不受影响。</div>
+    </div>
+    <button class="btn btn-danger" @click="openDelete"><Icon name="delete" size="18" />删除比赛</button>
+  </div>
+
   <div v-if="tab === 'audit'" class="card">
     <div class="card-header"><span>本比赛操作日志（最近 200 条 / 共 {{ auditTotal }}）</span><button class="btn btn-text btn-sm" @click="loadAudit"><Icon name="refresh" size="16" />刷新</button></div>
     <div class="scroll-table">
@@ -162,4 +192,10 @@ onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
       </table>
     </div>
   </div>
+
+  <Modal v-if="deleting" title="删除比赛" small @close="deleting = false">
+    <p class="text-sm mb-2">删除后，「{{ auth.event.name }}」的全部数据都无法恢复。请输入比赛名称确认。</p>
+    <div class="form-group"><label>比赛名称</label><input ref="deleteInput" v-model="deleteName" :placeholder="auth.event.name" @keyup.enter="deleteEvent" /></div>
+    <div class="modal-actions"><button class="btn btn-text" @click="deleting = false">取消</button><button class="btn btn-danger" :disabled="deleteName.trim() !== auth.event.name || deleteBusy" @click="deleteEvent">永久删除</button></div>
+  </Modal>
 </template>
