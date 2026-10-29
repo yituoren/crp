@@ -1,43 +1,13 @@
 #!/usr/bin/env bash
 # First-time deploy script (run as root on the server). Ubuntu 22.04 / 24.04 / Debian 12 / 13.
 # Usage:
-#   git clone https://github.com/yituoren/crp.git /opt/crp && bash /opt/crp/deploy/install.sh [--cn]
-# --cn: server in mainland China. apt (Debian) and Node.js come from the TUNA mirror (mirrors.tuna.tsinghua.edu.cn);
-#       npm packages come from npmmirror because TUNA has no npm registry (package-lock.json keeps the official
-#       URLs; npm rewrites the host).
+#   git clone https://github.com/yituoren/crp.git /opt/crp && bash /opt/crp/deploy/install.sh
 set -euo pipefail
 
-CN=0
-REPO_URL=""
-for a in "$@"; do
-  case "$a" in
-    --cn) CN=1 ;;
-    *) REPO_URL="$a" ;;
-  esac
-done
+REPO_URL="${1:-}"
 APP_DIR=/opt/crp
 DATA_DIR=/opt/crp/data
 NODE_MAJOR=22
-
-TUNA=https://mirrors.tuna.tsinghua.edu.cn
-if [ "$CN" = 1 ] && [ -f /etc/debian_version ] && grep -q '^ID=debian' /etc/os-release; then
-  CODENAME=$(. /etc/os-release && echo "$VERSION_CODENAME")
-  echo "==> Switching apt to the TUNA mirror ($CODENAME)"
-  for f in /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources; do [ -f "$f" ] && mv "$f" "$f.bak-crp"; done
-  cat > /etc/apt/sources.list.d/debian.sources <<SRC
-Types: deb
-URIs: $TUNA/debian
-Suites: $CODENAME $CODENAME-updates
-Components: main contrib non-free non-free-firmware
-Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
-
-Types: deb
-URIs: $TUNA/debian-security
-Suites: $CODENAME-security
-Components: main contrib non-free non-free-firmware
-Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
-SRC
-fi
 
 echo "==> Installing system packages"
 apt-get update -y
@@ -52,25 +22,10 @@ fi
 
 if ! command -v node >/dev/null 2>&1 || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt "$NODE_MAJOR" ]; then
   echo "==> Installing Node.js $NODE_MAJOR (node:sqlite requires >= 22.13)"
-  if [ "$CN" = 1 ]; then
-    BASE="$TUNA/nodejs-release/latest-v${NODE_MAJOR}.x"
-    ARCH=$(uname -m | sed 's/x86_64/x64/; s/aarch64/arm64/')
-    FILE=$(curl -fsSL "$BASE/SHASUMS256.txt" | awk '{print $2}' | grep "linux-${ARCH}.tar.xz$")
-    curl -fsSL "$BASE/$FILE" -o /tmp/node.tar.xz
-    tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 && rm -f /tmp/node.tar.xz
-    ln -sf /usr/local/bin/node /usr/bin/node
-    ln -sf /usr/local/bin/npm /usr/bin/npm
-    ln -sf /usr/local/bin/npx /usr/bin/npx
-  else
-    curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash -
-    apt-get install -y nodejs
-  fi
+  curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash -
+  apt-get install -y nodejs
 fi
 node -v && npm -v
-if [ "$CN" = 1 ]; then
-  echo "==> Using npmmirror for npm packages"
-  npm config set registry https://registry.npmmirror.com --location=global
-fi
 
 if ! id crp >/dev/null 2>&1; then
   echo "==> Creating service user crp"
