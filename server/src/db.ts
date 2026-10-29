@@ -369,6 +369,14 @@ function rebuildForEvents() {
   }
 }
 rebuildForEvents();
+// The rebuild above recreates episodes / teams with a fixed column list; on a brand-new database it runs in the
+// same startup as the ensureColumn calls above and drops those columns again, so re-apply them (idempotent)
+ensureColumn('episodes', 'start_at', 'TEXT');
+ensureColumn('episodes', 'inherit_rank', 'INTEGER NOT NULL DEFAULT 0');
+ensureColumn('episodes', 'start_gap_min', 'INTEGER NOT NULL DEFAULT 0');
+ensureColumn('episodes', 'depart_base', 'TEXT');
+ensureColumn('teams', 'eliminated_leg_id', 'INTEGER');
+ensureColumn('teams', 'locked_from_leg_id', 'INTEGER');
 
 type Param = string | number | null;
 export type Row = Record<string, any>;
