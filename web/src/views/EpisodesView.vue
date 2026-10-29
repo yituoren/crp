@@ -139,7 +139,7 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
       <button v-if="auth.isHost && race.structureEditable" class="btn btn-sm" @click="addLeg"><Icon name="add" size="16" />添加环节</button>
     </div>
     <div v-if="!ep.legs.length" class="empty-state">暂无环节，{{ auth.isHost ? '请点击右上角添加' : '请等待主办添加' }}</div>
-    <div class="grid grid-3">
+    <div class="grid grid-cards">
       <div v-for="(leg, i) in ep.legs" :key="leg.id" class="leg-item" v-bind="auth.isHost && race.structureEditable ? drag.bind(i) : {}" @click="$router.push({ name: 'leg', params: { episodeId: ep.id, legId: leg.id } })">
         <div class="leg-item-body">
         <div class="flex-between leg-item-head">

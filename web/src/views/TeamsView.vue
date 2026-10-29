@@ -63,7 +63,7 @@ async function resetAll() {
       <button class="btn btn-text" @click="resetAll"><Icon name="restart_alt" size="18" />重置队伍数据</button>
     </div>
   </div>
-  <div class="grid grid-3">
+  <div class="grid grid-cards">
     <div v-for="(t, i) in race.teams" :key="t.id" class="team-card" :class="'team-' + t.status" v-bind="auth.isHost ? drag.bind(i) : {}">
       <div class="flex-between" style="margin-bottom: 4px">
         <span style="font-weight: 500; font-size: 16px">{{ t.label }}</span>
