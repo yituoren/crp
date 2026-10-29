@@ -1,24 +1,55 @@
 #!/usr/bin/env bash
 # First-time deploy script (run as root on the server). Ubuntu 22.04 / 24.04 / Debian 12 / 13.
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/yituoren/crp/main/deploy/install.sh | bash -s -- https://github.com/yituoren/crp.git
-# Or git clone into /opt/crp first, then: bash /opt/crp/deploy/install.sh
+#   git clone https://github.com/yituoren/crp.git /opt/crp && bash /opt/crp/deploy/install.sh [--cn]
+# --cn: server in mainland China. Node.js and npm packages are downloaded from npmmirror instead of
+#       nodesource / registry.npmjs.org (package-lock.json keeps the official URLs; npm rewrites the host).
 set -euo pipefail
 
-REPO_URL="${1:-}"
+CN=0
+REPO_URL=""
+for a in "$@"; do
+  case "$a" in
+    --cn) CN=1 ;;
+    *) REPO_URL="$a" ;;
+  esac
+done
 APP_DIR=/opt/crp
 DATA_DIR=/opt/crp/data
+NODE_MAJOR=22
 
 echo "==> Installing system packages"
 apt-get update -y
-apt-get install -y curl git sqlite3 ca-certificates
+apt-get install -y curl git sqlite3 ca-certificates xz-utils libcap2-bin
 
-if ! command -v node >/dev/null 2>&1 || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 22 ]; then
-  echo "==> Installing Node.js 22 (node:sqlite requires >= 22.13)"
-  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-  apt-get install -y nodejs
+# Small instances (2 GB RAM) can run out of memory while building the web bundle: add 2 GB of swap once
+if ! swapon --show | grep -q . && [ "$(awk '/MemTotal/ {print $2}' /proc/meminfo)" -lt 3500000 ]; then
+  echo "==> Adding 2G swap file"
+  fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile >/dev/null && swapon /swapfile
+  grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+
+if ! command -v node >/dev/null 2>&1 || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt "$NODE_MAJOR" ]; then
+  echo "==> Installing Node.js $NODE_MAJOR (node:sqlite requires >= 22.13)"
+  if [ "$CN" = 1 ]; then
+    BASE="https://npmmirror.com/mirrors/node/latest-v${NODE_MAJOR}.x"
+    ARCH=$(uname -m | sed 's/x86_64/x64/; s/aarch64/arm64/')
+    FILE=$(curl -fsSL "$BASE/SHASUMS256.txt" | awk '{print $2}' | grep "linux-${ARCH}.tar.xz$")
+    curl -fsSL "$BASE/$FILE" -o /tmp/node.tar.xz
+    tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 && rm -f /tmp/node.tar.xz
+    ln -sf /usr/local/bin/node /usr/bin/node
+    ln -sf /usr/local/bin/npm /usr/bin/npm
+    ln -sf /usr/local/bin/npx /usr/bin/npx
+  else
+    curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash -
+    apt-get install -y nodejs
+  fi
 fi
 node -v && npm -v
+if [ "$CN" = 1 ]; then
+  echo "==> Using npmmirror for npm packages"
+  npm config set registry https://registry.npmmirror.com --location=global
+fi
 
 if ! id crp >/dev/null 2>&1; then
   echo "==> Creating service user crp"
@@ -64,4 +95,4 @@ fi
 IP=$(curl -fsS -4 https://api.ipify.org || hostname -I | awk '{print $1}')
 echo
 echo "Deploy complete. Open http://$IP from a phone on mobile data to verify access."
-echo "First host account: register with a username from the host list (default: 阳秋 / 云缨 / 云影)."
+echo "Create the admin account: bash $APP_DIR/deploy/create-admin.sh <username> <password>"
