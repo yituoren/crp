@@ -60,7 +60,18 @@ bash /opt/crp/deploy/backup.sh       # backup now into /opt/crp/backups
 bash /opt/crp/deploy/create-admin.sh <username> <password>
 ```
 
-All state lives in `/opt/crp/data/` (`crp.db`, `uploads/`, `jwt-secret.txt`); copy that folder to migrate. No TLS is configured by the installer — put Nginx or Caddy in front when you add a domain. `docker compose up -d --build` is an alternative that also listens on port 80 with data in `./data`.
+All state lives in `/opt/crp/data/` (`crp.db`, `uploads/`, `jwt-secret.txt`); copy that folder to migrate. `docker compose up -d --build` is an alternative that also listens on port 80 with data in `./data`.
+
+### Domain and HTTPS
+
+The installer serves plain HTTP from Node on port 80. To add a domain, put Nginx in front:
+
+```bash
+bash /opt/crp/deploy/setup-nginx.sh example.cn                  # Nginx on port 80, app moved to 127.0.0.1:3000
+bash /opt/crp/deploy/setup-nginx.sh example.cn --https [email]  # Let's Encrypt certificate, HTTPS on 443
+```
+
+The first form only moves the app behind Nginx (a systemd drop-in sets `HOST=127.0.0.1` and `PORT=3000`, so `update.sh` keeps it). The `--https` form needs the domain resolving to the server, port 80 reachable (on mainland servers this means an approved ICP filing) and port 443 open in the cloud firewall. `www.example.cn` and `http://` redirect to `https://example.cn`; `http://<server IP>` keeps working. Certbot's timer renews the certificate and a deploy hook reloads Nginx. Socket.IO WebSockets and 10 MB uploads pass through the proxy; the session cookie is marked `Secure` when Nginx reports HTTPS.
 
 
 ## Repository layout
@@ -82,7 +93,7 @@ web/src
   stores/             auth, race (event data), ui (toasts, confirms)
   styles.css          desktop styles; mobile.css phone overrides
   directives/         v-mobile-table (card layout for tables on phones)
-deploy/               install.sh update.sh backup.sh create-admin.sh crp.service
+deploy/               install.sh update.sh backup.sh create-admin.sh setup-nginx.sh crp.service
 docs/                 user-manual.md (中文), api.md, templates/cards (clue card artwork)
 ```
 
