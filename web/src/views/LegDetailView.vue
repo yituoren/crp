@@ -145,11 +145,13 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
           <div v-if="moneyMode() === 'coin'" class="edit-section">
             <div class="edit-section-head"><span class="edit-section-title">商店</span><button v-if="race.structureEditable && shop.length < race.shopItems.length" class="btn btn-text btn-sm" @click="addShopItem"><Icon name="add" size="16" />添加商品</button></div>
             <div v-for="(r, i) in shop" :key="i" class="cutoff-edit">
-              <div class="cutoff-edit-top">
-                <MSelect v-model="r.itemId" outlined class="cutoff-name" placeholder="选择商品" :disabled="!race.structureEditable" :options="shopItemOptions(i)" />
+              <!-- item and quantity share one row; it wraps only when the column is too narrow -->
+              <div class="shop-edit-row">
+                <MSelect v-model="r.itemId" outlined class="shop-edit-item" placeholder="选择商品" :disabled="!race.structureEditable" :options="shopItemOptions(i)" />
+                <span class="hm-row shop-edit-qty"><input v-model.number="r.quantity" type="number" min="0" step="1" inputmode="numeric" placeholder="不限" title="数量，留空表示不限" :disabled="!race.structureEditable" /><span>件</span></span>
                 <button v-if="race.structureEditable" class="icon-btn icon-btn-sm icon-btn-danger" title="删除" @click="removeShopItem(i)"><Icon name="delete" size="18" /></button>
               </div>
-              <div class="hm-row shop-edit-qty"><span>数量</span><input v-model.number="r.quantity" type="number" min="0" step="1" inputmode="numeric" placeholder="不限" :disabled="!race.structureEditable" /><span>件</span><span v-if="soldOf(r.itemId)" class="text-xs text-gray">已售 {{ soldOf(r.itemId) }}</span></div>
+              <span v-if="soldOf(r.itemId)" class="text-xs text-gray">已售 {{ soldOf(r.itemId) }}</span>
             </div>
             <div v-if="!race.shopItems.length" class="text-sm text-gray cutoff-empty">赛事设置里还没有商品，先到「后台 → 赛事设置」添加</div>
             <div v-else-if="!shop.length" class="text-sm text-gray cutoff-empty">本环节不开放商店</div>

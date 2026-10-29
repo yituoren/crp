@@ -273,7 +273,10 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .cutoff-edit .hm-row input { min-width: 48px; padding-left: 8px; padding-right: 8px; text-align: center; }
 .cutoff-edit .hm-row span { white-space: nowrap; }
 .cutoff-empty { margin-bottom: 12px; }
-.shop-edit-qty input { width: 88px; flex: none; text-align: center; }
+.shop-edit-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.shop-edit-row .shop-edit-item { flex: 1 1 150px; min-width: 0; }
+.shop-edit-qty { flex: none; }
+.shop-edit-qty input { width: 72px; min-width: 0; flex: none; text-align: center; }
 .shop-edit-qty span { white-space: nowrap; }
 .cutoff-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--gray-100); }
 .cutoff-row:last-child { border-bottom: none; }
