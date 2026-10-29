@@ -215,7 +215,7 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .badge-warning { background: var(--warning-light); color: var(--warning-on-light); }
 .badge-urgent { background: var(--danger-light); color: var(--danger-on-light); }
 .tag { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: .3px; color: #fff; background: var(--gray-500); white-space: nowrap; line-height: 1.5; }
-/* Leg type colours: taken from the clue-card artwork in docs/templates */
+/* Leg type colours: taken from the clue-card artwork in docs/templates/cards */
 .tag-SL { background: #C9DA4D; color: #2B3300; }     /* Starting Line */
 .tag-RI { background: #009DDA; }                     /* Route Info */
 .tag-TI { background: #33CBCC; color: #063D3E; }     /* Task */
@@ -225,13 +225,13 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .tag-Union { background: #EB661C; }                  /* Union */
 .tag-FO { background: #664193; }                     /* Face Off */
 .tag-SB { background: #FFCC01; color: #3D3000; }     /* Speed Bump */
+.tag-Trap { background: #7B4E33; }                   /* Trap */
+.tag-SQ { background: #BF1463; }                     /* Side Quest */
 /* Types without artwork: colours chosen not to clash with the above */
 .tag-UT { background: #4338CA; }                     /* U-Turn */
-.tag-YD { background: #78350F; }                     /* Yield */
-.tag-Trap { background: #1E293B; }                   /* Trap */
-.tag-PS { background: #DB2777; }                     /* Pit Stop */
+.tag-YD { background: #0E7490; }                     /* Yield */
+.tag-PS { background: #1E293B; }                     /* Pit Stop */
 .tag-Shuffle { background: #6B7280; }                /* Shuffle */
-.tag-SQ { background: #0D9488; }                     /* Side Quest */
 
 /* Episode selector */
 .ep-selector { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; scrollbar-width: none; }
