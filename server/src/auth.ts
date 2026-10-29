@@ -80,7 +80,9 @@ const SECRET = loadSecret();
 
 export async function issueToken(c: Context, user: AuthUser) {
   const token = await sign({ sub: user.id, exp: Math.floor(Date.now() / 1000) + TTL_SEC }, SECRET);
-  setCookie(c, COOKIE, token, { httpOnly: true, sameSite: 'Lax', path: '/', maxAge: TTL_SEC });
+  // Mark the cookie Secure when Nginx reports the request came in over HTTPS; plain-HTTP access by IP keeps working
+  const secure = c.req.header('x-forwarded-proto') === 'https';
+  setCookie(c, COOKIE, token, { httpOnly: true, sameSite: 'Lax', path: '/', maxAge: TTL_SEC, secure });
 }
 export function clearToken(c: Context) {
   deleteCookie(c, COOKIE, { path: '/' });

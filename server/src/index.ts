@@ -84,9 +84,11 @@ if (fs.existsSync(PUBLIC_DIR)) {
   });
 }
 
-// '::' listens on IPv6 and, with bindv6only=0 (Linux default), IPv4 as well
-const server = serve({ fetch: app.fetch, port: PORT, hostname: '::' }, (info) => {
-  console.log(`[server] listening on http://[::]:${info.port} (static: ${fs.existsSync(PUBLIC_DIR) ? PUBLIC_DIR : 'none, dev mode'})`);
+// Default '::' listens on IPv6 and, with bindv6only=0 (Linux default), IPv4 as well.
+// Behind Nginx set HOST=127.0.0.1 so only the proxy can reach the app.
+const HOST = process.env.HOST ?? '::';
+const server = serve({ fetch: app.fetch, port: PORT, hostname: HOST }, (info) => {
+  console.log(`[server] listening on ${HOST}:${info.port} (static: ${fs.existsSync(PUBLIC_DIR) ? PUBLIC_DIR : 'none, dev mode'})`);
 });
 attachRealtime(server as any);
 startScheduler();
