@@ -22,8 +22,12 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "$GITEE_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -t ed25519 gitee.com >> ~/.ssh/known_hosts 2>/dev/null
+          # Pinned Gitee host key (keyscan at run time fails intermittently and would trust whatever answers)
+          echo 'gitee.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEKxHSJ7084RmkJ4YdEi5tngynE8aZe2uEoVVsB/OvYN' >> ~/.ssh/known_hosts
           git remote add gitee git@gitee.com:yituoren/crp.git
-          # GitHub is the source of truth, so overwrite the branch on Gitee
-          git push --force gitee "HEAD:refs/heads/${GITHUB_REF_NAME}"
-          git push gitee --tags
+          # GitHub is the source of truth, so overwrite the branch on Gitee; retry because the cross-border link is flaky
+          for i in 1 2 3 4 5; do
+            git push --force gitee "HEAD:refs/heads/${GITHUB_REF_NAME}" && git push gitee --tags && exit 0
+            echo "push failed, retrying in 10s ($i/5)"; sleep 10
+          done
+          exit 1
