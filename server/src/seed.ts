@@ -6,19 +6,19 @@ const randomHash = () => [...crypto.getRandomValues(new Uint8Array(4))].map((b) 
 
 export function seed() {
   // ---- Events ----
-  // First upgrade to multi-event: turn the old global settings into event 1 (development) and add an empty test event
-  if (!get('SELECT 1 FROM events LIMIT 1')) {
-    const name = getSetting('event_name') || process.env.EVENT_NAME || 'BJ20 全明星赛';
+  // Legacy single-event databases (episodes / teams / settings from before multi-event) become event 1.
+  // A fresh database starts with no events at all; events are created from the home page.
+  const legacy = !!(get('SELECT 1 FROM episodes LIMIT 1') || get('SELECT 1 FROM teams LIMIT 1') || getSetting('event_name'));
+  if (legacy && !get('SELECT 1 FROM events LIMIT 1')) {
+    const name = getSetting('event_name') || process.env.EVENT_NAME || 'CRP';
     const hosts = (getSetting('hosts') || DEFAULT_HOSTS.join(',')).split(',').map((s) => s.trim()).filter(Boolean).join(',');
     const teamSize = Math.max(1, Number(getSetting('team_size', '2')) || 2);
     const currency = getSetting('currency_mode', 'yuan') === 'coin' ? 'coin' : 'yuan';
     const rbGap = Math.max(0, Number(getSetting('rb_gap', '2')) || 0);
     tx(() => {
       run('INSERT INTO events(id, hash, name, invite_code, hosts, team_size, currency_mode, rb_gap, created_at) VALUES (1,?,?,?,?,?,?,?,?)',
-        randomHash(), name, 'dev', hosts, teamSize, currency, rbGap, now());
-      run('INSERT INTO events(hash, name, invite_code, hosts, team_size, currency_mode, rb_gap, created_at) VALUES (?,?,?,?,?,?,?,?)',
-        randomHash(), '测试赛', 'test', hosts, 2, 'yuan', 2, now());
-      // existing accounts join the development event so nothing breaks after the upgrade
+        randomHash(), name, randomHash(), hosts, teamSize, currency, rbGap, now());
+      // existing accounts join the migrated event so nothing breaks after the upgrade
       for (const u of all('SELECT id FROM users')) run('INSERT OR IGNORE INTO event_members(event_id, user_id, joined_at) VALUES (1, ?, ?)', u.id, now());
     });
   }
@@ -44,25 +44,6 @@ export function seed() {
     run('UPDATE users SET ann_read_id = 0 WHERE id = ?', u.id);
   }
 
-  if (!get('SELECT 1 FROM episodes WHERE event_id = 1 LIMIT 1')) {
-    tx(() => {
-      for (let i = 1; i <= 5; i++) {
-        const r = run('INSERT INTO episodes(code, name, budget, sort, status, notes, event_id) VALUES (?,?,?,?,?,?,1)', `EP${i}`, `第 ${i} 赛段`, 0, i, 'pending', '');
-        const epId = Number(r.lastInsertRowid);
-        const legs: [string, string, number, string][] = [
-          ...(i === 1 ? [['SL', '起跑线', 1, 'full'] as [string, string, number, string]] : []),
-          ['RI', '路线信息 1', 0, 'full'], ['TI', '任务点 1', 1, 'full'], ['PS', '中继站', 1, 'full'],
-        ];
-        legs.forEach(([type, name, staff, mode], j) => run('INSERT INTO legs(episode_id, sort, type, name, needs_staff, record_mode) VALUES (?,?,?,?,?,?)', epId, j + 1, type, name, staff, mode));
-      }
-    });
-  }
-
-  if (!get('SELECT 1 FROM teams WHERE event_id = 1 LIMIT 1')) {
-    tx(() => {
-      for (let i = 1; i <= 12; i++) run('INSERT INTO teams(code, name, members, status, currency, sort, event_id) VALUES (?,?,?,?,?,?,1)', `T${i}`, String(i).padStart(2, '0'), '[]', 'alive', 0, i);
-    });
-  }
   // One-off: fix type codes — Fast Forward FO → FF, Face Off PK → FO (Fast Forward first to avoid a clash)
   if (getSetting('leg_types') !== 'v2') {
     tx(() => {

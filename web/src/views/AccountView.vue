@@ -89,7 +89,7 @@ async function importData() {
   try { await api('/system/import', { method: 'POST', body: data, retries: 0 }); ui.toast('已恢复'); window.location.reload(); } catch (e) { ui.error(e); }
 }
 async function resetAll(includeAccounts: boolean) {
-  const msg = includeAccounts ? '清空所有比赛的赛段、队伍、记录、公告，并删除除管理员以外的全部账号。' : '清空所有比赛的赛段、环节、附件、队伍、记录、经费流水、公告，恢复开发用比赛的默认赛段与队伍。账号保留。';
+  const msg = includeAccounts ? '清空所有比赛的赛段、队伍、记录、公告，并删除除管理员以外的全部账号。' : '清空所有比赛的赛段、环节、附件、队伍、记录、经费流水、公告。比赛和账号保留。';
   if (!(await ui.confirm('重置数据', msg + '\n请先导出备份！确定要继续吗？', { danger: true, okText: '确认重置' }))) return;
   try { await api('/system/reset', { method: 'POST', body: { includeAccounts } }); ui.toast('已重置'); window.location.reload(); } catch (e) { ui.error(e); }
 }

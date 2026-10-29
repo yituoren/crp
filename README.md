@@ -33,7 +33,7 @@ npm run typecheck    # server + web
 npm run build        # builds web into server/public and compiles the server
 ```
 
-On first start the server seeds a development event (invite code `dev`) and an empty test event (invite code `test`). Create a global admin from the command line (it writes to `server/data`):
+A fresh database starts empty: no events, no accounts. Create a global admin from the command line (it writes to `server/data`), then create events from the home page:
 
 ```bash
 npm run create-admin --workspace=server -- <username> <password>
@@ -62,7 +62,6 @@ bash /opt/crp/deploy/create-admin.sh <username> <password>
 
 All state lives in `/opt/crp/data/` (`crp.db`, `uploads/`, `jwt-secret.txt`); copy that folder to migrate. No TLS is configured by the installer — put Nginx or Caddy in front when you add a domain. `docker compose up -d --build` is an alternative that also listens on port 80 with data in `./data`.
 
-Change the two seeded invite codes in *后台 → 赛事设置* right after going live.
 
 ## Repository layout
 

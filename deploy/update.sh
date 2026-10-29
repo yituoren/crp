@@ -4,7 +4,11 @@ set -euo pipefail
 cd /opt/crp
 echo "==> Pulling latest code"
 git config --global --add safe.directory /opt/crp >/dev/null 2>&1 || true
-git pull --ff-only
+for i in 1 2 3 4 5; do
+  git pull --ff-only && break
+  [ "$i" = 5 ] && { echo "git pull failed 5 times"; exit 1; }
+  echo "git pull failed, retrying in 5s ($i/5)"; sleep 5
+done
 echo "==> Installing dependencies and building"
 npm ci
 npm run build
