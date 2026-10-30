@@ -46,9 +46,10 @@ watch(() => race.announcements, () => race.markAnnouncementsRead());
       <div class="scroll-y">
         <div v-if="!race.announcements.length" class="empty-state">暂无公告</div>
         <div v-for="a in race.announcements" :key="a.id" class="alert" :class="a.pinned_at ? 'alert-warning' : 'alert-info'">
-          <div class="pre"><span v-if="a.pinned_at" class="badge badge-warning">置顶</span> {{ a.content }}</div>
+          <!-- no whitespace around the content: .pre keeps it, which would indent the first line -->
+          <div class="pre">{{ a.content }}</div>
           <div class="flex-between mt-1">
-            <span class="text-xs text-gray">{{ a.created_by }} · {{ fmtDateMinute(a.created_at) }}</span>
+            <span class="flex" style="gap: 6px"><span v-if="a.pinned_at" class="badge badge-warning">置顶</span><span class="text-xs text-gray">{{ a.created_by }} · {{ fmtDateMinute(a.created_at) }}</span></span>
             <span v-if="auth.isHost" class="flex" style="gap: 6px">
               <button class="btn btn-text btn-sm" @click="pin(a.id, !a.pinned_at)"><Icon name="push_pin" size="16" />{{ a.pinned_at ? '取消置顶' : '置顶' }}</button>
               <button class="btn btn-text btn-text-danger btn-sm" @click="remove(a.id)"><Icon name="delete" size="16" />删除</button>
