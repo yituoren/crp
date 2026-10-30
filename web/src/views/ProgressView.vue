@@ -149,7 +149,7 @@ const rankOf = computed(() => { const m = new Map<number, number>(); let n = 0; 
         <tbody>
           <tr v-for="t in orderedTeams" :key="t.id" :class="{ 'mx-dead': t.status !== 'alive' }">
             <td class="mx2-team">
-              <div class="flex" style="gap: 6px; flex-wrap: nowrap"><span v-if="rankOf.get(t.id)" class="mx2-rank" :class="'rank-' + rankOf.get(t.id)">#{{ rankOf.get(t.id) }}</span><strong><span class="mx2-team-full">{{ t.label }}</span><span class="mx2-team-short">{{ t.name }}</span></strong><TeamStatus :status="t.status" class="mx2-team-status" /></div>
+              <div class="flex" style="gap: 6px; flex-wrap: nowrap"><span v-if="rankOf.get(t.id)" class="mx2-rank" :class="'rank-' + rankOf.get(t.id)">#{{ rankOf.get(t.id) }}</span><strong><span class="mx2-team-full">{{ t.full_label }}</span><span class="mx2-team-short">{{ t.name }}</span></strong><TeamStatus :status="t.status" class="mx2-team-status" /></div>
               <div class="text-xs text-gray mx2-team-ago">{{ lastAgo(t.id) || '尚无记录' }}</div>
             </td>
             <template v-for="l in legs" :key="l.id">

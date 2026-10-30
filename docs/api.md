@@ -92,9 +92,9 @@ Leg fields: `type` (one of `SL RI TI DT RB FF Union Shuffle UT YD SB FO Trap SQ 
 
 | Method | Path | Role | Body / notes |
 |---|---|---|---|
-| GET | `/teams` | member | `{ teams: [{ id, code, name, members, label, status, currency, rbCounts, inventory, eliminated_leg_id, locked_from_leg_id }] }` |
-| POST | `/teams` | host | `{ members: [] }`; numbers are generated |
-| PUT | `/teams/:id` | host | `{ members?, status? ('alive'|'withdrawn') }` |
+| GET | `/teams` | member | `{ teams: [{ id, code, name, members, short_name, label, full_label, status, currency, rbCounts, inventory, eliminated_leg_id, locked_from_leg_id }] }` |
+| POST | `/teams` | host | `{ members: [], short_name? }`; numbers are generated. `label` is "number short_name" when a short name is set, otherwise `full_label` ("number A&B") |
+| PUT | `/teams/:id` | host | `{ members?, short_name?, status? ('alive'|'withdrawn') }` |
 | PUT | `/teams/order` | host | `{ ids }` → renumbers |
 | DELETE | `/teams/:id` | host | removes all of the team's records |
 | POST | `/teams/reset` | host | all alive, balances zero |

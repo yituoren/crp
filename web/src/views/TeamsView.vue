@@ -13,7 +13,7 @@ const auth = useAuth();
 const race = useRace();
 const ui = useUi();
 const editing = ref<Team | 'new' | null>(null);
-const form = reactive({ members: [] as string[] });
+const form = reactive({ members: [] as string[], short_name: '' });
 // Drag reorder: numbers follow the order
 const drag = useDragSort({
   count: () => race.teams.length,
@@ -28,7 +28,7 @@ function open(t: Team | 'new') {
   editing.value = t;
   const members = t === 'new' ? [] : [...t.members];
   while (members.length < size.value) members.push('');
-  Object.assign(form, { members });
+  Object.assign(form, { members, short_name: t === 'new' ? '' : t.short_name });
 }
 async function save() {
   try {
@@ -69,10 +69,11 @@ async function resetAll() {
         <span style="font-weight: 500; font-size: 16px">{{ t.label }}</span>
         <TeamStatus :status="t.status" />
       </div>
-      <!-- The title already lists the members, so the subtitle only explains the status or a missing roster -->
-      <div v-if="t.status === 'eliminated' && t.eliminated_leg_id" class="text-sm text-gray mt-1">在「{{ race.legById.get(t.eliminated_leg_id) ? legName(race.legById.get(t.eliminated_leg_id)!) : '-' }}」被淘汰</div>
-      <div v-else-if="t.status === 'withdrawn'" class="text-sm text-gray mt-1">已退赛，之后的环节不再记录</div>
-      <div v-else-if="!t.members.length" class="text-sm text-gray mt-1">未登记成员</div>
+      <div class="text-sm text-gray mt-1">
+        <template v-if="t.status === 'eliminated' && t.eliminated_leg_id">在「{{ race.legById.get(t.eliminated_leg_id) ? legName(race.legById.get(t.eliminated_leg_id)!) : '-' }}」被淘汰</template>
+        <template v-else-if="t.status === 'withdrawn'">已退赛，之后的环节不再记录</template>
+        <template v-else>{{ t.members.length ? t.members.join('、') : '未登记成员' }}</template>
+      </div>
       <div v-if="auth.isHost" class="flex mt-2" style="gap: 2px 4px">
         <button class="btn btn-text btn-sm" @click="open(t)"><Icon name="edit" size="16" />编辑</button>
         <button v-if="t.status === 'withdrawn'" class="btn btn-tonal btn-sm" @click="setStatus(t, 'alive')">恢复</button>
@@ -84,6 +85,7 @@ async function resetAll() {
 
   <Modal v-if="editing" :title="editing === 'new' ? '新增队伍' : '编辑队伍'" small @close="editing = null">
     <div v-for="i in form.members.length" :key="i" class="form-group"><label>成员 {{ i }}</label><input v-model="form.members[i - 1]" :placeholder="`成员 ${i} 姓名`" /></div>
+    <div class="form-group"><label>简称<span class="text-gray">（选填）</span></label><input v-model="form.short_name" maxlength="20" placeholder="填写后各处显示「编号 简称」，进度结算仍显示全名" /></div>
     <div class="modal-actions"><button class="btn btn-text" @click="editing = null">取消</button><button class="btn" @click="save">保存</button></div>
   </Modal>
 </template>

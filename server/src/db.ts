@@ -295,6 +295,8 @@ ensureColumn('currency_ledger', 'kind', "TEXT NOT NULL DEFAULT 'other'");
 ensureColumn('currency_ledger', 'item_id', 'INTEGER');
 ensureColumn('currency_ledger', 'item_name', 'TEXT');
 ensureColumn('legs', 'shop_open', 'INTEGER NOT NULL DEFAULT 0');
+// Optional team short name: shown instead of the member list wherever the team is named (the standings table keeps the full label)
+ensureColumn('teams', 'short_name', "TEXT NOT NULL DEFAULT ''");
 // Shop stock per leg: legs opened before stock lists existed sold every event item without limit; keep that, then shop_open mirrors "has stock rows"
 if (get('SELECT 1 FROM legs l WHERE l.shop_open = 1 AND NOT EXISTS (SELECT 1 FROM leg_shop_items s WHERE s.leg_id = l.id) LIMIT 1')) {
   db.exec(`
