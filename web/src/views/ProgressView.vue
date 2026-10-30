@@ -4,7 +4,7 @@ import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { fmtTime, fmtTimeSec, fmtDurMs } from '@/utils/time';
 import { legName, endLabel, startLabel, hasStart, typeCode, type LegType } from '@/types';
-import { exportProgressXlsx, type ExportGroup, type ExportRow } from '@/utils/progressExport';
+import { exportProgressXlsx, type ExportCell, type ExportGroup, type ExportRow } from '@/utils/progressExport';
 import { useUi } from '@/stores/ui';
 import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
@@ -92,6 +92,21 @@ function lastAgo(teamId: number): string {
 // ---- Standings: live ranks ----
 // Teams at the pit stop come first by check-in + net penalty (server rank); the rest by progress depth (which leg, started or completed), ties by the latest record time (earlier first); unstarted teams in team order; withdrawn teams last and unranked
 const finalRank = computed(() => new Map(race.pitstop.map((r) => [r.team_id, r.rank])));
+/**
+ * Teams shown in this episode: a team that was eliminated or withdrew in an earlier episode is left out; in the episode
+ * where it stopped it still shows (greyed, later legs empty). The stop leg is the elimination leg, or for a withdrawal
+ * the first locked leg; a withdrawal after the last leg (nothing locked) keeps the team everywhere.
+ */
+const epIndex = computed(() => new Map(race.episodes.map((e, i) => [e.id, i])));
+const visibleTeams = computed(() => {
+  const cur = epIndex.value.get(ep.value?.id ?? 0) ?? 0;
+  return race.teams.filter((t) => {
+    if (t.status === 'alive') return true;
+    const stopLeg = t.status === 'eliminated' ? t.eliminated_leg_id : t.locked_from_leg_id;
+    const stopEp = stopLeg ? race.legById.get(stopLeg)?.episode_id : null;
+    return stopEp == null || (epIndex.value.get(stopEp) ?? cur) >= cur;
+  });
+});
 function progressKey(teamId: number): { depth: number; t: number } {
   let depth = 0, t = 0;
   legs.value.forEach((l, i) => {
@@ -103,9 +118,9 @@ function progressKey(teamId: number): { depth: number; t: number } {
 }
 const orderedTeams = computed(() => {
   const idx = new Map(race.teams.map((t, i) => [t.id, i]));
-  const key = new Map(race.teams.map((t) => [t.id, progressKey(t.id)]));
-  return [...race.teams].sort((a, b) => {
-    const wa = a.status === 'withdrawn' ? 1 : 0, wb = b.status === 'withdrawn' ? 1 : 0;
+  const key = new Map(visibleTeams.value.map((t) => [t.id, progressKey(t.id)]));
+  return [...visibleTeams.value].sort((a, b) => {
+    const wa = a.status !== 'alive' ? 1 : 0, wb = b.status !== 'alive' ? 1 : 0; // eliminated and withdrawn teams go last, unranked
     if (wa !== wb) return wa - wb;
     const ra = finalRank.value.get(a.id) ?? null, rb = finalRank.value.get(b.id) ?? null;
     if (ra && rb) return ra - rb;
@@ -116,14 +131,19 @@ const orderedTeams = computed(() => {
     return idx.get(a.id)! - idx.get(b.id)!;
   });
 });
-const rankOf = computed(() => { const m = new Map<number, number>(); let n = 0; for (const t of orderedTeams.value) if (t.status !== 'withdrawn') m.set(t.id, ++n); return m; });
+const rankOf = computed(() => { const m = new Map<number, number>(); let n = 0; for (const t of orderedTeams.value) if (t.status === 'alive') m.set(t.id, ++n); return m; });
+/** Cell background by column kind (shared with the export): times, durations / penalties, task details, blanks */
+type CellKind = 'time' | 'dur' | 'extra';
+const kindCls = (text: string, kind: CellKind) => (text === '-' ? 'mx2-c-blank' : `mx2-c-${kind}`);
+/** Extra columns: pit stop penalty counts as a duration, the settled time as a time, the rest are task details */
+const extraKind = (l: { type: string }, i: number): CellKind => (l.type === 'PS' ? (i === 0 ? 'dur' : 'time') : 'extra');
 
 // ---- Export (.xlsx): the on-screen columns plus a rank per leg, teams in number order, full team labels ----
 const ui = useUi();
 /** Rank on a leg by the time it was finished (pit stop: settled time = check-in + net penalty); equal times share a rank */
 function legRanks(l: { id: number; type: string }): Map<number, number> {
   const done: { id: number; t: number }[] = [];
-  for (const tm of race.teams) {
+  for (const tm of visibleTeams.value) {
     const fin = l.type === 'PS' ? race.pitstop.find((x) => x.team_id === tm.id)?.final_time ?? race.progressOf(tm.id, l.id)?.completed_at : race.progressOf(tm.id, l.id)?.completed_at;
     if (fin) done.push({ id: tm.id, t: new Date(fin).getTime() });
   }
@@ -136,28 +156,31 @@ const exporting = ref(false);
 async function exportXlsx() {
   const e = ep.value; if (!e) return;
   const state = (cls: string) => (cls === 'mx-done' ? 'done' as const : cls === 'mx-arrived' ? 'arrived' as const : undefined);
+  const cellOf = (text: string, kind: CellKind | 'rank', cls = ''): ExportCell => ({ text, kind: text === '-' ? 'blank' : kind, state: state(cls) });
   const groups: ExportGroup[] = legs.value.map((l) => {
     const br = branchOf(l);
     const subs = isSingleCol(l)
       ? [{ label: endLabel(l.type) }]
       : [{ label: startLabel(l.type) }, ...(br ? [{ label: '支线开始', branch: true }, { label: '支线结束', branch: true }, { label: '支线用时', branch: true }] : []), { label: endLabel(l.type) }, { label: '用时' }];
-    return { title: `${typeCode(l.type)} · ${legName(l)}${br ? `　/　SQ · ${legName(br)}` : ''}`, type: l.type, subs: [...subs, { label: '排名' }, ...extraCols(l).map((c) => ({ label: c }))] };
+    // the rank is the last column of every leg group
+    return { title: `${typeCode(l.type)} · ${legName(l)}${br ? `　/　SQ · ${legName(br)}` : ''}`, type: l.type, subs: [...subs, ...extraCols(l).map((c) => ({ label: c })), { label: '排名' }] };
   });
   const ranks = legs.value.map((l) => legRanks(l));
-  const rows: ExportRow[] = race.teams.map((t) => ({
+  // teams in number order (race.teams is sorted by number), only those shown in this episode
+  const rows: ExportRow[] = visibleTeams.value.map((t) => ({
     label: t.full_label,
     dead: t.status !== 'alive',
     groups: legs.value.map((l, li) => {
       const isPs = l.type === 'PS';
-      const rank = ranks[li]!.get(t.id);
-      const extras = extraCols(l).map((_, i) => ({ text: extraVal(t.id, l, i) }));
-      if (isSingleCol(l)) { const c = cell(t.id, l.id, true, isPs); return [{ text: c.start, state: state(c.cls) }, { text: rank ? String(rank) : '-' }, ...extras]; }
+      const r = ranks[li]!.get(t.id);
+      const tail = [...extraCols(l).map((_, i) => cellOf(extraVal(t.id, l, i), extraKind(l, i))), cellOf(r ? String(r) : '-', 'rank')];
+      if (isSingleCol(l)) { const c = cell(t.id, l.id, true, isPs); return [cellOf(c.start, 'time', c.cls), ...tail]; }
       const c = cell(t.id, l.id, false, isPs); const b = branchCell(t.id, l.id);
       return [
-        { text: c.start, state: state(c.cls) },
-        ...(branchOf(l) ? [b.start, b.end, b.dur].map((text) => ({ text, state: state(b.cls) })) : []),
-        { text: c.end, state: state(c.cls) }, { text: c.dur, state: state(c.cls) },
-        { text: rank ? String(rank) : '-' }, ...extras,
+        cellOf(c.start, 'time', c.cls),
+        ...(branchOf(l) ? [cellOf(b.start, 'time', b.cls), cellOf(b.end, 'time', b.cls), cellOf(b.dur, 'dur', b.cls)] : []),
+        cellOf(c.end, 'time', c.cls), cellOf(c.dur, 'dur', c.cls),
+        ...tail,
       ];
     }),
   }));
@@ -206,19 +229,19 @@ async function exportXlsx() {
             </td>
             <template v-for="l in legs" :key="l.id">
               <template v-if="isSingleCol(l)">
-                <td class="mx2-cell mx2-first" :class="[cell(t.id, l.id, true, l.type === 'PS').cls, { 'mx2-last': !extraCol(l) }]">{{ cell(t.id, l.id, true, l.type === 'PS').start }}</td>
+                <td class="mx2-cell mx2-first" :class="[cell(t.id, l.id, true, l.type === 'PS').cls, kindCls(cell(t.id, l.id, true, l.type === 'PS').start, 'time'), { 'mx2-last': !extraCol(l) }]">{{ cell(t.id, l.id, true, l.type === 'PS').start }}</td>
               </template>
               <template v-else>
-                <td class="mx2-cell mx2-first" :class="cell(t.id, l.id, false, l.type === 'PS').cls">{{ cell(t.id, l.id, false, l.type === 'PS').start }}</td>
+                <td class="mx2-cell mx2-first" :class="[cell(t.id, l.id, false, l.type === 'PS').cls, kindCls(cell(t.id, l.id, false, l.type === 'PS').start, 'time')]">{{ cell(t.id, l.id, false, l.type === 'PS').start }}</td>
                 <template v-if="branchOf(l)">
-                  <td class="mx2-cell mx2-branch" :class="branchCell(t.id, l.id).cls">{{ branchCell(t.id, l.id).start }}</td>
-                  <td class="mx2-cell mx2-branch" :class="branchCell(t.id, l.id).cls">{{ branchCell(t.id, l.id).end }}</td>
-                  <td class="mx2-cell mx2-branch" :class="branchCell(t.id, l.id).cls">{{ branchCell(t.id, l.id).dur }}</td>
+                  <td class="mx2-cell mx2-branch" :class="[branchCell(t.id, l.id).cls, kindCls(branchCell(t.id, l.id).start, 'time')]">{{ branchCell(t.id, l.id).start }}</td>
+                  <td class="mx2-cell mx2-branch" :class="[branchCell(t.id, l.id).cls, kindCls(branchCell(t.id, l.id).end, 'time')]">{{ branchCell(t.id, l.id).end }}</td>
+                  <td class="mx2-cell mx2-branch" :class="[branchCell(t.id, l.id).cls, kindCls(branchCell(t.id, l.id).dur, 'dur')]">{{ branchCell(t.id, l.id).dur }}</td>
                 </template>
-                <td class="mx2-cell" :class="cell(t.id, l.id, false, l.type === 'PS').cls">{{ cell(t.id, l.id, false, l.type === 'PS').end }}</td>
-                <td class="mx2-cell" :class="[cell(t.id, l.id, false, l.type === 'PS').cls, { 'mx2-last': !extraCol(l) }]">{{ cell(t.id, l.id, false, l.type === 'PS').dur }}</td>
+                <td class="mx2-cell" :class="[cell(t.id, l.id, false, l.type === 'PS').cls, kindCls(cell(t.id, l.id, false, l.type === 'PS').end, 'time')]">{{ cell(t.id, l.id, false, l.type === 'PS').end }}</td>
+                <td class="mx2-cell" :class="[cell(t.id, l.id, false, l.type === 'PS').cls, kindCls(cell(t.id, l.id, false, l.type === 'PS').dur, 'dur'), { 'mx2-last': !extraCol(l) }]">{{ cell(t.id, l.id, false, l.type === 'PS').dur }}</td>
               </template>
-              <td v-for="(c, i) in extraCols(l)" :key="c" class="mx2-cell mx2-extra" :class="{ 'mx2-last': i === extraCols(l).length - 1 }">{{ extraVal(t.id, l, i) }}</td>
+              <td v-for="(c, i) in extraCols(l)" :key="c" class="mx2-cell mx2-extra" :class="[kindCls(extraVal(t.id, l, i), extraKind(l, i)), { 'mx2-last': i === extraCols(l).length - 1 }]">{{ extraVal(t.id, l, i) }}</td>
             </template>
           </tr>
         </tbody>

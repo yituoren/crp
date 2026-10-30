@@ -492,8 +492,17 @@ html, body { overscroll-behavior: none; }
 /* One line between groups: each group's first column draws its left border, the table's right edge comes from .mx2 */
 .mx2 .mx2-first { border-left: 2px solid var(--gray-300); }
 .mx2 .mx2-branch { color: var(--gray-600); font-size: 12px; }
-.mx2 .mx-done { background: #e6f4ea; color: #137333; }
-.mx2 .mx-arrived { background: #fef7e0; color: #b06000; }
+.mx2 .mx-done { color: #137333; }
+/* Light backgrounds by column kind, all in the green family of the original done cells (the progress export reads the same variables):
+   times, durations / penalties, task details, ranks, blanks, team names; running cells keep the amber */
+:root { --mx-time: #e6f4ea; --mx-dur: #d4ecdc; --mx-extra: #edf2e6; --mx-rank: #dceee8; --mx-blank: #f5f6f7; --mx-team: #fafbfa; --mx-arrived: #fef7e0; }
+.mx2 tbody .mx2-c-time { background: var(--mx-time); }
+.mx2 tbody .mx2-c-dur { background: var(--mx-dur); }
+.mx2 tbody .mx2-c-extra { background: var(--mx-extra); }
+.mx2 tbody .mx2-c-blank { background: var(--mx-blank); color: var(--gray-500); }
+.mx2 tbody .mx-arrived { background: var(--mx-arrived); color: #b06000; }
+.mx2 tbody .mx2-team { background: var(--mx-team); }
+.mx2 .mx2-rank { background: var(--mx-rank); border-radius: 6px; padding: 0 4px; text-align: center; }
 
 /* Panels nested inside cards (e.g. penalties under a station section) are set off with a light outline */
 .card .card { box-shadow: none; margin-bottom: 0; background: var(--surface); border: 1px solid var(--gray-200); }

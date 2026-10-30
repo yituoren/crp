@@ -121,6 +121,7 @@
   .card-table .card-header { padding: 0 2px; margin-bottom: 8px; }
   .card-table .scroll-table, .card-table .matrix-scroll { padding: 0; margin: 0; } /* Keep the 12px margin to the screen edges */
   .mx2 .mx2-team, .sched-table th:first-child, .sched-table td:first-child { background: var(--paper); }
+  .mx2 tbody .mx2-team { background: var(--mx-team); }
   .mx2 thead .mx2-team { background: var(--surface-3); }
   .mx2 .mx2-team { min-width: 0; max-width: 112px; padding: 6px 8px; }
   .mx2-team-status, .mx2-team-ago { display: none; }
