@@ -1,9 +1,9 @@
 import { all, get, run } from './db.js';
 
 /**
- * Automatic elimination: for every leg flagged as eliminating, once every team still racing has an end time
- * on that leg, the last N teams to arrive (N = the leg's elimination count) are eliminated. Pit stops sort by
- * check-in time + net penalty. The result is reversible: it is recomputed after records are reverted or edited,
+ * Automatic elimination: for every leg flagged as eliminating, once every team still racing has arrived at
+ * that leg, the last N teams to arrive (N = the leg's elimination count) are eliminated; finishing the leg's
+ * task does not matter. Pit stops sort by check-in time + net penalty. The result is reversible: it is recomputed after records are reverted or edited,
  * so teams come back or get eliminated again. Withdrawn teams are excluded.
  */
 type LegRow = { id: number; episode_id: number; type: string; sort: number; can_eliminate: number; eliminate_count: number };
@@ -16,10 +16,13 @@ export function legOrder(eventId: number): LegRow[] {
   );
 }
 
-/** A team's "arrival time" on a leg: pit stop = check-in (manual check-in wins) + the episode's net penalty; otherwise the end time */
+/**
+ * A team's arrival time on a leg: pit stop = check-in (manual check-in wins) + the episode's net penalty;
+ * otherwise the leg's start time (chained from the previous leg's end), falling back to its end time
+ */
 function arrivalMs(teamId: number, leg: LegRow): number | null {
-  const p = get<{ completed_at: string | null }>('SELECT completed_at FROM progress WHERE team_id = ? AND leg_id = ?', teamId, leg.id);
-  let base = p?.completed_at ?? null;
+  const p = get<{ arrived_at: string | null; completed_at: string | null }>('SELECT arrived_at, completed_at FROM progress WHERE team_id = ? AND leg_id = ?', teamId, leg.id);
+  let base = leg.type === 'PS' ? p?.completed_at ?? null : p?.arrived_at ?? p?.completed_at ?? null;
   if (leg.type === 'PS') {
     const r = get<{ checkin_at: string | null }>('SELECT checkin_at FROM pitstop_results WHERE episode_id = ? AND team_id = ?', leg.episode_id, teamId);
     base = r?.checkin_at ?? base;
