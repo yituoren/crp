@@ -445,7 +445,6 @@ html, body { overscroll-behavior: none; }
 .live-team { display: flex; align-items: center; gap: 6px; font-size: 14px; }
 .live-legname { font-weight: 500; }
 .live-money { font-weight: 600; color: var(--warning); font-variant-numeric: tabular-nums; }
-.mx-dead { opacity: .45; }
 .scroll-table, .matrix-scroll { overscroll-behavior-x: contain; }
 @media (max-width: 1000px) {
   .pager { width: 100%; height: 100vh; height: 100dvh; overflow: hidden; }
@@ -493,9 +492,9 @@ html, body { overscroll-behavior: none; }
 .mx2 .mx2-first { border-left: 2px solid var(--gray-300); }
 .mx2 .mx2-branch { color: var(--gray-600); font-size: 12px; }
 .mx2 .mx-done { color: #137333; }
-/* Light backgrounds by column kind, all in the green family of the original done cells (the progress export reads the same variables):
-   times, durations / penalties, task details, ranks, blanks, team names; running cells keep the amber */
-:root { --mx-time: #e6f4ea; --mx-dur: #d4ecdc; --mx-extra: #edf2e6; --mx-rank: #dceee8; --mx-blank: #f5f6f7; --mx-team: #fafbfa; --mx-arrived: #fef7e0; }
+/* Cell backgrounds by column kind (the progress export reads the same variables): times, durations / penalties, task details,
+   ranks, blanks, team names. All the original light green for now, kept separate so one kind can be changed alone; running cells keep the amber */
+:root { --mx-time: #e6f4ea; --mx-dur: #e6f4ea; --mx-extra: #e6f4ea; --mx-rank: #e6f4ea; --mx-blank: #e6f4ea; --mx-team: #e6f4ea; --mx-arrived: #fef7e0; }
 .mx2 tbody .mx2-c-time { background: var(--mx-time); }
 .mx2 tbody .mx2-c-dur { background: var(--mx-dur); }
 .mx2 tbody .mx2-c-extra { background: var(--mx-extra); }

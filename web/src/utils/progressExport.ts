@@ -8,7 +8,7 @@ import type { LegType } from '@/types';
 export interface ExportGroup { title: string; type: LegType; subs: { label: string; branch?: boolean }[] }
 /** kind picks the background (same palette as the page, --mx-* in styles.css); state only colours the text */
 export interface ExportCell { text: string; kind: 'time' | 'dur' | 'extra' | 'rank' | 'blank'; state?: 'done' | 'arrived' }
-export interface ExportRow { label: string; dead: boolean; groups: ExportCell[][] }
+export interface ExportRow { label: string; groups: ExportCell[][] }
 export interface ExportModel { title: string; groups: ExportGroup[]; rows: ExportRow[] }
 
 /** Leg tag colours come from the stylesheet (.tag-XX), so the export matches the page without a second colour table */
@@ -37,7 +37,6 @@ const ARRIVED_FG = 'FFB06000';
 const HEAD_BG = 'FFF1F3F4';
 const SUB_FG = 'FF5F6368';
 const LINE = 'FFDADCE0';
-const DEAD_FG = 'FF9AA0A6';
 
 export async function exportProgressXlsx(model: ExportModel, fileName: string) {
   const ExcelJS = (await import('exceljs')).default;
@@ -79,7 +78,7 @@ export async function exportProgressXlsx(model: ExportModel, fileName: string) {
     const row = ri + 3;
     const tc = ws.getCell(row, 1);
     tc.value = r.label;
-    tc.font = { ...font, bold: true, color: r.dead ? { argb: DEAD_FG } : undefined };
+    tc.font = { ...font, bold: true };
     tc.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fills.team } };
     r.groups.forEach((cells, gi) => {
       cells.forEach((cell, i) => {
@@ -88,7 +87,7 @@ export async function exportProgressXlsx(model: ExportModel, fileName: string) {
         c.value = /^\d+$/.test(cell.text) ? Number(cell.text) : cell.text;
         c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cell.state === 'arrived' && cell.kind !== 'blank' ? arrivedFill : fills[cell.kind] } };
         const fg = cell.state === 'done' ? DONE_FG : cell.state === 'arrived' ? ARRIVED_FG : 'FF202124';
-        c.font = { ...font, color: { argb: r.dead ? DEAD_FG : fg } };
+        c.font = { ...font, color: { argb: fg } };
       });
     });
   });

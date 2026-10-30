@@ -55,7 +55,7 @@ watch(() => [liveEpisode.value?.id, race.progress, race.teams, race.episodes], l
       <div class="live-row live-row-head">
         <div>队伍</div><div>当前环节</div><div>最近记录</div><div>余额（{{ moneyUnit() }}）</div>
       </div>
-      <div v-for="t in data.teams" :key="t.id" class="live-row" :class="{ 'mx-dead': t.status === 'withdrawn' }">
+      <div v-for="t in data.teams" :key="t.id" class="live-row">
         <div class="live-team"><strong>{{ t.label }}</strong><TeamStatus v-if="t.status !== 'alive'" :status="t.status" /></div>
         <div class="live-leg">
           <template v-if="t.finished"><span class="text-success">已到中继站</span></template>
