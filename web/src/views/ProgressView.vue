@@ -169,7 +169,7 @@ async function exportXlsx() {
   // teams in number order (race.teams is sorted by number), only those shown in this episode
   const rows: ExportRow[] = visibleTeams.value.map((t) => ({
     label: t.full_label,
-    dead: t.status !== 'alive',
+    dead: t.status === 'withdrawn', // only withdrawn teams are greyed; eliminated ones keep normal colours
     groups: legs.value.map((l, li) => {
       const isPs = l.type === 'PS';
       const r = ranks[li]!.get(t.id);
@@ -222,7 +222,7 @@ async function exportXlsx() {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="t in orderedTeams" :key="t.id" :class="{ 'mx-dead': t.status !== 'alive' }">
+          <tr v-for="t in orderedTeams" :key="t.id" :class="{ 'mx-dead': t.status === 'withdrawn' }">
             <td class="mx2-team">
               <div class="flex" style="gap: 6px; flex-wrap: nowrap"><span v-if="rankOf.get(t.id)" class="mx2-rank" :class="'rank-' + rankOf.get(t.id)">#{{ rankOf.get(t.id) }}</span><strong><span class="mx2-team-full">{{ t.full_label }}</span><span class="mx2-team-short">{{ t.name }}</span></strong><TeamStatus :status="t.status" class="mx2-team-status" /></div>
               <div class="text-xs text-gray mx2-team-ago">{{ lastAgo(t.id) || '尚无记录' }}</div>

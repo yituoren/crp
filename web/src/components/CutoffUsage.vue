@@ -41,7 +41,7 @@ async function removeUse(id: number) {
       <table v-mobile-table class="table table-dense">
         <thead><tr><th>队伍</th><th v-for="cf in leg.cutoffs" :key="cf.id" class="c">{{ cf.name }}</th><th v-if="auth.isHost" class="c">操作</th></tr></thead>
         <tbody>
-          <tr v-for="t in race.teams" :key="t.id" :class="{ 'mx-dead': t.status !== 'alive' }">
+          <tr v-for="t in race.teams" :key="t.id" :class="{ 'mx-dead': t.status === 'withdrawn' }">
             <td><strong>{{ t.label }}</strong></td>
             <td v-for="cf in leg.cutoffs" :key="cf.id" class="c">{{ cellText(t.id, cf) }}</td>
             <td v-if="auth.isHost" class="c"><button class="btn btn-text btn-sm btn-slot" @click="editing = t">修改记录</button></td>
