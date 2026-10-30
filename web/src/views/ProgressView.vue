@@ -3,7 +3,9 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { fmtTime, fmtTimeSec, fmtDurMs } from '@/utils/time';
-import { legName, endLabel, startLabel, hasStart, type LegType } from '@/types';
+import { legName, endLabel, startLabel, hasStart, typeCode, type LegType } from '@/types';
+import { exportProgressXlsx, type ExportGroup, type ExportRow } from '@/utils/progressExport';
+import { useUi } from '@/stores/ui';
 import EpSelector from '@/components/EpSelector.vue';
 import LegTag from '@/components/LegTag.vue';
 import PenaltyPanel from '@/components/PenaltyPanel.vue';
@@ -115,6 +117,56 @@ const orderedTeams = computed(() => {
   });
 });
 const rankOf = computed(() => { const m = new Map<number, number>(); let n = 0; for (const t of orderedTeams.value) if (t.status !== 'withdrawn') m.set(t.id, ++n); return m; });
+
+// ---- Export (.xlsx): the on-screen columns plus a rank per leg, teams in number order, full team labels ----
+const ui = useUi();
+/** Rank on a leg by the time it was finished (pit stop: settled time = check-in + net penalty); equal times share a rank */
+function legRanks(l: { id: number; type: string }): Map<number, number> {
+  const done: { id: number; t: number }[] = [];
+  for (const tm of race.teams) {
+    const fin = l.type === 'PS' ? race.pitstop.find((x) => x.team_id === tm.id)?.final_time ?? race.progressOf(tm.id, l.id)?.completed_at : race.progressOf(tm.id, l.id)?.completed_at;
+    if (fin) done.push({ id: tm.id, t: new Date(fin).getTime() });
+  }
+  done.sort((a, b) => a.t - b.t);
+  const m = new Map<number, number>();
+  done.forEach((x, i) => m.set(x.id, i > 0 && x.t === done[i - 1]!.t ? m.get(done[i - 1]!.id)! : i + 1));
+  return m;
+}
+const exporting = ref(false);
+async function exportXlsx() {
+  const e = ep.value; if (!e) return;
+  const state = (cls: string) => (cls === 'mx-done' ? 'done' as const : cls === 'mx-arrived' ? 'arrived' as const : undefined);
+  const groups: ExportGroup[] = legs.value.map((l) => {
+    const br = branchOf(l);
+    const subs = isSingleCol(l)
+      ? [{ label: endLabel(l.type) }]
+      : [{ label: startLabel(l.type) }, ...(br ? [{ label: '支线开始', branch: true }, { label: '支线结束', branch: true }, { label: '支线用时', branch: true }] : []), { label: endLabel(l.type) }, { label: '用时' }];
+    return { title: `${typeCode(l.type)} · ${legName(l)}${br ? `　/　SQ · ${legName(br)}` : ''}`, type: l.type, subs: [...subs, { label: '排名' }, ...extraCols(l).map((c) => ({ label: c }))] };
+  });
+  const ranks = legs.value.map((l) => legRanks(l));
+  const rows: ExportRow[] = race.teams.map((t) => ({
+    label: t.full_label,
+    dead: t.status !== 'alive',
+    groups: legs.value.map((l, li) => {
+      const isPs = l.type === 'PS';
+      const rank = ranks[li]!.get(t.id);
+      const extras = extraCols(l).map((_, i) => ({ text: extraVal(t.id, l, i) }));
+      if (isSingleCol(l)) { const c = cell(t.id, l.id, true, isPs); return [{ text: c.start, state: state(c.cls) }, { text: rank ? String(rank) : '-' }, ...extras]; }
+      const c = cell(t.id, l.id, false, isPs); const b = branchCell(t.id, l.id);
+      return [
+        { text: c.start, state: state(c.cls) },
+        ...(branchOf(l) ? [b.start, b.end, b.dur].map((text) => ({ text, state: state(b.cls) })) : []),
+        { text: c.end, state: state(c.cls) }, { text: c.dur, state: state(c.cls) },
+        { text: rank ? String(rank) : '-' }, ...extras,
+      ];
+    }),
+  }));
+  const day = new Date(now.value).toISOString().slice(0, 10);
+  exporting.value = true;
+  try { await exportProgressXlsx({ title: `${e.code} 进度结算`, groups, rows }, `${auth.event.name}_${e.code}_进度结算_${day}.xlsx`); }
+  catch (err) { ui.error(err); }
+  finally { exporting.value = false; }
+}
 </script>
 
 <template>
@@ -122,7 +174,7 @@ const rankOf = computed(() => { const m = new Map<number, number>(); let n = 0; 
 
   <!-- Progress matrix -->
   <div class="card card-table">
-    <div class="card-header"><span>进度结算</span></div>
+    <div class="card-header"><span>进度结算</span><button v-if="legs.length" class="btn btn-text btn-sm" :disabled="exporting" @click="exportXlsx"><Icon name="download" size="16" />{{ exporting ? '导出中…' : '导出表格' }}</button></div>
     <div v-if="!legs.length" class="empty-state">本赛段没有需要记录的环节</div>
     <div v-else class="matrix-scroll">
       <table class="table mx2">
