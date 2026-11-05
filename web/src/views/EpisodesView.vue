@@ -43,7 +43,7 @@ async function saveEp() {
 /** Summary text for the scheduled start */
 const autoStartText = computed(() => {
   const e = ep.value;
-  if (e && e.continuous_wait_min !== null) return `连续赛段：各队在上一赛段中继站签到 ${e.continuous_wait_min} m 后发车，第一支队伍发车时自动开始`;
+  if (e && e.continuous_wait_min !== null) return `连续赛段：各队在上一赛段中继站签到 ${e.continuous_wait_min} m 后发车（罚时本队多等，补时其他队多等），第一支队伍发车时自动开始`;
   if (!e?.start_at) return '';
   const stagger = e.inherit_rank && !isFirstEp.value && e.start_gap_min > 0;
   return `${fmtDateTime(e.start_at)} 自动开始${stagger ? `，按上一赛段名次每隔 ${e.start_gap_min} m 发车` : '，各队同时出发'}`;
@@ -58,7 +58,7 @@ async function startEpisode() {
       : `${ep.value.code} 未设置补充${moneyLabel()}，只把状态标记为进行中。确定？`;
   const continuous = ep.value.continuous_wait_min !== null;
   const intro = continuous
-    ? `手动开始只供测试使用，连续赛段会在第一支队伍发车时自动开始。手动开始后各队仍按上一赛段签到时间加 ${ep.value.continuous_wait_min} m 发车，补充${moneyLabel()}在各队发车时发放。`
+    ? `手动开始只供测试使用，连续赛段会在第一支队伍发车时自动开始。手动开始后各队仍按上一赛段签到时间加 ${ep.value.continuous_wait_min} m 发车（罚时本队多等，补时其他队多等），补充${moneyLabel()}在各队发车时发放。`
     : '手动开始只供测试使用，正式比赛请在「编辑赛段」里设置自动开始时间。手动开始后同样按发车规则自动记录各队出发（以点击时刻为基准）。';
   if (!(await ui.confirm('开始赛段（仅供测试）', continuous ? intro : `${intro}\n\n${msg}`))) return;
   try {

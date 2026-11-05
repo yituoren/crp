@@ -75,15 +75,27 @@ function checkins(episodeId: number): Map<number, string> {
   for (const r of all<{ team_id: number; checkin_at: string | null }>('SELECT team_id, checkin_at FROM pitstop_results WHERE episode_id = ?', episodeId)) if (r.checkin_at) m.set(r.team_id, r.checkin_at);
   return m;
 }
-/** Continuous episode: every alive team that has checked in at the previous episode's pit stop departs a fixed wait later; teams still racing there have no departure yet */
+/**
+ * Continuous episode: every alive team that has checked in at the previous episode's pit stop departs a fixed wait later;
+ * teams still racing there have no departure yet. The previous episode's penalties and credits are settled here, per team on its
+ * net minutes: a penalty makes the team itself wait longer, a credit makes every other continuing team wait longer
+ */
 function continuousPlan(ep: EpisodeRow): { teamId: number; at: string }[] {
   const prev = previousEpisode(ep);
   if (!prev) return [];
   const wait = (ep.continuous_wait_min ?? 0) * 60000;
   const inAt = checkins(prev.id);
-  return all<{ id: number }>("SELECT id FROM teams WHERE event_id = ? AND status = 'alive' ORDER BY sort, id", ep.event_id)
-    .filter((t) => inAt.has(t.id))
-    .map((t) => ({ teamId: t.id, at: new Date(new Date(inAt.get(t.id)!).getTime() + wait).toISOString() }))
+  const alive = all<{ id: number }>("SELECT id FROM teams WHERE event_id = ? AND status = 'alive' ORDER BY sort, id", ep.event_id).map((t) => t.id);
+  const net = new Map<number, number>();
+  for (const r of all<{ team_id: number; m: number }>('SELECT team_id, SUM(minutes) AS m FROM penalties WHERE episode_id = ? GROUP BY team_id', prev.id)) net.set(r.team_id, r.m ?? 0);
+  const credit = (id: number) => Math.max(0, -(net.get(id) ?? 0));
+  const totalCredit = alive.reduce((s, id) => s + credit(id), 0);
+  return alive
+    .filter((id) => inAt.has(id))
+    .map((id) => {
+      const extra = Math.max(0, net.get(id) ?? 0) + totalCredit - credit(id);
+      return { teamId: id, at: new Date(new Date(inAt.get(id)!).getTime() + wait + extra * 60000).toISOString() };
+    })
     .sort((a, b) => a.at.localeCompare(b.at));
 }
 
