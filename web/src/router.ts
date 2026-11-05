@@ -12,6 +12,7 @@ export const router = createRouter({
       children: [
         { path: '', name: 'home', component: () => import('@/views/HomeView.vue') },
         { path: 'account', name: 'account', component: () => import('@/views/AccountView.vue') },
+        { path: 'manual', name: 'manual', component: () => import('@/views/ManualView.vue') },
         { path: 'password', redirect: '/account' },
       ],
     },

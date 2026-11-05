@@ -94,7 +94,7 @@ server/src
   progressCore.ts     progress upsert, chaining, final ranking
   routes/             auth events episodes teams assignments progress ledger announcements admin dashboard
 web/src
-  views/              pages (home, account, today, announcements, episodes, leg detail, schedule, teams, currency, progress, admin)
+  views/              pages (home, account, manual, today, announcements, episodes, leg detail, schedule, teams, currency, progress, admin)
   components/         layouts, dialogs, selects, cards, tables
   stores/             auth, race (event data), ui (toasts, confirms)
   styles.css          desktop styles; mobile.css phone overrides

@@ -3,7 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '@/stores/auth';
 
-// Account button in the top-right corner: click the name for a menu (account management / sign out); shared by the home page and events
+// Account button in the top-right corner: click the name for a menu (account management / user manual / sign out); shared by the home page and events
 const props = defineProps<{ beforeLogout?: () => void }>();
 const auth = useAuth();
 const router = useRouter();
@@ -25,6 +25,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick));
     <button class="acct-btn" :class="{ open }" @click="open = !open"><Icon name="account_circle" size="26" /><span class="acct-name">{{ auth.user?.displayName }}</span></button>
     <div v-if="open" class="sel-menu acct-menu">
       <router-link to="/account" class="sel-item" @click="open = false"><Icon name="person" size="20" />账号管理</router-link>
+      <router-link to="/manual" class="sel-item" @click="open = false"><Icon name="menu_book" size="20" />用户手册</router-link>
       <button class="sel-item sel-item-danger" @click="logout"><Icon name="logout" size="20" />退出登录</button>
     </div>
   </div>
