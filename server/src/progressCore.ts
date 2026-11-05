@@ -9,6 +9,18 @@ export function prevEndTime(episodeId: number, teamId: number, sort: number): st
     episodeId, teamId, sort,
   )?.completed_at ?? null;
 }
+/**
+ * Start time of a leg chained from the previous end: a twist effect in force that delays this leg's start (missile) adds its minutes,
+ * and its wait window follows the new time
+ */
+export function chainedStart(episodeId: number, teamId: number, legId: number, endAt: string | null, apply = true): string | null {
+  if (!endAt) return null;
+  const ef = get<{ id: number; wait_min: number }>("SELECT id, wait_min FROM twist_effects WHERE episode_id = ? AND target_team_id = ? AND leg_id = ? AND status = 'hit' AND mode = 'delay_start'", episodeId, teamId, legId);
+  if (!ef) return endAt;
+  const start = new Date(new Date(endAt).getTime() + ef.wait_min * 60000).toISOString();
+  if (apply) run('UPDATE twist_effects SET wait_from = ?, wait_until = ? WHERE id = ?', endAt, start, ef.id);
+  return start;
+}
 export function emptyProgress() {
   return { arrived_at: null, completed_at: null, detour_choice: null, roadblock_by: null, ff_result: null, target_team_id: null, note: '' };
 }
@@ -22,7 +34,7 @@ export function chainAfterComplete(episodeId: number, teamId: number, sort: numb
   const nextLeg = get("SELECT id FROM legs WHERE episode_id = ? AND sort > ? AND type != 'SQ' ORDER BY sort, id LIMIT 1", episodeId, sort);
   if (nextLeg) {
     const np = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, nextLeg.id) ?? emptyProgress();
-    if (!np.completed_at) upsertProgress(episodeId, teamId, nextLeg.id, { ...np, arrived_at: endAt }, userId);
+    if (!np.completed_at) upsertProgress(episodeId, teamId, nextLeg.id, { ...np, arrived_at: chainedStart(episodeId, teamId, nextLeg.id, endAt) }, userId);
   }
   const prevDone = get(
     `SELECT l.sort FROM progress p JOIN legs l ON l.id = p.leg_id

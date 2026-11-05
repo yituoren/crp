@@ -1,12 +1,13 @@
 import { Hono } from 'hono';
 import { all, get, run, tx, now } from '../db.js';
-import { hostOnly, canRecordProgress, canManagePenalty, isHostRole, type Env, isAdminRole } from '../auth.js';
+import { hostOnly, canRecordProgress, canManagePenalty, getAssignment, isHostRole, type Env, isAdminRole } from '../auth.js';
 import { recomputeEliminations } from '../elimination.js';
 import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forbidden, editLockReason, currencyMode, fmtMoneyServer } from '../util.js';
 import { teamLabelMap } from './teams.js';
 import { addLedgerEntry, revertLedgerEntry } from './ledger.js';
 import { episodeInEvent } from './episodes.js';
-import { prevEndTime, emptyProgress, chainAfterComplete, upsertProgress } from '../progressCore.js';
+import { prevEndTime, emptyProgress, chainAfterComplete, upsertProgress, chainedStart } from '../progressCore.js';
+import { holdReason, onArrival, listEffects, answerOptions, answerEffect, assertCanAnswer, type Effect } from '../twist.js';
 
 export const progressRoutes = new Hono<Env>();
 
@@ -113,7 +114,26 @@ export function listPenalties(episodeId: number) {
 progressRoutes.get('/episodes/:id/progress', (c) => {
   const episodeId = intParam(c, 'id');
   episodeInEvent(c, episodeId);
-  return c.json({ progress: listProgress(episodeId), penalties: listPenalties(episodeId), pitstop: pitstopRows(episodeId), cutoffUses: listCutoffUses(episodeId) });
+  return c.json({ progress: listProgress(episodeId), penalties: listPenalties(episodeId), pitstop: pitstopRows(episodeId), cutoffUses: listCutoffUses(episodeId), effects: effectsFor(episodeId) });
+});
+
+/** Twist effects of the episode, each with the answers its target can still give (shield / reflect) */
+function effectsFor(episodeId: number) {
+  return listEffects(episodeId).map((e) => ({ ...e, options: answerOptions(e) }));
+}
+/** The hit team answers a twist effect: { answer: 'shield' | 'reflect' | 'accept' } */
+progressRoutes.post('/effects/:id/answer', async (c) => {
+  const user = c.get('user');
+  const ef = get<Effect>('SELECT * FROM twist_effects WHERE id = ?', intParam(c, 'id'));
+  if (!ef) throw notFound('记录不存在');
+  const episode = episodeInEvent(c, ef.episode_id);
+  { const r = editLockReason(user, episode as { status: string; code: string }, get<{ status: string }>('SELECT status FROM teams WHERE id = ?', ef.target_team_id)); if (r) throw forbidden(r); }
+  assertCanAnswer(user, ef, isHostRole(user.role), getAssignment(ef.episode_id, user.id)?.role === 'follow' ? getAssignment(ef.episode_id, user.id)!.team_id : null);
+  const { answer } = await body(c);
+  if (!['shield', 'reflect', 'accept'].includes(answer)) throw bad('未知操作');
+  answerEffect(ef, answer, user);
+  if (recomputeEliminations(c.get('event').id)) notify('teams');
+  return c.json({ ok: true });
 });
 
 /**
@@ -203,7 +223,8 @@ progressRoutes.post('/progress', async (c) => {
         }
         // start time = the previous completed leg's end time (empty for the first leg); a side quest's start comes from "start side quest" and is not chained
         if (!next.arrived_at && leg.type !== 'SQ') next.arrived_at = prevEndTime(episodeId, teamId, leg.sort);
-        if (next.arrived_at && t < next.arrived_at) throw bad(`完成时间不能早于开始时间（${next.arrived_at}）`);
+        if (next.arrived_at && t < next.arrived_at) throw bad(next.arrived_at > now() ? '飞弹等待中，开始时间还没到，不能记录' : `完成时间不能早于开始时间（${next.arrived_at}）`);
+        { const h = holdReason(episodeId, teamId, legId, t); if (h) throw bad(h); }
         next.completed_at = t;
       }
       break;
@@ -239,6 +260,8 @@ progressRoutes.post('/progress', async (c) => {
     tx(() => {
       upsertProgress(episodeId, teamId, legId, next, user.id);
       if (action === 'complete') chainAfterComplete(episodeId, teamId, leg.sort, next.completed_at, user.id, leg.type);
+      // a Route Info "arrival" may be the one a pending missile waits for
+      if (action === 'complete' && leg.type === 'RI' && next.completed_at) onArrival(episodeId, teamId, legId, leg.sort, next.completed_at);
       if (action === 'complete' && leg.type === 'Union' && next.target_team_id) {
         // the partner team is completed at the same time; both continue separately afterwards
         const mate = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, next.target_team_id, legId);
@@ -276,7 +299,7 @@ function unchainAfterUndo(episodeId: number, teamId: number, sort: number, oldEn
   const nextLeg = get("SELECT id FROM legs WHERE episode_id = ? AND sort > ? AND type != 'SQ' ORDER BY sort, id LIMIT 1", episodeId, sort);
   if (!nextLeg) return;
   const np = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, nextLeg.id);
-  if (np && !np.completed_at && np.arrived_at === oldEnd) upsertProgress(episodeId, teamId, nextLeg.id, { ...np, arrived_at: null }, userId);
+  if (np && !np.completed_at && np.arrived_at === chainedStart(episodeId, teamId, nextLeg.id, oldEnd, false)) upsertProgress(episodeId, teamId, nextLeg.id, { ...np, arrived_at: null }, userId);
 }
 /** When an edit changes the end time: if the next leg's start still equals the old value (or is empty), move it to the new one */
 function rechainAfterEdit(episodeId: number, teamId: number, sort: number, oldEnd: string | null, newEnd: string | null, userId: number, legType = '') {
@@ -285,8 +308,8 @@ function rechainAfterEdit(episodeId: number, teamId: number, sort: number, oldEn
   if (!nextLeg) return;
   const np = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, nextLeg.id) ?? emptyProgress();
   if (np.completed_at) return;
-  if (np.arrived_at && np.arrived_at !== oldEnd) return; // the next leg's start was edited by hand: leave it
-  upsertProgress(episodeId, teamId, nextLeg.id, { ...np, arrived_at: newEnd }, userId);
+  if (np.arrived_at && np.arrived_at !== chainedStart(episodeId, teamId, nextLeg.id, oldEnd, false)) return; // the next leg's start was edited by hand: leave it
+  upsertProgress(episodeId, teamId, nextLeg.id, { ...np, arrived_at: chainedStart(episodeId, teamId, nextLeg.id, newEnd) }, userId);
 }
 
 /** Edit a record: hosts any; follows may edit existing records of their own team in a running episode (cannot clear times or set the future) */

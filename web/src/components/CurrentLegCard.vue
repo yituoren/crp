@@ -5,6 +5,7 @@ import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { fmtMoney, moneyMode, moneyUnit, parseMoney } from '@/utils/money';
 import { legName, type Leg } from '@/types';
+import { fmtTime } from '@/utils/time';
 import LegTag from './LegTag.vue';
 import CutoffCard from './CutoffCard.vue';
 import ShopModal from './ShopModal.vue';
@@ -33,7 +34,10 @@ const canUse = computed(() => race.canAdjustCurrencyFor(props.teamId) && !race.e
 const showTransport = computed(() => currentLeg.value?.type === 'RI');
 const showShop = computed(() => isCoin.value && (currentLeg.value?.shop.length ?? 0) > 0);
 const showCutoff = computed(() => (race.currentEpisode?.legs ?? []).some((l) => { const p = race.progressOf(props.teamId, l.id); return !!p?.arrived_at && !p.completed_at && l.cutoffs.length > 0; }));
-const nothing = computed(() => !showTransport.value && !showCutoff.value);
+// Waiting because of a twist card (missile): when it ends
+const waitUntil = computed(() => (currentLeg.value ? race.waitingUntil(props.teamId, currentLeg.value.id) : null));
+const waitEffect = computed(() => (currentLeg.value ? race.effectOn(props.teamId, currentLeg.value.id) : null));
+const nothing = computed(() => !showTransport.value && !showCutoff.value && !waitUntil.value);
 
 // ---- Transport ----
 const TRANSPORT = ['单车', '打车', '地铁', '公交'] as const;
@@ -86,6 +90,7 @@ async function confirmTransport() {
     </div>
     <div v-if="nothing" class="empty-rows">暂无操作</div>
     <template v-else>
+      <div v-if="waitUntil" class="alert alert-warning">被{{ waitEffect?.source_name }}的「{{ waitEffect?.item_name }}」作用，原地等待到 {{ fmtTime(waitUntil) }}，之前不能记录</div>
       <!-- Transport -->
       <div v-if="showTransport" class="cl-section">
         <div class="cl-label">交通</div>

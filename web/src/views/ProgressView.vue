@@ -33,6 +33,12 @@ function branchElapsed(teamId: number, legId: number, mainEndMs: number | null):
   const e = bp.completed_at ? new Date(bp.completed_at).getTime() : (mainEndMs ?? now.value);
   return Math.max(0, e - s);
 }
+/** A twist effect (missile) in force on this leg: its start time shows in red */
+function hitTitle(teamId: number, legId: number) {
+  const e = race.effectOn(teamId, legId);
+  // a reflected effect's source is the team that reflected it
+  return e ? `${e.item_name}${e.reflected_from_id ? '（被反弹）' : ''}：来自 ${e.source_name}，原地等待 ${e.wait_min} 分钟` : '';
+}
 function cell(teamId: number, legId: number, single: boolean, isPs = false) {
   const p = race.progressOf(teamId, legId);
   // single-column legs only look at the end time (completed_at)
@@ -40,6 +46,7 @@ function cell(teamId: number, legId: number, single: boolean, isPs = false) {
   if (!p || !p.arrived_at) return { start: '-', end: p?.completed_at ? fmtTime(p.completed_at) : '-', dur: '-', cls: p?.completed_at ? 'mx-done' : '' };
   const startMs = new Date(p.arrived_at).getTime();
   if (p.completed_at) { const endMs = new Date(p.completed_at).getTime(); return { start: fmtTime(p.arrived_at), end: (isPs ? fmtTimeSec : fmtTime)(p.completed_at), dur: fmtDurMs(endMs - startMs - branchElapsed(teamId, legId, endMs)), cls: 'mx-done' }; }
+  if (startMs > now.value) return { start: fmtTime(p.arrived_at), end: '等待中', dur: '-', cls: 'mx-arrived' }; // start delayed by a missile
   return { start: fmtTime(p.arrived_at), end: '进行中', dur: fmtDurMs(now.value - startMs - branchElapsed(teamId, legId, null)), cls: 'mx-arrived' };
 }
 /** Side quest columns: start / end / duration */
@@ -156,7 +163,7 @@ const exporting = ref(false);
 async function exportXlsx() {
   const e = ep.value; if (!e) return;
   const state = (cls: string) => (cls === 'mx-done' ? 'done' as const : cls === 'mx-arrived' ? 'arrived' as const : undefined);
-  const cellOf = (text: string, kind: CellKind | 'rank', cls = ''): ExportCell => ({ text, kind: text === '-' ? 'blank' : kind, state: state(cls) });
+  const cellOf = (text: string, kind: CellKind | 'rank', cls = '', hit = false): ExportCell => ({ text, kind: text === '-' ? 'blank' : kind, state: state(cls), hit });
   const groups: ExportGroup[] = legs.value.map((l) => {
     const br = branchOf(l);
     const subs = isSingleCol(l)
@@ -173,10 +180,11 @@ async function exportXlsx() {
       const isPs = l.type === 'PS';
       const r = ranks[li]!.get(t.id);
       const tail = [...extraCols(l).map((_, i) => cellOf(extraVal(t.id, l, i), extraKind(l, i))), cellOf(r ? String(r) : '-', 'rank')];
-      if (isSingleCol(l)) { const c = cell(t.id, l.id, true, isPs); return [cellOf(c.start, 'time', c.cls), ...tail]; }
+      const hit = !!race.effectOn(t.id, l.id);
+      if (isSingleCol(l)) { const c = cell(t.id, l.id, true, isPs); return [cellOf(c.start, 'time', c.cls, hit), ...tail]; }
       const c = cell(t.id, l.id, false, isPs); const b = branchCell(t.id, l.id);
       return [
-        cellOf(c.start, 'time', c.cls),
+        cellOf(c.start, 'time', c.cls, hit),
         ...(branchOf(l) ? [cellOf(b.start, 'time', b.cls), cellOf(b.end, 'time', b.cls), cellOf(b.dur, 'dur', b.cls)] : []),
         cellOf(c.end, 'time', c.cls), cellOf(c.dur, 'dur', c.cls),
         ...tail,
@@ -228,10 +236,10 @@ async function exportXlsx() {
             </td>
             <template v-for="l in legs" :key="l.id">
               <template v-if="isSingleCol(l)">
-                <td class="mx2-cell mx2-first" :class="[cell(t.id, l.id, true, l.type === 'PS').cls, kindCls(cell(t.id, l.id, true, l.type === 'PS').start, 'time'), { 'mx2-last': !extraCol(l) }]">{{ cell(t.id, l.id, true, l.type === 'PS').start }}</td>
+                <td class="mx2-cell mx2-first" :class="[cell(t.id, l.id, true, l.type === 'PS').cls, kindCls(cell(t.id, l.id, true, l.type === 'PS').start, 'time'), { 'mx2-last': !extraCol(l), 'mx2-hit': !!race.effectOn(t.id, l.id) }]" :title="hitTitle(t.id, l.id)">{{ cell(t.id, l.id, true, l.type === 'PS').start }}</td>
               </template>
               <template v-else>
-                <td class="mx2-cell mx2-first" :class="[cell(t.id, l.id, false, l.type === 'PS').cls, kindCls(cell(t.id, l.id, false, l.type === 'PS').start, 'time')]">{{ cell(t.id, l.id, false, l.type === 'PS').start }}</td>
+                <td class="mx2-cell mx2-first" :class="[cell(t.id, l.id, false, l.type === 'PS').cls, kindCls(cell(t.id, l.id, false, l.type === 'PS').start, 'time'), { 'mx2-hit': !!race.effectOn(t.id, l.id) }]" :title="hitTitle(t.id, l.id)">{{ cell(t.id, l.id, false, l.type === 'PS').start }}</td>
                 <template v-if="branchOf(l)">
                   <td class="mx2-cell mx2-branch" :class="[branchCell(t.id, l.id).cls, kindCls(branchCell(t.id, l.id).start, 'time')]">{{ branchCell(t.id, l.id).start }}</td>
                   <td class="mx2-cell mx2-branch" :class="[branchCell(t.id, l.id).cls, kindCls(branchCell(t.id, l.id).end, 'time')]">{{ branchCell(t.id, l.id).end }}</td>

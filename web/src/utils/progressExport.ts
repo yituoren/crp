@@ -7,7 +7,7 @@ import type { LegType } from '@/types';
  */
 export interface ExportGroup { title: string; type: LegType; subs: { label: string; branch?: boolean }[] }
 /** kind picks the background (same palette as the page, --mx-* in styles.css); state only colours the text */
-export interface ExportCell { text: string; kind: 'time' | 'dur' | 'extra' | 'rank' | 'blank'; state?: 'done' | 'arrived' }
+export interface ExportCell { text: string; kind: 'time' | 'dur' | 'extra' | 'rank' | 'blank'; state?: 'done' | 'arrived'; hit?: boolean }
 export interface ExportRow { label: string; groups: ExportCell[][] }
 export interface ExportModel { title: string; groups: ExportGroup[]; rows: ExportRow[] }
 
@@ -34,6 +34,7 @@ function hexToRgb(hex: string) { const h = hex.replace('#', ''); return `rgb(${p
 // Text colours for record state, as on the page: done = green, running = amber
 const DONE_FG = 'FF137333';
 const ARRIVED_FG = 'FFB06000';
+const HIT_FG = 'FFD93025'; // start time of a leg hit by a twist card
 const HEAD_BG = 'FFF1F3F4';
 const SUB_FG = 'FF5F6368';
 const LINE = 'FFDADCE0';
@@ -86,8 +87,8 @@ export async function exportProgressXlsx(model: ExportModel, fileName: string) {
         // numbers (ranks) stay numeric so the sheet can be sorted
         c.value = /^\d+$/.test(cell.text) ? Number(cell.text) : cell.text;
         c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cell.state === 'arrived' && cell.kind !== 'blank' ? arrivedFill : fills[cell.kind] } };
-        const fg = cell.state === 'done' ? DONE_FG : cell.state === 'arrived' ? ARRIVED_FG : 'FF202124';
-        c.font = { ...font, color: { argb: fg } };
+        const fg = cell.hit ? HIT_FG : cell.state === 'done' ? DONE_FG : cell.state === 'arrived' ? ARRIVED_FG : 'FF202124';
+        c.font = { ...font, bold: !!cell.hit, color: { argb: fg } };
       });
     });
   });

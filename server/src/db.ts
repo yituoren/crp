@@ -177,6 +177,28 @@ CREATE TABLE IF NOT EXISTS leg_tips (
   sort INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
 );
+-- Twist card effects (one row per effect on one team; reflections are new rows pointing at the reflected one).
+-- status: pending (fired, target not known yet) | hit (in force) | shielded | reflected | void (no valid target) | cancelled (use reverted)
+-- mode: delay_start (the leg's start moves wait_min later) | hold (the team waits mid-leg until wait_until)
+CREATE TABLE IF NOT EXISTS twist_effects (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  episode_id INTEGER NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
+  item_name TEXT NOT NULL,
+  item_log_id INTEGER,                         -- the card use that fired it
+  source_team_id INTEGER NOT NULL,
+  target_team_id INTEGER,
+  leg_id INTEGER,
+  mode TEXT NOT NULL DEFAULT 'delay_start',
+  status TEXT NOT NULL DEFAULT 'pending',
+  wait_min INTEGER NOT NULL DEFAULT 15,
+  wait_from TEXT,
+  wait_until TEXT,
+  reflected_from_id INTEGER,
+  decided INTEGER NOT NULL DEFAULT 0,          -- the target's follow answered (shield / reflect / accept)
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  resolved_at TEXT
+);
 CREATE TABLE IF NOT EXISTS cutoff_uses (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   episode_id INTEGER NOT NULL,
@@ -352,6 +374,8 @@ ensureColumn('shop_items', 'needs_target', 'INTEGER NOT NULL DEFAULT 0'); // usi
 ensureColumn('item_log', 'target_team_id', 'INTEGER');              // target team of a use
 ensureColumn('item_log', 'tip_id', 'INTEGER');                      // leg tip chosen with a 锦囊 card
 ensureColumn('item_log', 'target_label', 'TEXT');                   // snapshot of the chosen tip id
+ensureColumn('item_log', 'effect_id', 'INTEGER');                   // shield / reflect use answering a twist effect
+ensureColumn('announcements', 'effect_id', 'INTEGER');              // system notice about a twist effect (its pop-up asks for shield / reflect)
 ensureColumn('audit_logs', 'event_id', 'INTEGER');
 ensureColumn('events', 'owner_id', 'INTEGER');
 ensureColumn('event_members', 'role', "TEXT NOT NULL DEFAULT 'crew'");

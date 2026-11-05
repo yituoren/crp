@@ -4,6 +4,7 @@ import { canAdjustCurrency, getAssignment, type Env, isAdminRole, isHostRole } f
 import { audit, body, str, int, notify, bad, forbidden, notFound, money, currencyMode, editLockReason } from '../util.js';
 import { teamLabelMap, inventoryCount } from './teams.js';
 import { shopStock } from './episodes.js';
+import { checkUse, afterUse, beforeRevertUse, isMissile } from '../twist.js';
 
 export const ledgerRoutes = new Hono<Env>();
 
@@ -169,9 +170,15 @@ export function listItemLog(eventId: number, episodeId?: number | null, teamId?:
   if (teamId) { conds.push('l.team_id = ?'); params.push(teamId); }
   const labels = teamLabelMap();
   return all<any>(
-    `SELECT l.*, t.name AS team_name, g.name AS leg_name, lt.tip AS tip_text FROM item_log l JOIN teams t ON t.id = l.team_id LEFT JOIN legs g ON g.id = l.leg_id LEFT JOIN leg_tips lt ON lt.id = l.tip_id
+    `SELECT l.*, t.name AS team_name, g.name AS leg_name, lt.tip AS tip_text, ef.status AS effect_status, ef.target_team_id AS effect_target
+     FROM item_log l JOIN teams t ON t.id = l.team_id LEFT JOIN legs g ON g.id = l.leg_id LEFT JOIN leg_tips lt ON lt.id = l.tip_id LEFT JOIN twist_effects ef ON ef.item_log_id = l.id
      WHERE ${conds.join(' AND ')} ORDER BY l.created_at DESC, l.id DESC LIMIT 500`, ...params,
-  ).map((r) => ({ ...r, team_name: labels.get(r.team_id) ?? r.team_name, target_name: r.target_team_id ? labels.get(r.target_team_id) ?? null : null }));
+  ).map((r) => {
+    // a fired twist card shows whom it hit, or that it is still waiting / missed
+    const effectLabel = r.effect_status === 'pending' ? '待命中' : r.effect_status === 'void' ? '落空' : null;
+    const target = r.target_team_id ?? (r.effect_status && r.effect_status !== 'void' ? r.effect_target : null);
+    return { ...r, team_name: labels.get(r.team_id) ?? r.team_name, target_name: target ? labels.get(target) ?? null : null, target_label: r.target_label ?? effectLabel };
+  });
 }
 /** A revealed 锦囊 tip is shown only to hosts and the team's follow in that episode */
 ledgerRoutes.get('/item-log', (c) => {
@@ -201,7 +208,9 @@ ledgerRoutes.post('/items/use', async (c) => {
   if (epRow?.status === 'pending' && !isAdminRole(user.role)) throw bad(`${epRow.code} 尚未开始`);
   { const r = editLockReason(user, epRow, team as { status: string }); if (r) throw forbidden(r); }
   if (inventoryCount(teamId, itemName) < 1) throw bad(`背包里没有「${itemName}」`);
-  const needsTarget = !!get<{ needs_target: number }>('SELECT needs_target FROM shop_items WHERE event_id = ? AND name = ?', c.get('event').id, itemName)?.needs_target;
+  checkUse(episodeId, teamId, itemName);
+  // a missile finds its target by itself, whatever the item setting says
+  const needsTarget = !isMissile(itemName) && !!get<{ needs_target: number }>('SELECT needs_target FROM shop_items WHERE event_id = ? AND name = ?', c.get('event').id, itemName)?.needs_target;
   const targetId = int(b.targetTeamId, 0) || null;
   if (needsTarget && !targetId) throw bad(`使用「${itemName}」需要选择对象队伍`);
   if (targetId) {
@@ -224,6 +233,7 @@ ledgerRoutes.post('/items/use', async (c) => {
   const r = run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, target_team_id, tip_id, target_label) VALUES (?,?,?,?,-1,?,?,?,?,?,?,?)',
     episodeId, teamId, legId, itemName, 'use', user.id, user.displayName, now(), targetId, tip?.id ?? null, tip?.code ?? null);
   audit(user, 'item_use', 'team', teamId, undefined, { item: itemName, legId, targetTeamId: targetId, tip: tip?.code });
+  afterUse(episodeId, teamId, itemName, Number(r.lastInsertRowid));
   notify('ledger', episodeId); notify('teams');
   return c.json({ id: Number(r.lastInsertRowid), tip: tip ? { code: tip.code, tip: tip.tip } : null });
 });
@@ -241,6 +251,7 @@ ledgerRoutes.post('/item-log/:id/revert', (c) => {
   { const r = editLockReason(user, orig.episode_id ? get<{ status: string; code: string }>('SELECT status, code FROM episodes WHERE id = ?', orig.episode_id) : null, team as { status: string }); if (r) throw forbidden(r); }
   if (orig.reverted) throw bad('这条记录已经撤销过了');
   if (orig.reverts_id) throw bad('撤销记录本身不能再撤销');
+  beforeRevertUse(orig as { id: number; effect_id: number | null });
   const newId = tx(() => {
     run('UPDATE item_log SET reverted = 1 WHERE id = ?', id);
     const r = run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, reverts_id, target_team_id, tip_id, target_label) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', orig.episode_id, orig.team_id, orig.leg_id, orig.item_name, -orig.delta, orig.kind, user.id, user.displayName, now(), id, orig.target_team_id ?? null, orig.tip_id ?? null, orig.target_label ?? null);

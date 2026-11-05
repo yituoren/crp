@@ -55,6 +55,7 @@ function selectEventTables(eventId: number): Record<string, Row[]> {
     currency_ledger: all(`SELECT * FROM currency_ledger WHERE team_id IN (${tm}) ORDER BY id`, eventId),
     item_log: all(`SELECT * FROM item_log WHERE team_id IN (${tm}) ORDER BY id`, eventId),
     cutoff_uses: all(`SELECT * FROM cutoff_uses WHERE team_id IN (${tm}) ORDER BY id`, eventId),
+    twist_effects: all(`SELECT * FROM twist_effects WHERE episode_id IN (${ep}) ORDER BY id`, eventId),
     announcements: all('SELECT * FROM announcements WHERE event_id = ? ORDER BY id', eventId),
     event_members: all('SELECT * FROM event_members WHERE event_id = ?', eventId),
   };
@@ -187,16 +188,19 @@ export function importEvent(d: Dump, me: AuthUser): { id: number; hash: string; 
     copy('currency_ledger', (r) => ({ ...r, episode_id: ref('episodes', r.episode_id), team_id: ref('teams', r.team_id), leg_id: r.leg_id ? ref('legs', r.leg_id) : r.leg_id, item_id: ref('shop_items', r.item_id), operator_id: mapUser(r.operator_id), reverts_id: null }));
     copy('item_log', (r) => ({ ...r, episode_id: ref('episodes', r.episode_id), team_id: ref('teams', r.team_id), target_team_id: ref('teams', r.target_team_id), leg_id: r.leg_id ? ref('legs', r.leg_id) : r.leg_id, ledger_id: ref('currency_ledger', r.ledger_id), operator_id: mapUser(r.operator_id), reverts_id: null }));
     copy('cutoff_uses', (r) => ({ ...r, episode_id: ref('episodes', r.episode_id), team_id: ref('teams', r.team_id), leg_id: ref('legs', r.leg_id), cutoff_id: ref('leg_cutoffs', r.cutoff_id) ?? 0, ledger_id: ref('currency_ledger', r.ledger_id), used_by: mapUser(r.used_by) }));
+    copy('twist_effects', (r) => ({ ...r, episode_id: ref('episodes', r.episode_id), item_log_id: ref('item_log', r.item_log_id), source_team_id: ref('teams', r.source_team_id), target_team_id: ref('teams', r.target_team_id), leg_id: ref('legs', r.leg_id), reflected_from_id: null }));
     copy('announcements', (r) => {
       // targeted messages carry episode and team ids
       const m = /^follow:(\d+):(\d+)$/.exec(String(r.audience ?? ''));
-      if (!m) return { ...r, event_id: evId, author_id: mapUser(r.author_id) };
+      if (!m) return { ...r, event_id: evId, author_id: mapUser(r.author_id), effect_id: ref('twist_effects', r.effect_id) };
       const epId = ref('episodes', m[1]), teamId = ref('teams', m[2]);
-      return epId && teamId ? { ...r, event_id: evId, author_id: null, audience: `follow:${epId}:${teamId}` } : null;
+      return epId && teamId ? { ...r, event_id: evId, author_id: null, effect_id: ref('twist_effects', r.effect_id), audience: `follow:${epId}:${teamId}` } : null;
     });
     relink('penalties', 'reverts_id', 'penalties');
     relink('currency_ledger', 'reverts_id', 'currency_ledger');
     relink('item_log', 'reverts_id', 'item_log');
+    relink('item_log', 'effect_id', 'twist_effects');
+    relink('twist_effects', 'reflected_from_id', 'twist_effects');
 
     // Members whose accounts exist here keep their role; the importer is always a host
     for (const m of t('event_members')) {

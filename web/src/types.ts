@@ -50,6 +50,13 @@ export interface Cutoff { id: number; name: string; start_min: number; interval_
 export interface LegTip { id: number; code: string; tip: string | null }
 /** The 锦囊 card ("xx的锦囊卡") is recognised by name */
 export const isTipItem = (name: string) => name.includes('锦囊');
+/** A twist card effect on one team (see server/src/twist.ts); options = answers the target can still give */
+export interface TwistEffect {
+  id: number; episode_id: number; item_name: string; source_team_id: number; target_team_id: number | null; leg_id: number | null;
+  mode: 'delay_start' | 'hold'; status: 'pending' | 'hit' | 'shielded' | 'reflected' | 'void' | 'cancelled'; wait_min: number;
+  wait_from: string | null; wait_until: string | null; reflected_from_id: number | null; decided: number; note: string;
+  source_name: string; target_name: string | null; options: { shield: boolean; reflect: boolean };
+}
 export interface CutoffUse { id: number; episode_id: number; leg_id: number; team_id: number; cutoff_id: number; cutoff_name: string; used_at: string; used_by: number | null; used_by_name: string; ledger_id: number | null }
 export interface ShopItem { id: number; name: string; price: number; sort: number; needs_target: number }
 /** One item a leg's shop sells: quantity null = unlimited; remaining = quantity minus purchases on this leg */
@@ -62,4 +69,4 @@ export interface PitstopRow {
 }
 export interface LedgerEntry { id: number; episode_id: number | null; episode_code: string | null; team_id: number; team_name: string; team_code: string; delta: number; balance_after: number; reason: string; operator_id: number | null; operator_name: string; created_at: string; reverted: number; reverts_id: number | null; leg_id: number | null; leg_name: string | null; kind?: 'shop' | 'cutoff' | 'other' | 'use'; item_name?: string | null }
 export interface ItemLogEntry { id: number; episode_id: number | null; team_id: number; team_name: string; leg_id: number | null; leg_name: string | null; item_name: string; delta: number; kind: 'buy' | 'use'; ledger_id: number | null; operator_id: number | null; operator_name: string; created_at: string; reverted: number; reverts_id: number | null; target_team_id: number | null; target_name: string | null; tip_id: number | null; target_label: string | null; tip_text: string | null }
-export interface Announcement { id: number; content: string; level: 'info' | 'warning' | 'urgent'; created_by: string; created_at: string; pinned_at: string | null; audience: string; author_id: number | null }
+export interface Announcement { effect_id: number | null; id: number; content: string; level: 'info' | 'warning' | 'urgent'; created_by: string; created_at: string; pinned_at: string | null; audience: string; author_id: number | null }

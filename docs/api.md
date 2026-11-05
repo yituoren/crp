@@ -138,6 +138,7 @@ Leg fields: `type` (one of `SL RI TI DT RB FF Union Shuffle UT YD SB FO Trap SQ 
 
 | Method | Path | Role | Body / notes |
 |---|---|---|---|
+| POST | `/effects/:id/answer` | host / follow of the hit team | `{ answer: 'shield' \| 'reflect' \| 'accept' }` answers a twist effect (see `server/src/twist.ts`); `GET /episodes/:id/progress` returns `effects` with `options: { shield, reflect }` |
 | GET | `/announcements` | member | audience `all` is for everyone; `follow:<episodeId>:<teamId>` (the system departure notice, sent when an automatic departure is recorded) is returned only to hosts and to that team's follows in that episode |
 | POST | `/announcements` | member | `{ content, level?, audience? }`; hosts send `audience` `all` (default) or `hosts`; everyone else always posts to `hosts` (visible to the hosts and the author) |
 | POST | `/announcements/:id/pin` | host | `{ pinned }` |

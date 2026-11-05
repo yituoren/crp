@@ -138,6 +138,7 @@ teamRoutes.delete('/teams/:id', hostOnly, (c) => {
     run('DELETE FROM progress WHERE team_id = ?', id);
     run('UPDATE progress SET target_team_id = NULL WHERE target_team_id = ?', id);
     run('DELETE FROM penalties WHERE team_id = ?', id);
+    run('DELETE FROM twist_effects WHERE source_team_id = ? OR target_team_id = ?', id, id);
     run('DELETE FROM pitstop_results WHERE team_id = ?', id);
     run('DELETE FROM currency_ledger WHERE team_id = ?', id);
     run('UPDATE assignments SET team_id = NULL WHERE team_id = ?', id);

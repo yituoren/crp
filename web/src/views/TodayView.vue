@@ -51,7 +51,7 @@ const legRows = computed(() => {
     const block = race.blockReason(myTeam.value!.id, leg.id) ?? race.extraMissing(leg, p, myTeam.value!.id);
     const isBranch = leg.type === 'SQ';
     const locked = (race.isLocked(myTeam.value!.id, leg.id) && !auth.isAdmin) || (isBranch && race.branchLocked(myTeam.value!.id, leg.id) && !p?.completed_at && !auth.isAdmin);
-    const state = locked ? '-' : isBranch ? (p?.completed_at ? '已完成' : p?.arrived_at ? '进行中' : '未进入') : p?.completed_at ? `已${endLabel(leg.type)}` : hasStart(leg.type) ? (p?.arrived_at ? '进行中' : '未开始') : '未出发';
+    const state = locked ? '-' : isBranch ? (p?.completed_at ? '已完成' : p?.arrived_at ? '进行中' : '未进入') : p?.completed_at ? `已${endLabel(leg.type)}` : race.waitingUntil(myTeam.value!.id, leg.id) ? '等待中' : hasStart(leg.type) ? (p?.arrived_at ? '进行中' : '未开始') : '未出发';
     return { leg, p, label: endLabel(leg.type), block, locked, isBranch, state };
   });
 });
@@ -78,7 +78,7 @@ const legRows = computed(() => {
             <tr v-for="{ leg, p, label, block, state, locked, isBranch } in legRows" :key="leg.id">
               <td><LegTag :type="leg.type" /> <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: leg.id } }">{{ legName(leg) }}</router-link></td>
               <td>{{ state }}</td>
-              <td><span class="record-time">{{ hasStart(leg.type) ? fmtTime(p?.arrived_at) : '-' }}</span></td>
+              <td><span class="record-time" :class="{ 'record-hit': !!race.effectOn(myTeam!.id, leg.id) }">{{ hasStart(leg.type) ? fmtTime(p?.arrived_at) : '-' }}</span></td>
               <td><span class="record-time">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td>
               <td class="c"><LegExtraField :leg="leg" :team-id="myTeam!.id" :progress="p" :can="!locked && !!p?.arrived_at && !p?.completed_at && !race.episodeFinished" /></td>
               <td class="c">
