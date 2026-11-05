@@ -338,6 +338,7 @@ ensureColumn('assignments', 'leg_ids', 'TEXT'); // A station may cover several l
 ensureColumn('episodes', 'event_id', 'INTEGER NOT NULL DEFAULT 1');
 ensureColumn('teams', 'event_id', 'INTEGER NOT NULL DEFAULT 1');
 ensureColumn('announcements', 'event_id', 'INTEGER NOT NULL DEFAULT 1');
+ensureColumn('announcements', 'author_id', 'INTEGER'); // poster's account (null = system or legacy)
 ensureColumn('audit_logs', 'event_id', 'INTEGER');
 ensureColumn('events', 'owner_id', 'INTEGER');
 ensureColumn('event_members', 'role', "TEXT NOT NULL DEFAULT 'crew'");

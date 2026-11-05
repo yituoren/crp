@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import { all, get, run, now } from '../db.js';
 import { hostOnly, isHostRole, type Env } from '../auth.js';
+
+/** Audiences: all = every crew member; hosts = hosts only (crew messages to the hosts); follow:<episodeId>:<teamId> = system departure notice */
 import { audit, body, str, int, intParam, notify, bad } from '../util.js';
 
 export const announcementRoutes = new Hono<Env>();
@@ -8,8 +10,9 @@ export const announcementRoutes = new Hono<Env>();
 announcementRoutes.get('/announcements', (c) => {
   const ev = c.get('event');
   const me = get('SELECT last_read_id FROM ann_reads WHERE user_id = ? AND event_id = ?', c.get('user').id, ev.id);
-  // Targeted system messages ("follow:<episodeId>:<teamId>") are visible to hosts and to that team's follows in that episode only
-  const visible = isHostRole(c.get('user').role) ? '1' : `(audience = 'all' OR EXISTS (SELECT 1 FROM assignments s WHERE s.user_id = ${Number(c.get('user').id)} AND s.role = 'follow' AND announcements.audience = 'follow:' || s.episode_id || ':' || s.team_id))`;
+  // Hosts see everything; others see "all", their own posts, and departure notices for the team they follow in that episode
+  const uid = Number(c.get('user').id);
+  const visible = isHostRole(c.get('user').role) ? '1' : `(audience = 'all' OR author_id = ${uid} OR EXISTS (SELECT 1 FROM assignments s WHERE s.user_id = ${uid} AND s.role = 'follow' AND announcements.audience = 'follow:' || s.episode_id || ':' || s.team_id))`;
   // pinned first (newest pin first), then by publish time descending
   return c.json({
     announcements: all(`SELECT * FROM announcements WHERE event_id = ? AND ${visible} ORDER BY (pinned_at IS NULL), pinned_at DESC, id DESC LIMIT 200`, ev.id),
@@ -29,15 +32,16 @@ announcementRoutes.post('/announcements/read', async (c) => {
   return c.json({ ok: true });
 });
 
-announcementRoutes.post('/announcements', hostOnly, async (c) => {
+/** Hosts post to everyone or to the hosts only; every other member posts to the hosts */
+announcementRoutes.post('/announcements', async (c) => {
   const b = await body(c);
   const content = str(b.content, 2000);
   if (!content) throw bad('内容不能为空');
   const level = ['info', 'warning', 'urgent'].includes(b.level) ? b.level : 'info';
-  const audience = str(b.audience, 50) || 'all'; // audience: reserved, only "all" for now
+  const audience = isHostRole(c.get('user').role) && b.audience !== 'hosts' ? 'all' : 'hosts';
   const r = run(
-    'INSERT INTO announcements(content, level, created_by, created_at, audience, event_id) VALUES (?,?,?,?,?,?)',
-    content, level, c.get('user').displayName, now(), audience, c.get('event').id,
+    'INSERT INTO announcements(content, level, created_by, created_at, audience, event_id, author_id) VALUES (?,?,?,?,?,?,?)',
+    content, level, c.get('user').displayName, now(), audience, c.get('event').id, c.get('user').id,
   );
   audit(c.get('user'), 'create', 'announcement', Number(r.lastInsertRowid), undefined, { content, level });
   notify('announcements');
@@ -61,9 +65,11 @@ announcementRoutes.post('/announcements/:id/pin', hostOnly, async (c) => {
   return c.json({ ok: true });
 });
 
-announcementRoutes.delete('/announcements/:id', hostOnly, (c) => {
+/** Hosts delete any announcement; others only their own */
+announcementRoutes.delete('/announcements/:id', (c) => {
   const id = intParam(c, 'id');
-  own(c, id);
+  const a = own(c, id);
+  if (!isHostRole(c.get('user').role) && a.author_id !== c.get('user').id) throw bad('只能删除自己发的公告');
   run('DELETE FROM announcements WHERE id = ?', id);
   audit(c.get('user'), 'delete', 'announcement', id);
   notify('announcements');

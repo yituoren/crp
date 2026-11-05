@@ -17,7 +17,7 @@ async function post() {
     await api('/announcements', { method: 'POST', body: { content: form.content, audience: form.audience } });
     form.content = '';
     await race.loadAnnouncements();
-    ui.toast('公告已发布');
+    ui.toast(auth.isHost && form.audience === 'all' ? '公告已发布' : '已发给主办');
   } catch (e) { ui.error(e); }
 }
 async function pin(id: number, pinned: boolean) {
@@ -27,8 +27,9 @@ async function remove(id: number) {
   if (!(await ui.confirm('删除公告', '确定删除这条公告？', { danger: true }))) return;
   try { await api(`/announcements/${id}`, { method: 'DELETE' }); await race.loadAnnouncements(); } catch (e) { ui.error(e); }
 }
-/** Targeted system message ("follow:<episodeId>:<teamId>"): who it was sent to */
+/** Who a non-public announcement was sent to */
 function audienceText(a: string) {
+  if (a === 'hosts') return '发给主办';
   const m = /^follow:(\d+):(\d+)$/.exec(a);
   if (!m) return '';
   const team = race.teams.find((t) => t.id === Number(m[2]));
@@ -43,10 +44,12 @@ watch(() => race.announcements, () => race.markAnnouncementsRead());
     <div class="card fill-card">
       <div class="card-header"><span>公告（{{ race.announcements.length }}）</span></div>
       <!-- Compose: textarea on the left, a column on the right (audience above, send below); the textarea matches the column height -->
-      <div v-if="auth.isHost" class="ann-compose mb-2">
-        <textarea v-model="form.content" placeholder="写点什么，发给所有幕后…" @keydown.ctrl.enter="post" @keydown.meta.enter="post" />
+      <!-- hosts post to everyone or to the hosts only; other crew members post to the hosts -->
+      <div class="ann-compose mb-2">
+        <textarea v-model="form.content" :placeholder="form.audience === 'all' && auth.isHost ? '写点什么，发给所有幕后…' : '写点什么，发给主办…'" @keydown.ctrl.enter="post" @keydown.meta.enter="post" />
         <div class="ann-side">
-          <MSelect v-model="form.audience" disabled title="通知对象（暂只支持全部幕后）" :options="[{ value: 'all', label: '全部幕后' }]" />
+          <MSelect v-if="auth.isHost" v-model="form.audience" title="通知对象" :options="[{ value: 'all', label: '全部幕后' }, { value: 'hosts', label: '仅主办' }]" />
+          <MSelect v-else model-value="hosts" disabled title="通知对象" :options="[{ value: 'hosts', label: '主办' }]" />
           <button class="btn ann-send" @click="post"><Icon name="send" size="18" />发送</button>
         </div>
       </div>
@@ -57,8 +60,8 @@ watch(() => race.announcements, () => race.markAnnouncementsRead());
           <div class="pre">{{ a.content }}</div>
           <div class="flex-between mt-1">
             <span class="flex" style="gap: 6px"><span v-if="a.pinned_at" class="badge badge-warning">置顶</span><span v-if="audienceText(a.audience)" class="badge badge-info">{{ audienceText(a.audience) }}</span><span class="text-xs text-gray">{{ a.created_by }} · {{ fmtDateMinute(a.created_at) }}</span></span>
-            <span v-if="auth.isHost" class="flex" style="gap: 6px">
-              <button class="btn btn-text btn-sm" @click="pin(a.id, !a.pinned_at)"><Icon name="push_pin" size="16" />{{ a.pinned_at ? '取消置顶' : '置顶' }}</button>
+            <span v-if="auth.isHost || a.author_id === auth.user?.id" class="flex" style="gap: 6px">
+              <button v-if="auth.isHost" class="btn btn-text btn-sm" @click="pin(a.id, !a.pinned_at)"><Icon name="push_pin" size="16" />{{ a.pinned_at ? '取消置顶' : '置顶' }}</button>
               <button class="btn btn-text btn-text-danger btn-sm" @click="remove(a.id)"><Icon name="delete" size="16" />删除</button>
             </span>
           </div>

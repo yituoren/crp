@@ -233,8 +233,8 @@ export const useRace = defineStore('race', () => {
     announcements.value = d.announcements;
     lastReadId.value = Math.max(lastReadId.value, Number(d.lastReadId ?? 0));
   }
-  // hosts also see the system messages sent to one team's follows, but those do not count as unread for them
-  const unreadAnnouncements = computed(() => announcements.value.filter((a) => a.id > lastReadId.value && (!auth.isHost || a.audience === 'all')).length);
+  // Own posts are never unread; hosts also see the system messages sent to one team's follows, but those do not count as unread for them
+  const unreadAnnouncements = computed(() => announcements.value.filter((a) => a.id > lastReadId.value && a.author_id !== auth.user?.id && (!auth.isHost || !a.audience.startsWith('follow:'))).length);
   async function markAnnouncementsRead() {
     const max = Math.max(0, ...announcements.value.map((a) => a.id));
     if (max > lastReadId.value) {

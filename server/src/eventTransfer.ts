@@ -188,9 +188,9 @@ export function importEvent(d: Dump, me: AuthUser): { id: number; hash: string; 
     copy('announcements', (r) => {
       // targeted messages carry episode and team ids
       const m = /^follow:(\d+):(\d+)$/.exec(String(r.audience ?? ''));
-      if (!m) return { ...r, event_id: evId };
+      if (!m) return { ...r, event_id: evId, author_id: mapUser(r.author_id) };
       const epId = ref('episodes', m[1]), teamId = ref('teams', m[2]);
-      return epId && teamId ? { ...r, event_id: evId, audience: `follow:${epId}:${teamId}` } : null;
+      return epId && teamId ? { ...r, event_id: evId, author_id: null, audience: `follow:${epId}:${teamId}` } : null;
     });
     relink('penalties', 'reverts_id', 'penalties');
     relink('currency_ledger', 'reverts_id', 'currency_ledger');
