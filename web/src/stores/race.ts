@@ -78,7 +78,7 @@ export const useRace = defineStore('race', () => {
     const a = myAssignment.value;
     return !!a && a.role === 'follow' && a.team_id === teamId;
   }
-  /** Penalties / credits: host; this episode's stations any team; follow only its team (host only after the episode ends) */
+  /** Penalties / credits: host; this episode's stations any team on their own legs (see currencyLegIds); follow only its team (host only after the episode ends) */
   const canManagePenalty = computed(() => auth.isAdmin || (!episodeFinished.value && (auth.isHost || myAssignment.value?.role === 'station' || myAssignment.value?.role === 'follow')));
   function canManagePenaltyFor(teamId: number) {
     if (auth.isAdmin) return true;
@@ -96,7 +96,7 @@ export const useRace = defineStore('race', () => {
   }
   /** Money: host any; follow only its team (host only after the episode ends); stations none */
   const canAdjustCurrency = computed(() => auth.isAdmin || (!episodeFinished.value && (auth.isHost || myAssignment.value?.role === 'follow' || (myAssignment.value?.role === 'station' && (myAssignment.value.leg_ids?.length ?? 0) > 0))));
-  /** Legs selectable for money operations: stations only their own legs with no "other"; other roles all legs + other */
+  /** Legs selectable for money and penalty operations: stations only their own legs with no "other"; other roles all legs + other */
   const currencyLegIds = computed<number[] | null>(() => (!auth.isHost && myAssignment.value?.role === 'station' ? (myAssignment.value.leg_ids ?? []) : null));
   /** Elimination rights: host, or the pit-stop station of this episode; independent of episode status */
   const canEliminate = computed(() => {

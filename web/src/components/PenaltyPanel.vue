@@ -18,8 +18,8 @@ const form = reactive({ teamId: (props.teamId ?? '') as number | '', minutes: ''
 const canAdd = computed(() => (props.teamId ? race.canManagePenaltyFor(props.teamId) : race.canManagePenalty));
 // stations may pick any team; follows only their own
 const teamOptions = computed(() => race.teams.filter((t) => race.canManagePenaltyFor(t.id)));
-// leg options: every leg of the episode; "other" is hosts only
-const legOptions = computed(() => (ep.value?.legs ?? []));
+// leg options: every leg of the episode, stations only their own legs; "other" is hosts only
+const legOptions = computed(() => (ep.value?.legs ?? []).filter((l) => !race.currencyLegIds || race.currencyLegIds.includes(l.id)));
 const totals = computed(() => {
   const m = new Map<number, number>();
   for (const p of race.penalties) m.set(p.team_id, (m.get(p.team_id) ?? 0) + p.minutes);

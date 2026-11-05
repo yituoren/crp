@@ -114,7 +114,7 @@ Leg fields: `type` (one of `SL RI TI DT RB FF Union Shuffle UT YD SB FO Trap SQ 
 | GET | `/episodes/:id/progress` | member | `{ progress, penalties, pitstop, cutoffUses }` |
 | POST | `/progress` | host / follow of the team | `{ episodeId, teamId, legId, action, at?, value? }` — actions: `complete`, `arrive` (side quest start), `undo_complete`, `undo_arrive` (host), `detour`, `roadblock`, `ff`, `target`, `note` |
 | PUT | `/progress/:episodeId/:teamId/:legId` | host / follow | `{ arrivedAt, completedAt, detourChoice, roadblockBy, ffResult, targetTeamId, note }` |
-| POST | `/episodes/:id/penalties` | host / station / follow of the team | `{ teamId, legId (0 = other, hosts only), minutes (negative = time credit), reason }` |
+| POST | `/episodes/:id/penalties` | host / station on its own legs / follow of the team | `{ teamId, legId (0 = other, hosts only), minutes (negative = time credit), reason }` |
 | POST | `/penalties/:id/revert` | author or host | |
 | GET | `/episodes/:id/pitstop` | member | rows with check-in, penalty minutes, final time, live rank |
 | PUT | `/episodes/:id/pitstop/:teamId` | host | `{ checkinAt?, note? }` |

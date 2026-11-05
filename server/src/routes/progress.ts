@@ -344,7 +344,7 @@ progressRoutes.post('/episodes/:id/penalties', async (c) => {
   const b = await body(c);
   const teamId = int(b.teamId), minutes = int(b.minutes);
   if (!teamId || !minutes) throw bad('缺少队伍或罚时分钟数');
-  if (!canManagePenalty(user, episodeId, teamId)) throw forbidden('只有主办、本赛段站点人员或该队伍的跟队可以操作罚时');
+  if (!canManagePenalty(user, episodeId, teamId, int(b.legId, 0) || null)) throw forbidden('主办可操作所有队伍；跟队只能操作所跟队伍；站点只能记在自己驻守的环节上');
   const teamRow = get<{ status: string }>('SELECT status FROM teams WHERE id = ?', teamId);
   if (!teamRow) throw notFound('队伍不存在');
   const epRow = get<{ status: string; code: string }>('SELECT status, code FROM episodes WHERE id = ?', episodeId);

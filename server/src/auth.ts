@@ -156,12 +156,12 @@ export function canAdjustCurrency(user: AuthUser, episodeId: number, teamId?: nu
   if (a.role === 'station') return legId !== undefined && legId !== null && a.legIds.includes(legId);
   return false;
 }
-/** Penalties / time credits: hosts any team; stations any team in this episode; follows only their own team */
-export function canManagePenalty(user: AuthUser, episodeId: number, teamId?: number) {
+/** Penalties / time credits: hosts any team; stations any team in this episode but only on the legs they are assigned to (same as money); follows only their own team */
+export function canManagePenalty(user: AuthUser, episodeId: number, teamId?: number, legId?: number | null) {
   if (isHostRole(user.role)) return true;
   const a = getAssignment(episodeId, user.id);
   if (!a) return false;
-  if (a.role === 'station') return true;
+  if (a.role === 'station') return legId !== undefined && legId !== null && a.legIds.includes(legId);
   return a.role === 'follow' && teamId !== undefined && a.team_id === teamId;
 }
 
