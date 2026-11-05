@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { all, get, run, now } from '../db.js';
 import { hostOnly, isHostRole, type Env } from '../auth.js';
 
-/** Audiences: all = every crew member; hosts = hosts only (crew messages to the hosts); follow:<episodeId>:<teamId> = system departure notice */
+/** Audiences: all = every crew member; follows = hosts and everyone scheduled as a follow in this event; hosts = hosts only (crew messages to the hosts); follow:<episodeId>:<teamId> = system notice to one team's follow */
 import { audit, body, str, int, intParam, notify, bad } from '../util.js';
 
 export const announcementRoutes = new Hono<Env>();
@@ -12,7 +12,9 @@ announcementRoutes.get('/announcements', (c) => {
   const me = get('SELECT last_read_id FROM ann_reads WHERE user_id = ? AND event_id = ?', c.get('user').id, ev.id);
   // Hosts see everything; others see "all", their own posts, and departure notices for the team they follow in that episode
   const uid = Number(c.get('user').id);
-  const visible = isHostRole(c.get('user').role) ? '1' : `(audience = 'all' OR author_id = ${uid} OR EXISTS (SELECT 1 FROM assignments s WHERE s.user_id = ${uid} AND s.role = 'follow' AND announcements.audience = 'follow:' || s.episode_id || ':' || s.team_id))`;
+  const visible = isHostRole(c.get('user').role) ? '1' : `(audience = 'all' OR author_id = ${uid}
+    OR (audience = 'follows' AND EXISTS (SELECT 1 FROM assignments s JOIN episodes e ON e.id = s.episode_id WHERE s.user_id = ${uid} AND s.role = 'follow' AND e.event_id = ${Number(ev.id)}))
+    OR EXISTS (SELECT 1 FROM assignments s WHERE s.user_id = ${uid} AND s.role = 'follow' AND announcements.audience = 'follow:' || s.episode_id || ':' || s.team_id))`;
   // pinned first (newest pin first), then by publish time descending
   return c.json({
     announcements: all(`SELECT * FROM announcements WHERE event_id = ? AND ${visible} ORDER BY (pinned_at IS NULL), pinned_at DESC, id DESC LIMIT 200`, ev.id),
@@ -32,13 +34,13 @@ announcementRoutes.post('/announcements/read', async (c) => {
   return c.json({ ok: true });
 });
 
-/** Hosts post to everyone or to the hosts only; every other member posts to the hosts */
+/** Hosts post to everyone, to all follows or to the hosts only; every other member posts to the hosts */
 announcementRoutes.post('/announcements', async (c) => {
   const b = await body(c);
   const content = str(b.content, 2000);
   if (!content) throw bad('内容不能为空');
   const level = ['info', 'warning', 'urgent'].includes(b.level) ? b.level : 'info';
-  const audience = isHostRole(c.get('user').role) && b.audience !== 'hosts' ? 'all' : 'hosts';
+  const audience = !isHostRole(c.get('user').role) ? 'hosts' : ['hosts', 'follows'].includes(b.audience) ? b.audience : 'all';
   const r = run(
     'INSERT INTO announcements(content, level, created_by, created_at, audience, event_id, author_id) VALUES (?,?,?,?,?,?,?)',
     content, level, c.get('user').displayName, now(), audience, c.get('event').id, c.get('user').id,

@@ -17,7 +17,7 @@ async function post() {
     await api('/announcements', { method: 'POST', body: { content: form.content, audience: form.audience } });
     form.content = '';
     await race.loadAnnouncements();
-    ui.toast(auth.isHost && form.audience === 'all' ? '公告已发布' : '已发给主办');
+    ui.toast(!auth.isHost || form.audience === 'hosts' ? '已发给主办' : form.audience === 'follows' ? '已发给全体跟队' : '公告已发布');
   } catch (e) { ui.error(e); }
 }
 async function pin(id: number, pinned: boolean) {
@@ -30,6 +30,7 @@ async function remove(id: number) {
 /** Who a non-public announcement was sent to */
 function audienceText(a: string) {
   if (a === 'hosts') return '发给主办';
+  if (a === 'follows') return '发给全体跟队';
   const m = /^follow:(\d+):(\d+)$/.exec(a);
   if (!m) return '';
   const team = race.teams.find((t) => t.id === Number(m[2]));
@@ -46,9 +47,9 @@ watch(() => race.announcements, () => race.markAnnouncementsRead());
       <!-- Compose: textarea on the left, a column on the right (audience above, send below); the textarea matches the column height -->
       <!-- hosts post to everyone or to the hosts only; other crew members post to the hosts -->
       <div class="ann-compose mb-2">
-        <textarea v-model="form.content" :placeholder="form.audience === 'all' && auth.isHost ? '写点什么，发给所有幕后…' : '写点什么，发给主办…'" @keydown.ctrl.enter="post" @keydown.meta.enter="post" />
+        <textarea v-model="form.content" :placeholder="!auth.isHost || form.audience === 'hosts' ? '写点什么，发给主办…' : form.audience === 'follows' ? '写点什么，发给全体跟队…' : '写点什么，发给所有幕后…'" @keydown.ctrl.enter="post" @keydown.meta.enter="post" />
         <div class="ann-side">
-          <MSelect v-if="auth.isHost" v-model="form.audience" title="通知对象" :options="[{ value: 'all', label: '全部幕后' }, { value: 'hosts', label: '仅主办' }]" />
+          <MSelect v-if="auth.isHost" v-model="form.audience" title="通知对象" :options="[{ value: 'all', label: '全部幕后' }, { value: 'follows', label: '全体跟队' }, { value: 'hosts', label: '仅主办' }]" />
           <MSelect v-else model-value="hosts" disabled title="通知对象" :options="[{ value: 'hosts', label: '主办' }]" />
           <button class="btn ann-send" @click="post"><Icon name="send" size="18" />发送</button>
         </div>

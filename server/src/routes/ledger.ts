@@ -233,7 +233,7 @@ ledgerRoutes.post('/items/use', async (c) => {
   const r = run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, target_team_id, tip_id, target_label) VALUES (?,?,?,?,-1,?,?,?,?,?,?,?)',
     episodeId, teamId, legId, itemName, 'use', user.id, user.displayName, now(), targetId, tip?.id ?? null, tip?.code ?? null);
   audit(user, 'item_use', 'team', teamId, undefined, { item: itemName, legId, targetTeamId: targetId, tip: tip?.code });
-  afterUse(episodeId, teamId, itemName, Number(r.lastInsertRowid));
+  afterUse(episodeId, teamId, itemName, Number(r.lastInsertRowid), targetId);
   notify('ledger', episodeId); notify('teams');
   return c.json({ id: Number(r.lastInsertRowid), tip: tip ? { code: tip.code, tip: tip.tip } : null });
 });

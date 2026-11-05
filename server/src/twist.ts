@@ -11,8 +11,10 @@ import { upsertProgress } from './progressCore.js';
  *    told when it is fired.
  *  - 护盾 (shield) cancels an effect on the team; 反弹 (reflect) turns it on the card's user, who gets the same effect at its own next
  *    arrival (a reflected effect cannot be reflected again, only shielded).
- * Rules: in one episode a team is hit by at most one twist effect (shield / reflect do not count; a reflected effect that lands counts
- * for its new target). Effects meeting the same team are settled in firing order: if the first is shielded or reflected the next one
+ * Rules: in one episode a team is hit by each kind of twist card at most once (shield / reflect do not count; a reflected effect that
+ * lands counts for its new target).
+ * Publicity: the public announcement names the user when a missile lands; 决斗 / 盗窃 / 验牌 name user and target on use, 合流 the
+ * user. Settlement details (target of a missile, shield, reflect, void) are never announced: only the hit team's follow is told. Effects meeting the same team are settled in firing order: if the first is shielded or reflected the next one
  * comes, once one lands the rest are void. 让路 / 让行 can be used once per episode per team.
  *
  * Effect rows: pending (no target yet: a fired missile; or a reflected one waiting for its target's next arrival) → hit → shielded /
@@ -42,9 +44,9 @@ export function listEffects(episodeId: number) {
     .map((e) => ({ ...e, source_name: labels.get(e.source_team_id) ?? '', target_name: e.target_team_id ? labels.get(e.target_team_id) ?? '' : null }));
 }
 
-/** Whether a team has already been hit by a twist effect in this episode */
-export function hitThisEpisode(episodeId: number, teamId: number) {
-  return !!get("SELECT 1 FROM twist_effects WHERE episode_id = ? AND target_team_id = ? AND status = 'hit'", episodeId, teamId);
+/** Whether a team has already been hit by this kind of twist card in this episode */
+export function hitThisEpisode(episodeId: number, teamId: number, itemName: string) {
+  return !!get("SELECT 1 FROM twist_effects WHERE episode_id = ? AND target_team_id = ? AND item_name = ? AND status = 'hit'", episodeId, teamId, itemName);
 }
 /** Teams that have checked in at the episode's pit stop (manual check-in or the pit stop's end record) */
 function checkedIn(episodeId: number): Set<number> {
@@ -66,9 +68,9 @@ function announce(episodeId: number, content: string, audience: string, effectId
   notify('announcements');
 }
 const toFollow = (episodeId: number, teamId: number) => `follow:${episodeId}:${teamId}`;
+/** A void effect is only logged: settlement details are not announced */
 function voidEffect(ef: Effect, note: string, targetId: number | null = ef.target_team_id) {
   run("UPDATE twist_effects SET status = 'void', target_team_id = ?, note = ?, resolved_at = ? WHERE id = ?", targetId, note, now(), ef.id);
-  announce(ef.episode_id, `「${ef.item_name}」落空：${note}`, toFollow(ef.episode_id, ef.source_team_id));
 }
 
 /** Card use hook (inside the use request): per-episode limits, and no missile once a team has the check-in clue */
@@ -79,12 +81,17 @@ export function checkUse(episodeId: number | null, teamId: number, itemName: str
     throw bad(`「${itemName}」每个赛段每队只能使用一次`);
   }
 }
-/** Card use hook (after the use is written): a missile becomes a pending effect and every crew member is told */
-export function afterUse(episodeId: number | null, teamId: number, itemName: string, itemLogId: number) {
-  if (!episodeId || !isMissile(itemName)) return;
+/**
+ * Card use hook (after the use is written): a missile becomes a pending effect (announced when it lands);
+ * 决斗 / 盗窃 / 验牌 announce user and target, 合流 the user
+ */
+export function afterUse(episodeId: number | null, teamId: number, itemName: string, itemLogId: number, targetTeamId: number | null) {
+  if (!episodeId) return;
+  if (['决斗', '盗窃', '验牌'].some((k) => itemName.includes(k))) announce(episodeId, `${label(teamId)} 对 ${label(targetTeamId)} 使用了「${itemName}」`, 'all');
+  if (itemName.includes('合流')) announce(episodeId, `${label(teamId)} 使用了「${itemName}」`, 'all');
+  if (!isMissile(itemName)) return;
   const r = run('INSERT INTO twist_effects(episode_id, item_name, item_log_id, source_team_id, status, created_at) VALUES (?,?,?,?,?,?)', episodeId, itemName, itemLogId, teamId, 'pending', now());
   audit(SYSTEM, 'twist_fire', 'twist_effect', Number(r.lastInsertRowid), undefined, { itemName, teamId });
-  announce(episodeId, `${label(teamId)} 使用了「${itemName}」：下一个领到还没有队伍领到的主线线索的队伍将原地等待 15 分钟`, 'all');
   notify('progress', episodeId);
 }
 /** Reverting a card use: a pending missile is withdrawn; once it has a target, or for a shield / reflect answer, it cannot be reverted */
@@ -119,14 +126,15 @@ function landEffect(ef: Effect, teamId: number, legId: number, from: string) {
   if (p && !p.completed_at) upsertProgress(ef.episode_id, teamId, legId, { ...p, arrived_at: until }, SYSTEM.id);
   const by = ef.reflected_from_id ? `被 ${label(ef.source_team_id)} 反弹回来的` : `被 ${label(ef.source_team_id)} 的`;
   announce(ef.episode_id, `${label(teamId)} ${by}「${ef.item_name}」击中：在「${legLabel(legId)}」原地等待 ${ef.wait_min} 分钟，${hm(until)} 后开始`, toFollow(ef.episode_id, teamId), ef.id);
-  if (!ef.reflected_from_id) announce(ef.episode_id, `「${ef.item_name}」击中了 ${label(teamId)}`, toFollow(ef.episode_id, ef.source_team_id));
+  // public: only who used it, and only when it lands (a reflected one landing is a settlement detail)
+  if (!ef.reflected_from_id) announce(ef.episode_id, `${label(ef.source_team_id)} 使用了「${ef.item_name}」`, 'all');
   const landed = get<Effect>('SELECT * FROM twist_effects WHERE id = ?', ef.id)!;
   const o = answerOptions(landed);
   if (!o.shield && !o.reflect) voidQueued(ef.episode_id, teamId);
 }
 /** One effect landed for good on a team: the ones queued behind it are void */
 function voidQueued(episodeId: number, teamId: number) {
-  for (const q of all<Effect>("SELECT * FROM twist_effects WHERE episode_id = ? AND target_team_id = ? AND status = 'queued' ORDER BY id", episodeId, teamId)) voidEffect(q, `${label(teamId)} 已被其他 twist 卡作用`);
+  for (const q of all<Effect>("SELECT * FROM twist_effects WHERE episode_id = ? AND target_team_id = ? AND status = 'queued' ORDER BY id", episodeId, teamId)) voidEffect(q, `${label(teamId)} 本赛段已被「${q.item_name}」作用`);
 }
 /** The landed effect was shielded / reflected: the next queued one (if any) lands on the same team at the same arrival */
 function promoteQueued(episodeId: number, teamId: number, legId: number, from: string) {
@@ -147,8 +155,8 @@ export function onArrival(episodeId: number, teamId: number, legId: number, sort
   );
   if (!candidates.length) return;
   const nextLeg = get<{ id: number }>("SELECT id FROM legs WHERE episode_id = ? AND sort > ? AND type != 'SQ' ORDER BY sort, id LIMIT 1", episodeId, sort);
-  if (!nextLeg || hitThisEpisode(episodeId, teamId)) {
-    for (const ef of candidates) voidEffect(ef, nextLeg ? `${label(teamId)} 本赛段已经被作用过` : '没有下一个环节', teamId);
+  if (!nextLeg || hitThisEpisode(episodeId, teamId, candidates[0]!.item_name)) {
+    for (const ef of candidates) voidEffect(ef, nextLeg ? `${label(teamId)} 本赛段已被「${ef.item_name}」作用过` : '没有下一个环节', teamId);
   } else {
     const [first, ...rest] = candidates;
     for (const ef of rest) run("UPDATE twist_effects SET status = 'queued', target_team_id = ?, leg_id = ?, wait_from = ? WHERE id = ?", teamId, nextLeg.id, endAt, ef.id);
@@ -180,24 +188,21 @@ export function answerEffect(ef: Effect, answer: 'shield' | 'reflect' | 'accept'
   const opts = answerOptions(ef);
   if (answer === 'shield' && !opts.shield) throw bad('现在不能使用护盾');
   if (answer === 'reflect' && !opts.reflect) throw bad(ef.reflected_from_id ? '被反弹的效果不能再反弹' : '现在不能使用反弹');
-  const target = label(ef.target_team_id);
   tx(() => {
     run('UPDATE twist_effects SET decided = 1 WHERE id = ?', ef.id);
     if (answer === 'accept') { voidQueued(ef.episode_id, ef.target_team_id!); return; }
     const card = useCard(ef, ef.target_team_id!, answer === 'shield' ? isShield : isReflect, user);
     run('UPDATE twist_effects SET status = ?, note = ? WHERE id = ?', answer === 'shield' ? 'shielded' : 'reflected', card, ef.id);
     liftDelay(ef);
-    if (answer === 'shield') {
-      announce(ef.episode_id, `${target} 用「${card}」挡下了「${ef.item_name}」`, toFollow(ef.episode_id, ef.source_team_id));
-    } else {
+    if (answer === 'reflect') {
       // the card's user gets the same effect at its own next arrival
       const src = ef.source_team_id;
       const r = run('INSERT INTO twist_effects(episode_id, item_name, source_team_id, target_team_id, status, wait_min, reflected_from_id, created_at) VALUES (?,?,?,?,?,?,?,?)',
         ef.episode_id, ef.item_name, ef.target_team_id, src, 'pending', ef.wait_min, ef.id, now());
       const back = get<Effect>('SELECT * FROM twist_effects WHERE id = ?', Number(r.lastInsertRowid))!;
-      if (hitThisEpisode(ef.episode_id, src)) voidEffect(back, `${label(src)} 本赛段已经被作用过`);
+      // the user's follow learns about it only when it lands
+      if (hitThisEpisode(ef.episode_id, src, ef.item_name)) voidEffect(back, `${label(src)} 本赛段已被「${ef.item_name}」作用过`);
       else if (checkedIn(ef.episode_id).has(src)) voidEffect(back, `${label(src)} 已经签到`);
-      else announce(ef.episode_id, `${label(src)} 的「${ef.item_name}」被 ${target} 用「${card}」反弹：本队下一次记录到达时，下一个环节原地等待 ${ef.wait_min} 分钟`, toFollow(ef.episode_id, src));
     }
     promoteQueued(ef.episode_id, ef.target_team_id!, ef.leg_id!, ef.wait_from!);
   });
@@ -217,7 +222,7 @@ export function settleTwists() {
   const touched = new Set<number>();
   for (const q of open.filter((e) => e.status === 'queued')) {
     const blocker = get<Effect>("SELECT * FROM twist_effects WHERE episode_id = ? AND target_team_id = ? AND status = 'hit' ORDER BY id DESC LIMIT 1", q.episode_id, q.target_team_id);
-    if (blocker && (blocker.decided || (blocker.wait_until && blocker.wait_until <= t))) { voidEffect(q, `${label(q.target_team_id)} 已被其他 twist 卡作用`); touched.add(q.episode_id); }
+    if (blocker && (blocker.decided || (blocker.wait_until && blocker.wait_until <= t))) { voidEffect(q, `${label(q.target_team_id)} 本赛段已被「${q.item_name}」作用`); touched.add(q.episode_id); }
   }
   for (const p of open.filter((e) => e.status === 'pending')) {
     const done = checkedIn(p.episode_id);
