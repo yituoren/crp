@@ -200,6 +200,7 @@ export function importEvent(d: Dump, me: AuthUser): { id: number; hash: string; 
     relink('currency_ledger', 'reverts_id', 'currency_ledger');
     relink('item_log', 'reverts_id', 'item_log');
     relink('item_log', 'effect_id', 'twist_effects');
+    relink('item_log', 'link_id', 'item_log');
     relink('twist_effects', 'reflected_from_id', 'twist_effects');
 
     // Members whose accounts exist here keep their role; the importer is always a host

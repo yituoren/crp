@@ -15,8 +15,12 @@ import { recomputeEliminations } from './elimination.js';
  *    other branch: its detour record reopens (choice "回转", the new completion shows in red) and everything after it is cleared;
  *    让路 (yield) makes the target wait 15 minutes when it arrives here; 让行 does that to the next team to arrive here.
  *    A target that has already passed the point makes 回转 / 让路 void.
- *  - 决斗 (duel), played at a task point against a team: once both have finished that task the faster net time wins 8 coins from the
- *    loser; coins the loser lacks become a penalty, 5 minutes per coin.
+ *  - 决斗 (duel), played at a task point against a team: once both have finished that task the faster net time (to the millisecond, no
+ *    draw) wins 4 coins from the loser; coins the loser lacks become a penalty, 5 minutes per coin.
+ *  - 盗窃 (steal): the cards are drawn offline; online the user picks the target and the item drawn, which moves between the bags
+ *    (or nothing, when the target had no card or blocked it).
+ *  - 验牌 / 合流 and everything else are handled by hand.
+ *  - Twist cards cannot be used in the event's last episode (the final).
  *  - 护盾 (shield) cancels a missile / 让路 / 让行 on the team; 反弹 (reflect) cancels it and gives the same effect to the card's user at
  *    its own next arrival (a reflected effect cannot be reflected again, only shielded). Neither works on 回转 or 决斗.
  * Settling a point when a team arrives (or its wait there ends): 回转 > 让路 > 让行 > missile, one at a time. A waiting team is free
@@ -41,13 +45,16 @@ export function kindOf(name: string): Kind | null {
   return null;
 }
 export const isMissile = (name: string) => kindOf(name) === 'missile';
+/** All twist cards, with or without built-in logic */
+export const isTwistCard = (name: string) => ['飞弹', '回转', '让路', '让行', '决斗', '盗窃', '验牌', '合流'].some((k) => name.includes(k));
+export const isSteal = (name: string) => name.includes('盗窃');
 export const isShield = (name: string) => name.includes('护盾');
 export const isReflect = (name: string) => name.includes('反弹');
 /** Cards whose target is picked on use */
 export const isDirected = (name: string) => ['uturn', 'yield', 'duel'].includes(kindOf(name) ?? '') || ['盗窃', '验牌'].some((k) => name.includes(k));
 const oncePerEpisode = (name: string) => ['yield', 'yield_next'].includes(kindOf(name) ?? '');
 const SHIELDABLE: Kind[] = ['missile', 'yield', 'yield_next'];
-const DUEL_STAKE = 800; // 8 coins (coin amounts are stored × 100)
+const DUEL_STAKE = 400; // 4 coins (coin amounts are stored × 100)
 const DUEL_MIN_PER_COIN = 5;
 
 export type Effect = {
@@ -112,7 +119,9 @@ function voidEffect(ef: Effect, note: string, targetId: number | null = ef.targe
 /** Card use hook (inside the use request, before the use is written): limits and where the card can be played */
 export function checkUse(episodeId: number | null, teamId: number, itemName: string, targetId: number | null, currentLegId: number | null) {
   const kind = kindOf(itemName);
-  if (!episodeId) { if (kind) throw bad('请先选择赛段'); return; }
+  if (!episodeId) { if (isTwistCard(itemName)) throw bad('请先选择赛段'); return; }
+  const last = get<{ id: number; code: string }>('SELECT id, code FROM episodes WHERE event_id = (SELECT event_id FROM episodes WHERE id = ?) ORDER BY sort DESC, id DESC LIMIT 1', episodeId);
+  if (last?.id === episodeId && isTwistCard(itemName)) throw bad(`最后一个赛段（${last.code}）中 twist 卡不生效，不能使用「${itemName}」`);
   if (kind === 'missile' && checkinClueTaken(episodeId)) throw bad('已有队伍领到签到线索（完成倒数第二个环节），一号飞弹不能再使用');
   if (oncePerEpisode(itemName) && get('SELECT 1 FROM item_log WHERE episode_id = ? AND team_id = ? AND item_name = ? AND kind = ? AND reverted = 0 AND reverts_id IS NULL', episodeId, teamId, itemName, 'use')) {
     throw bad(`「${itemName}」每个赛段每队只能使用一次`);
@@ -296,8 +305,9 @@ function netMs(episodeId: number, teamId: number, leg: Leg): number | null {
   if (br?.type === 'SQ') { const b = progressOf(episodeId, teamId, br.id); if (b?.arrived_at && b.completed_at) ms -= new Date(b.completed_at).getTime() - new Date(b.arrived_at).getTime(); }
   return ms;
 }
-const fmtDur = (ms: number) => { const s = Math.round(ms / 1000); return `${Math.floor(s / 3600) ? `${Math.floor(s / 3600)}:` : ''}${String(Math.floor(s / 60) % 60).padStart(Math.floor(s / 3600) ? 2 : 1, '0')}:${String(s % 60).padStart(2, '0')}`; };
-/** Settle a duel once both teams have finished its task: the loser pays 8 coins, missing coins become 5 minutes of penalty each */
+/** h:mm:ss.SSS (the duel compares to the millisecond) */
+const fmtDur = (ms: number) => { const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60; return `${h ? `${h}:` : ''}${String(m).padStart(h ? 2 : 1, '0')}:${String(s).padStart(2, '0')}.${String(ms % 1000).padStart(3, '0')}`; };
+/** Settle a duel once both teams have finished its task: the loser pays 4 coins, missing coins become 5 minutes of penalty each */
 function settleDuel(ef: Effect) {
   if (ef.status !== 'pending' || !ef.leg_id || !ef.target_team_id) return;
   const leg = legOf(ef.leg_id)!;
@@ -305,9 +315,11 @@ function settleDuel(ef: Effect) {
   if (a === null || b === null) return;
   const times = `${label(ef.source_team_id)} 净用时 ${fmtDur(a)}，${label(ef.target_team_id)} 净用时 ${fmtDur(b)}`;
   let result: string;
-  if (a === b) result = '平局，不结算';
-  else {
-    const [win, lose] = a < b ? [ef.source_team_id, ef.target_team_id] : [ef.target_team_id, ef.source_team_id];
+  {
+    // no draw: net times are compared to the millisecond, an exact tie goes to the team that finished first
+    const finished = (t: number) => progressOf(ef.episode_id, t, leg.id)!.completed_at as string;
+    const sourceWins = a !== b ? a < b : finished(ef.source_team_id) <= finished(ef.target_team_id!);
+    const [win, lose] = sourceWins ? [ef.source_team_id, ef.target_team_id] : [ef.target_team_id, ef.source_team_id];
     const balance = get<{ currency: number }>('SELECT currency FROM teams WHERE id = ?', lose)!.currency;
     const pay = Math.min(DUEL_STAKE, Math.max(0, balance));
     const lackCoins = Math.ceil((DUEL_STAKE - pay) / 100);

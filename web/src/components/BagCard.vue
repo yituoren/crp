@@ -40,6 +40,13 @@ function taken(name: string, teamId: number) {
   return race.itemLog.some((l) => l.item_name === name && l.kind === 'use' && !l.reverted && !l.reverts_id && l.target_team_id === teamId && l.episode_id === race.currentEpisode?.id);
 }
 const targetOptionsFor = (name: string) => race.teams.filter((t) => t.status === 'alive' && t.id !== props.teamId && !taken(name, t.id)).map((t) => ({ value: String(t.id), label: t.label }));
+// 盗窃: the card drawn offline from the target's bag ('-' = nothing taken)
+const isStealName = (name: string) => name.includes('盗窃');
+const stealItem = ref<Record<string, string>>({});
+const stealOptions = (name: string) => {
+  const t = race.teamById.get(Number(targets.value[name]));
+  return [{ value: '-', label: '未拿到（对方无牌或被挡下）' }, ...(t?.inventory ?? []).map((i) => ({ value: i.name, label: `${i.name} ×${i.count}` }))];
+};
 const picking = ref(false);
 const targets = ref<Record<string, string>>({});
 async function useSelected() {
@@ -48,13 +55,15 @@ async function useSelected() {
     if (!currentLeg.value) { ui.toast('本队当前不在任何环节中，不能使用锦囊', 'error'); return; }
     if (!currentLeg.value.tips.length) { ui.toast(`「${legName(currentLeg.value)}」没有设置锦囊`, 'error'); return; }
   }
-  if (targetNames.value.length || tipNames.value.length) { targets.value = {}; picking.value = true; return; }
+  if (targetNames.value.length || tipNames.value.length) { targets.value = {}; stealItem.value = {}; picking.value = true; return; }
   if (!(await ui.confirm('使用物品', `「${team.value.label}」使用：${names.join('、')}。每件物品记一条使用记录，用掉的从背包里消失。`))) return;
   await submit(names);
 }
 async function confirmTargets() {
   const missing = [...targetNames.value, ...tipNames.value].find((n) => !targets.value[n]);
   if (missing) { ui.toast(`请选择「${missing}」的对象`, 'error'); return; }
+  const noCard = targetNames.value.find((n) => isStealName(n) && !stealItem.value[n]);
+  if (noCard) { ui.toast(`请选择「${noCard}」拿到的卡`, 'error'); return; }
   picking.value = false;
   await submit([...selected.value]);
 }
@@ -64,7 +73,7 @@ async function submit(names: string[]) {
     const revealed: string[] = [];
     for (const name of names) {
       const pick = targets.value[name] ? Number(targets.value[name]) : undefined;
-      const r = await api('/items/use', { method: 'POST', body: { episodeId: race.currentEpisode?.id ?? null, teamId: props.teamId, itemName: name, ...(isTipItem(name) ? { tipId: pick } : { targetTeamId: pick }) } });
+      const r = await api('/items/use', { method: 'POST', body: { episodeId: race.currentEpisode?.id ?? null, teamId: props.teamId, itemName: name, ...(isTipItem(name) ? { tipId: pick } : { targetTeamId: pick }), ...(isStealName(name) && stealItem.value[name] !== '-' ? { stealItem: stealItem.value[name] } : {}) } });
       if (r.tip) revealed.push(`【${r.tip.code}】\n${r.tip.tip || '（未填写提示）'}`);
     }
     if (revealed.length) void ui.alert('锦囊提示', revealed.join('\n\n'));
@@ -94,7 +103,8 @@ async function submit(names: string[]) {
     </template>
     <Modal v-if="picking" title="使用物品" small @close="picking = false">
       <div class="text-sm text-gray mb-2">「{{ team?.label }}」使用：{{ selected.join('、') }}。每件物品记一条使用记录，用掉的从背包里消失。</div>
-      <div v-for="n in targetNames" :key="n" class="form-group"><label>{{ n }} 的对象</label><MSelect v-model="targets[n]" outlined placeholder="选择队伍" :options="targetOptionsFor(n)" /></div>
+      <div v-for="n in targetNames" :key="n" class="form-group"><label>{{ n }} 的对象</label><MSelect v-model="targets[n]" outlined placeholder="选择队伍" :options="targetOptionsFor(n)" @update:model-value="stealItem[n] = ''" /></div>
+      <div v-for="n in targetNames.filter((x) => isStealName(x) && targets[x])" :key="`steal-${n}`" class="form-group"><label>{{ n }}：拿到的卡（线下抽到的）</label><MSelect v-model="stealItem[n]" outlined placeholder="选择卡片" :options="stealOptions(n)" /></div>
       <div v-for="n in tipNames" :key="n" class="form-group"><label>{{ n }}：选择「{{ currentLeg ? legName(currentLeg) : '' }}」的锦囊</label><MSelect v-model="targets[n]" outlined placeholder="选择 id" :options="tipOptions" /></div>
       <div class="modal-actions">
         <button class="btn btn-text" @click="picking = false">取消</button>

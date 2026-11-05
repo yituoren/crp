@@ -17,7 +17,7 @@ const rows = computed(() => {
   return list;
 });
 const revertedBy = (l: ItemLogEntry) => race.itemLog.find((x) => x.reverts_id === l.id)?.operator_name ?? '';
-const kindText = (l: ItemLogEntry) => (l.kind === 'buy' ? '购买' : '使用');
+const kindText = (l: ItemLogEntry) => ({ buy: '购买', use: '使用', steal: '盗得', stolen: '被盗' })[l.kind];
 async function revert(l: ItemLogEntry) {
   if (!(await ui.confirm('撤销使用', `撤销「${l.team_name}」这次使用「${l.item_name}」？物品会回到背包。`, { danger: true, okText: '撤销' }))) return;
   try { await api(`/item-log/${l.id}/revert`, { method: 'POST' }); await Promise.all([race.loadTeams(), race.loadItemLog()]); ui.toast('已撤销'); } catch (e) { ui.error(e); }
@@ -45,6 +45,7 @@ async function revert(l: ItemLogEntry) {
           <td class="c">
             <span v-if="l.reverted" class="revert-note">{{ revertedBy(l) }}撤销</span>
             <span v-else-if="l.kind === 'buy'" class="text-xs text-gray">在经费流水处撤销</span>
+            <span v-else-if="l.kind === 'steal' || l.kind === 'stolen'" class="text-xs text-gray">随盗窃撤销</span>
             <button v-else-if="race.canRevert(l.operator_id, l.team_id)" class="btn btn-text btn-sm" @click="revert(l)"><Icon name="undo" size="16" />撤销</button>
           </td>
         </tr>

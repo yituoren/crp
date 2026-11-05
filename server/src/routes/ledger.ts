@@ -4,7 +4,7 @@ import { canAdjustCurrency, getAssignment, type Env, isAdminRole, isHostRole } f
 import { audit, body, str, int, notify, bad, forbidden, notFound, money, currencyMode, editLockReason } from '../util.js';
 import { teamLabelMap, inventoryCount } from './teams.js';
 import { shopStock } from './episodes.js';
-import { checkUse, afterUse, beforeRevertUse, kindOf, isDirected } from '../twist.js';
+import { checkUse, afterUse, beforeRevertUse, kindOf, isDirected, isSteal } from '../twist.js';
 
 export const ledgerRoutes = new Hono<Env>();
 
@@ -232,9 +232,18 @@ ledgerRoutes.post('/items/use', async (c) => {
     legId = currentLeg;
   }
   const target = needsTarget || !twist ? targetId : null;
+  // 盗窃: the card drawn offline from the target's bag (empty = nothing taken)
+  const stolen = isSteal(itemName) && target ? str(b.stealItem, 100) : '';
+  if (stolen && inventoryCount(target!, stolen) < 1) throw bad(`${teamLabelMap().get(target!) ?? ''} 的背包里没有「${stolen}」`);
   const r = run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, target_team_id, tip_id, target_label) VALUES (?,?,?,?,-1,?,?,?,?,?,?,?)',
     episodeId, teamId, legId, itemName, 'use', user.id, user.displayName, now(), target, tip?.id ?? null, tip?.code ?? null);
-  audit(user, 'item_use', 'team', teamId, undefined, { item: itemName, legId, targetTeamId: targetId, tip: tip?.code });
+  if (stolen) {
+    // the stolen card moves between the bags: out of the target's, into the user's (both linked to this use)
+    const useId = Number(r.lastInsertRowid);
+    run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, target_team_id, link_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)', episodeId, target, legId, stolen, -1, 'stolen', user.id, user.displayName, now(), teamId, useId);
+    run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, target_team_id, link_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)', episodeId, teamId, legId, stolen, 1, 'steal', user.id, user.displayName, now(), target, useId);
+  }
+  audit(user, 'item_use', 'team', teamId, undefined, { item: itemName, legId, targetTeamId: targetId, tip: tip?.code, stolen });
   afterUse(episodeId, teamId, itemName, Number(r.lastInsertRowid), target, currentLeg);
   notify('ledger', episodeId); notify('teams');
   return c.json({ id: Number(r.lastInsertRowid), tip: tip ? { code: tip.code, tip: tip.tip } : null });
@@ -249,6 +258,11 @@ ledgerRoutes.post('/item-log/:id/revert', (c) => {
   const team = get('SELECT * FROM teams WHERE id = ?', orig.team_id);
   if (!team || team.event_id !== c.get('event').id) throw notFound('队伍不存在');
   if (orig.kind === 'buy') throw bad('购买请在经费流水里撤销，道具会同步退回');
+  if (orig.kind === 'steal' || orig.kind === 'stolen') throw bad('请撤销这次「盗窃」的使用记录，卡片会同步退回');
+  // undoing a 盗窃 also moves the stolen card back (only while the thief still holds it)
+  const moved = all('SELECT * FROM item_log WHERE link_id = ? AND reverted = 0 AND reverts_id IS NULL', id);
+  const gained = moved.find((m) => m.kind === 'steal');
+  if (gained && inventoryCount(gained.team_id, gained.item_name) < 1) throw bad(`偷来的「${gained.item_name}」已经用掉，请先撤销那次使用`);
   if (!isHostRole(user.role) && orig.operator_id !== user.id) throw forbidden('只有发出这条记录的本人或主办可以撤销');
   { const r = editLockReason(user, orig.episode_id ? get<{ status: string; code: string }>('SELECT status, code FROM episodes WHERE id = ?', orig.episode_id) : null, team as { status: string }); if (r) throw forbidden(r); }
   if (orig.reverted) throw bad('这条记录已经撤销过了');
@@ -257,6 +271,10 @@ ledgerRoutes.post('/item-log/:id/revert', (c) => {
   const newId = tx(() => {
     run('UPDATE item_log SET reverted = 1 WHERE id = ?', id);
     const r = run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, reverts_id, target_team_id, tip_id, target_label) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', orig.episode_id, orig.team_id, orig.leg_id, orig.item_name, -orig.delta, orig.kind, user.id, user.displayName, now(), id, orig.target_team_id ?? null, orig.tip_id ?? null, orig.target_label ?? null);
+    for (const m of moved) {
+      run('UPDATE item_log SET reverted = 1 WHERE id = ?', m.id);
+      run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, reverts_id, target_team_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)', m.episode_id, m.team_id, m.leg_id, m.item_name, -m.delta, m.kind, user.id, user.displayName, now(), m.id, m.target_team_id);
+    }
     return Number(r.lastInsertRowid);
   });
   audit(user, 'item_use_revert', 'team', orig.team_id, { id }, { revertId: newId });

@@ -380,6 +380,7 @@ ensureColumn('announcements', 'effect_id', 'INTEGER');              // system no
 ensureColumn('twist_effects', 'kind', "TEXT NOT NULL DEFAULT 'missile'"); // missile | uturn | yield | yield_next | duel
 ensureColumn('twist_effects', 'point_leg_id', 'INTEGER');          // the task point the card was played at (point cards)
 ensureColumn('twist_effects', 'released', 'INTEGER NOT NULL DEFAULT 0'); // the wait ended and the point was settled again
+ensureColumn('item_log', 'link_id', 'INTEGER');                     // 盗窃: the use row that moved this item between bags
 ensureColumn('audit_logs', 'event_id', 'INTEGER');
 ensureColumn('events', 'owner_id', 'INTEGER');
 ensureColumn('event_members', 'role', "TEXT NOT NULL DEFAULT 'crew'");
