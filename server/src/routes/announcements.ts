@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { all, get, run, now } from '../db.js';
 import { hostOnly, isHostRole, type Env } from '../auth.js';
 
-/** Audiences: all = every crew member; follows = hosts and everyone scheduled as a follow in this event; hosts = hosts only (crew messages to the hosts); follow:<episodeId>:<teamId> = system notice to one team's follow */
+/** Audiences: all = every crew member; follows:<episodeIds> = the follows of the episodes running when it was posted (and hosts); hosts = hosts only (crew messages to the hosts); follow:<episodeId>:<teamId> = system notice to one team's follow */
 import { audit, body, str, int, intParam, notify, bad } from '../util.js';
 
 export const announcementRoutes = new Hono<Env>();
@@ -13,7 +13,7 @@ announcementRoutes.get('/announcements', (c) => {
   // Hosts see everything; others see "all", their own posts, and departure notices for the team they follow in that episode
   const uid = Number(c.get('user').id);
   const visible = isHostRole(c.get('user').role) ? '1' : `(audience = 'all' OR author_id = ${uid}
-    OR (audience = 'follows' AND EXISTS (SELECT 1 FROM assignments s JOIN episodes e ON e.id = s.episode_id WHERE s.user_id = ${uid} AND s.role = 'follow' AND e.event_id = ${Number(ev.id)}))
+    OR (audience LIKE 'follows:%' AND EXISTS (SELECT 1 FROM assignments s WHERE s.user_id = ${uid} AND s.role = 'follow' AND ',' || substr(announcements.audience, 9) || ',' LIKE '%,' || s.episode_id || ',%'))
     OR EXISTS (SELECT 1 FROM assignments s WHERE s.user_id = ${uid} AND s.role = 'follow' AND announcements.audience = 'follow:' || s.episode_id || ':' || s.team_id))`;
   // pinned first (newest pin first), then by publish time descending
   return c.json({
@@ -40,7 +40,13 @@ announcementRoutes.post('/announcements', async (c) => {
   const content = str(b.content, 2000);
   if (!content) throw bad('内容不能为空');
   const level = ['info', 'warning', 'urgent'].includes(b.level) ? b.level : 'info';
-  const audience = !isHostRole(c.get('user').role) ? 'hosts' : ['hosts', 'follows'].includes(b.audience) ? b.audience : 'all';
+  let audience = !isHostRole(c.get('user').role) ? 'hosts' : ['hosts', 'follows'].includes(b.audience) ? b.audience : 'all';
+  if (audience === 'follows') {
+    // only the crew following right now: the follows of the running episodes, fixed when posting
+    const running = all<{ id: number }>("SELECT id FROM episodes WHERE event_id = ? AND status = 'running' ORDER BY sort, id", c.get('event').id).map((e) => e.id);
+    if (!running.length) throw bad('当前没有进行中的赛段，没有正在跟队的幕后');
+    audience = `follows:${running.join(',')}`;
+  }
   const r = run(
     'INSERT INTO announcements(content, level, created_by, created_at, audience, event_id, author_id) VALUES (?,?,?,?,?,?,?)',
     content, level, c.get('user').displayName, now(), audience, c.get('event').id, c.get('user').id,

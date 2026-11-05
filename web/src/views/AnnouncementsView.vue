@@ -30,7 +30,7 @@ async function remove(id: number) {
 /** Who a non-public announcement was sent to */
 function audienceText(a: string) {
   if (a === 'hosts') return '发给主办';
-  if (a === 'follows') return '发给全体跟队';
+  if (a.startsWith('follows')) return '发给当时的全体跟队';
   const m = /^follow:(\d+):(\d+)$/.exec(a);
   if (!m) return '';
   const team = race.teams.find((t) => t.id === Number(m[2]));

@@ -18,7 +18,7 @@ import { recomputeEliminations } from './elimination.js';
  *  - 决斗 (duel), played at a task point against a team: once both have finished that task the faster net time (to the millisecond, no
  *    draw) wins 4 coins from the loser; coins the loser lacks become a penalty, 5 minutes per coin.
  *  - 盗窃 (steal): the cards are drawn offline; online the user picks the target and the item drawn, which moves between the bags
- *    (or nothing, when the target had no card or blocked it). A team can be stolen from any number of times.
+ *    (or nothing, when the target had no card or blocked it). Like every directed card, once per target per episode.
  *  - 验牌 / 合流 and everything else are handled by hand.
  *  - Twist cards cannot be used in the event's last episode (the final).
  *  - 护盾 (shield) cancels a missile / 让路 / 让行 on the team; 反弹 (reflect) cancels it and gives the same effect to the card's user at
@@ -109,9 +109,19 @@ function announce(episodeId: number, content: string, audience: string, effectId
   notify('announcements');
 }
 const toFollow = (episodeId: number, teamId: number) => `follow:${episodeId}:${teamId}`;
-/** A void effect is only logged: settlement details are not announced */
+/**
+ * Public announcement when a card resolves, whether it lands or turns out void (the same text either way, so the result stays private):
+ * 回转 / 让路 name user and target, 让行 / missile the user. A reflected effect resolving is a settlement detail: not announced
+ */
+function announceResolved(ef: Effect, targetId: number | null) {
+  if (ef.reflected_from_id) return;
+  if ((ef.kind === 'uturn' || ef.kind === 'yield') && targetId) announce(ef.episode_id, `${label(ef.source_team_id)} 对 ${label(targetId)} 使用了「${ef.item_name}」`, 'all');
+  else if (ef.kind === 'yield_next' || ef.kind === 'missile') announce(ef.episode_id, `${label(ef.source_team_id)} 使用了「${ef.item_name}」`, 'all');
+}
+/** A void card is announced like one that landed; why it was void stays in the log */
 function voidEffect(ef: Effect, note: string, targetId: number | null = ef.target_team_id) {
   run("UPDATE twist_effects SET status = 'void', target_team_id = ?, note = ?, resolved_at = ? WHERE id = ?", targetId, note, now(), ef.id);
+  announceResolved(ef, targetId);
 }
 
 // ---------------- Using a card ----------------
@@ -131,8 +141,8 @@ export function checkUse(episodeId: number | null, teamId: number, itemName: str
     if (!point || ['RI', 'SQ', 'SL', 'PS'].includes(point.type)) throw bad(`「${itemName}」要在到达任务点时使用（本队当前不在任务点）`);
     if (kind === 'uturn' && !detourBefore(point)) throw bad('回转只能在绕道（DT）之后的下一个任务点使用');
   }
-  // directed cards cannot pick a team already hit (or about to be) by this kind of card; 盗窃 has no such limit
-  if (targetId && isDirected(itemName) && !isSteal(itemName)) {
+  // directed cards cannot pick a team already hit (or about to be) by this kind of card
+  if (targetId && isDirected(itemName)) {
     const taken = kind
       ? get("SELECT 1 FROM twist_effects WHERE episode_id = ? AND target_team_id = ? AND kind = ? AND status IN ('pending', 'queued', 'hit')", episodeId, targetId, kind)
       : get('SELECT 1 FROM item_log WHERE episode_id = ? AND target_team_id = ? AND item_name = ? AND kind = ? AND reverted = 0 AND reverts_id IS NULL', episodeId, targetId, itemName, 'use');
@@ -145,7 +155,11 @@ export function checkUse(episodeId: number | null, teamId: number, itemName: str
  */
 export function afterUse(episodeId: number | null, teamId: number, itemName: string, itemLogId: number, targetId: number | null, currentLegId: number | null) {
   if (!episodeId) return;
-  if (['决斗', '盗窃', '验牌'].some((k) => itemName.includes(k))) announce(episodeId, `${label(teamId)} 对 ${label(targetId)} 使用了「${itemName}」`, 'all');
+  // 决斗 / 盗窃 / 验牌: public announcement; 决斗 also pops up for the target's follow (盗窃 / 验牌 are played face to face)
+  if (['决斗', '盗窃', '验牌'].some((k) => itemName.includes(k)) && targetId) {
+    announce(episodeId, `${label(teamId)} 对 ${label(targetId)} 使用了「${itemName}」`, 'all');
+    if (itemName.includes('决斗')) announce(episodeId, `${label(teamId)} 对本队使用了「${itemName}」（在「${legLabel(currentLegId)}」）：两队都完成这个任务后比较净用时，败者付给胜者 ${DUEL_STAKE / 100} 币`, toFollow(episodeId, targetId));
+  }
   if (itemName.includes('合流')) announce(episodeId, `${label(teamId)} 使用了「${itemName}」`, 'all');
   const kind = kindOf(itemName);
   if (!kind) return;
@@ -227,8 +241,7 @@ function landDelay(ef: Effect, teamId: number, legId: number, from: string) {
   if (p && !p.completed_at) upsertProgress(ef.episode_id, teamId, legId, { ...p, arrived_at: until }, SYSTEM.id);
   const by = ef.reflected_from_id ? `被 ${label(ef.source_team_id)} 反弹回来的` : `被 ${label(ef.source_team_id)} 的`;
   announce(ef.episode_id, `${label(teamId)} ${by}「${ef.item_name}」作用：在「${legLabel(legId)}」原地等待 ${ef.wait_min} 分钟，${hm(until)} 后开始`, toFollow(ef.episode_id, teamId), ef.id);
-  // public: a reflected one landing is a settlement detail
-  if (!ef.reflected_from_id) announce(ef.episode_id, ef.kind === 'yield' ? `${label(ef.source_team_id)} 对 ${label(teamId)} 使用了「${ef.item_name}」` : `${label(ef.source_team_id)} 使用了「${ef.item_name}」`, 'all');
+  announceResolved(ef, teamId);
 }
 
 /**
@@ -246,7 +259,7 @@ function landUturn(ef: Effect, teamId: number, legId: number, t: string): boolea
   }
   run("UPDATE twist_effects SET status = 'hit', leg_id = ?, mode = 'uturn', wait_from = ?, note = ?, resolved_at = ? WHERE id = ?", dt.id, t, `原选择：${dp.detour_choice ?? '-'}`, now(), ef.id);
   announce(ef.episode_id, `${label(teamId)} 被 ${label(ef.source_team_id)} 的「${ef.item_name}」作用：回到「${dt.name}」完成另一个分支（原选择：${dp.detour_choice ?? '-'}），完成后在「${dt.name}」重新记录完成`, toFollow(ef.episode_id, teamId), ef.id);
-  announce(ef.episode_id, `${label(ef.source_team_id)} 对 ${label(teamId)} 使用了「${ef.item_name}」`, 'all');
+  announceResolved(ef, teamId);
   return true;
 }
 
