@@ -29,6 +29,21 @@ const myTeam = computed(() => (my.value?.team_id ? race.teamById.get(my.value.te
 // A station may cover several legs: in leg order
 const myLegs = computed(() => (ep.value?.legs ?? []).filter((l) => (my.value?.leg_ids ?? []).includes(l.id)));
 
+/**
+ * Continuous episodes overlap their predecessor: point the follow at the episode the team is actually in.
+ * Viewing the earlier one after the team checked in there → the later one; viewing the later one before the team departed → the earlier one.
+ */
+const episodeHint = computed<{ text: string; epId: number } | null>(() => {
+  const e = ep.value, t = myTeam.value;
+  if (!e || !t || e.status !== 'running') return null;
+  const i = race.episodes.findIndex((x) => x.id === e.id);
+  const next = race.episodes[i + 1], prev = race.episodes[i - 1];
+  const ps = [...e.legs].reverse().find((l) => l.type === 'PS');
+  if (next?.status === 'running' && ps && race.progressOf(t.id, ps.id)?.completed_at) return { text: `本队已在 ${e.code} 中继站签到，${next.code} 已经开始`, epId: next.id };
+  if (e.continuous_wait_min !== null && prev?.status === 'running' && !e.legs.some((l) => race.progressOf(t.id, l.id)?.arrived_at)) return { text: `本队还没有出发进入 ${e.code}，${prev.code} 仍在进行`, epId: prev.id };
+  return null;
+});
+
 const legRows = computed(() => {
   if (!ep.value || !myTeam.value) return [];
   return ep.value.legs.map((leg) => {
@@ -48,6 +63,8 @@ const legRows = computed(() => {
 
   <div v-if="race.episodePending" class="alert alert-warning">{{ ep?.code }} 尚未开始。主办点「开始赛段」后才能记录时间、操作经费和罚时。</div>
   <div v-else-if="race.episodeFinished" class="alert alert-info">{{ ep?.code }} 已结束，所有记录已锁定，只有管理员可以修改。</div>
+
+  <div v-if="episodeHint" class="alert alert-info flex-between">{{ episodeHint.text }}<button class="btn btn-text btn-sm" @click="race.selectEpisode(episodeHint.epId)">切换到 {{ race.episodes.find((x) => x.id === episodeHint!.epId)?.code }}</button></div>
 
   <!-- My assignment, no outer card. Follow = status line + borderless table + cards (current leg / bag / money / penalties); station = one section per leg, separated by rules -->
   <div class="my-work">

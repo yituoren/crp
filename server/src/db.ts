@@ -281,6 +281,8 @@ ensureColumn('episodes', 'inherit_rank', 'INTEGER NOT NULL DEFAULT 0'); // depar
 ensureColumn('episodes', 'start_gap_min', 'INTEGER NOT NULL DEFAULT 0'); // departure gap (minutes)
 ensureColumn('episodes', 'depart_base', 'TEXT');        // departure base time: scheduled start = the set time, manual start = click time; null = no automatic departures
 ensureColumn('episodes', 'finished_at', 'TEXT');
+// Continuous episode: each team departs this many minutes after its check-in at the previous pit stop (null = not continuous)
+ensureColumn('episodes', 'continuous_wait_min', 'INTEGER');
 ensureColumn('users', 'ann_read_id', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('announcements', 'pinned_at', 'TEXT');
 ensureColumn('announcements', 'audience', "TEXT NOT NULL DEFAULT 'all'");

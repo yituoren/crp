@@ -445,6 +445,7 @@ html, body { overscroll-behavior: none; }
 .live-row-head { flex: 0 0 auto; height: 34px; min-height: 34px; font-size: 12px; font-weight: 500; color: var(--gray-500); background: var(--surface-3); border-radius: 8px; border-bottom: none; }
 .live-team { display: flex; align-items: center; gap: 6px; font-size: 14px; }
 .live-legname { font-weight: 500; }
+.live-ep { margin-right: 4px; font-variant-numeric: tabular-nums; }
 .live-money { font-weight: 600; color: var(--warning); font-variant-numeric: tabular-nums; }
 .scroll-table, .matrix-scroll { overscroll-behavior-x: contain; }
 @media (max-width: 1000px) {

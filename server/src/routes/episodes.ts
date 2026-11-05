@@ -4,7 +4,8 @@ import path from 'node:path';
 import { all, get, run, tx, now, UPLOAD_DIR, fromCents } from '../db.js';
 import { hostOnly, canUploadToLeg, isAdminRole, isHostRole, parseLegIds, type Env, type EventRow } from '../auth.js';
 import { audit, body, str, int, intParam, notify, bad, notFound, forbidden, money, isoOrNull } from '../util.js';
-import { startEpisodeNow, departurePlan, type EpisodeRow } from '../episodeStart.js';
+import { startEpisodeNow, departurePlan, isContinuous, previousEpisode, type EpisodeRow } from '../episodeStart.js';
+import { continuousStartBlocked } from '../scheduler.js';
 import { teamLabelMap } from './teams.js';
 import { recomputeEliminations, lockFromAfterLastRecord } from '../elimination.js';
 
@@ -148,10 +149,13 @@ episodeRoutes.put('/episodes/:id', hostOnly, async (c) => {
     start_at: b.startAt === undefined ? before.start_at : isoOrNull(b.startAt),
     inherit_rank: b.inheritRank === undefined ? before.inherit_rank : (b.inheritRank ? 1 : 0),
     start_gap_min: b.startGapMin === undefined ? before.start_gap_min : Math.max(0, int(b.startGapMin, 0)),
+    // continuous: wait minutes after the previous check-in; null switches it off
+    continuous_wait_min: b.continuousWaitMin === undefined ? before.continuous_wait_min : b.continuousWaitMin === null ? null : Math.max(0, int(b.continuousWaitMin, 0)),
   };
+  if (next.continuous_wait_min !== null && !previousEpisode(before as EpisodeRow)) throw bad('第一个赛段不能设为连续赛段');
   if (b.startAt && !next.start_at) throw bad('自动开始时间格式不正确');
-  run('UPDATE episodes SET name=?, budget=?, status=?, notes=?, sort=?, start_at=?, inherit_rank=?, start_gap_min=? WHERE id=?',
-    next.name, next.budget, next.status, next.notes, next.sort, next.start_at, next.inherit_rank, next.start_gap_min, id);
+  run('UPDATE episodes SET name=?, budget=?, status=?, notes=?, sort=?, start_at=?, inherit_rank=?, start_gap_min=?, continuous_wait_min=? WHERE id=?',
+    next.name, next.budget, next.status, next.notes, next.sort, next.start_at, next.inherit_rank, next.start_gap_min, next.continuous_wait_min, id);
   audit(c.get('user'), 'update', 'episode', id, before, next);
   notify('episodes');
   return c.json({ ok: true });
@@ -172,6 +176,15 @@ episodeRoutes.post('/episodes/:id/start', hostOnly, (c) => {
   const id = intParam(c, 'id');
   const ep = episodeInEvent(c, id);
   if (ep.status === 'running') throw bad('该赛段已在进行中');
+  if (isContinuous(ep as EpisodeRow)) {
+    // continuous: may start while the previous episode still runs (testing; normally it starts by itself when the first team is due)
+    const prev = previousEpisode(ep as EpisodeRow);
+    if (!prev || prev.status === 'pending') throw bad('上一赛段还没有开始');
+    const blocked = continuousStartBlocked(ep as EpisodeRow, prev);
+    if (blocked) throw bad(blocked);
+    const issued = startEpisodeNow(ep as EpisodeRow, c.get('user'), now());
+    return c.json({ ok: true, issuedBudgetTo: issued, alreadyStarted: !!ep.started_at });
+  }
   const running = get("SELECT code FROM episodes WHERE status = 'running' AND id != ? AND event_id = ?", id, ep.event_id);
   if (running) throw bad(`${running.code} 仍在进行中，请先结束它再开始新的赛段`);
   const unfinished = all("SELECT code FROM episodes WHERE event_id = ? AND (sort < ? OR (sort = ? AND id < ?)) AND status != 'finished' ORDER BY sort, id", ep.event_id, ep.sort, ep.sort, id);

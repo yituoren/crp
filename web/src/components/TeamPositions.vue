@@ -24,27 +24,46 @@ function fitRows() {
   const avail = g.clientHeight - (head?.offsetHeight ?? 34);
   if (avail > 0) rowH.value = Math.max(32, Math.floor(avail / ROWS));
 }
-/** The live board shows the running episode; otherwise the next pending one; when all are finished, the last one */
-const liveEpisode = computed(() => {
+/**
+ * The live board shows the running episode; otherwise the next pending one; when all are finished, the last one.
+ * While a continuous episode overlaps its predecessor both are running: each team shows where it is in the later
+ * episode once it has departed there, otherwise in the earlier one.
+ */
+const liveEpisodes = computed(() => {
   const eps = race.episodes;
-  return eps.find((e) => e.status === 'running') ?? eps.find((e) => e.status === 'pending') ?? eps[eps.length - 1] ?? null;
+  const running = eps.filter((e) => e.status === 'running');
+  if (running.length) return running;
+  const one = eps.find((e) => e.status === 'pending') ?? eps[eps.length - 1];
+  return one ? [one] : [];
 });
+const liveEpisode = computed(() => liveEpisodes.value[liveEpisodes.value.length - 1] ?? null);
+const liveTitle = computed(() => liveEpisodes.value.map((e) => e.code).join(' / ') || '-');
 const statusText = computed(() => (!liveEpisode.value ? '暂无赛段' : liveEpisode.value.status === 'running' ? '进行中' : liveEpisode.value.status === 'pending' ? '即将开始' : '已结束'));
 async function load() {
-  if (!liveEpisode.value) { data.value = null; loading.value = false; return; }
-  try { data.value = await api(`/dashboard/${liveEpisode.value.id}`); } catch { /* keep last */ } finally { loading.value = false; }
+  if (!liveEpisodes.value.length) { data.value = null; loading.value = false; return; }
+  try {
+    const all = await Promise.all(liveEpisodes.value.map((e) => api(`/dashboard/${e.id}`)));
+    // later episodes win for teams that have started there; with two episodes each row names its episode
+    const tag = (d: any) => d.teams.map((t: any) => ({ ...t, epCode: all.length > 1 ? d.episode.code : '' }));
+    const merged = { ...all[0], teams: tag(all[0]) };
+    for (const d of all.slice(1)) {
+      const later = new Map(tag(d).map((t: any) => [t.id, t]));
+      merged.teams = merged.teams.map((t: any) => { const l: any = later.get(t.id); return l?.currentLeg ? l : t; });
+    }
+    data.value = merged;
+  } catch { /* keep last */ } finally { loading.value = false; }
   await nextTick(); fitRows();
 }
-watch(() => liveEpisode.value?.id, () => { load(); });
+watch(() => liveEpisodes.value.map((e) => e.id).join(), () => { load(); });
 onMounted(() => { load(); timer = window.setInterval(load, 30000); if (grid.value) { ro = new ResizeObserver(fitRows); ro.observe(grid.value); } window.addEventListener('resize', fitRows); fitRows(); });
 onUnmounted(() => { clearInterval(timer); ro?.disconnect(); window.removeEventListener('resize', fitRows); });
-watch(() => [liveEpisode.value?.id, race.progress, race.teams, race.episodes], load, { deep: true });
+watch(() => [liveEpisodes.value.map((e) => e.id).join(), race.progress, race.teams, race.episodes], load, { deep: true });
 </script>
 
 <template>
   <div class="card live-card">
     <div class="live-head">
-      <span class="section-title">{{ liveEpisode?.code ?? '-' }} 队伍当前位置</span>
+      <span class="section-title">{{ liveTitle }} 队伍当前位置</span>
       <span class="text-xs text-gray">{{ statusText }}</span>
     </div>
     <div ref="grid" class="live-grid" :style="{ '--row-h': rowH + 'px' }">
@@ -58,6 +77,7 @@ watch(() => [liveEpisode.value?.id, race.progress, race.teams, race.episodes], l
       <div v-for="t in data.teams" :key="t.id" class="live-row">
         <div class="live-team"><strong>{{ t.label }}</strong><TeamStatus v-if="t.status !== 'alive'" :status="t.status" /></div>
         <div class="live-leg">
+          <span v-if="t.epCode" class="text-xs text-gray live-ep">{{ t.epCode }}</span>
           <template v-if="t.finished"><span class="text-success">已到中继站</span></template>
           <template v-else-if="t.currentLeg"><LegTag :type="t.currentLeg.type" /> <span class="live-legname">{{ legName(t.currentLeg) }}</span></template>
           <span v-else class="text-gray">未出发</span>

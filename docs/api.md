@@ -69,9 +69,9 @@ All endpoints live under `/api`. Requests and responses are JSON unless noted. E
 |---|---|---|---|
 | GET | `/episodes` | member | episodes with legs, cutoffs, attachments; `judge_criteria` is `null` unless host or the leg's station |
 | POST | `/episodes` | host | `{ code?, name?, budget?, notes? }`; first episode gets a Starting Line, every episode a Pit Stop |
-| PUT | `/episodes/:id` | host | `{ name, budget, status, notes, sort, startAt (ISO or null), inheritRank, startGapMin }` |
+| PUT | `/episodes/:id` | host | `{ name, budget, status, notes, sort, startAt (ISO or null), inheritRank, startGapMin, continuousWaitMin (minutes or null) }`; `continuousWaitMin` makes a continuous episode (not allowed on the first one): each team departs that long after its check-in at the previous pit stop, the episode starts by itself when the first team is due (the previous episode may still be running) and the budget is issued per team at departure |
 | DELETE | `/episodes/:id` | host | |
-| POST | `/episodes/:id/start` | host | manual start (testing); issues budget once, records departures from now |
+| POST | `/episodes/:id/start` | host | manual start (testing); issues budget once, records departures from now. A continuous episode may start while its previous episode runs; departures still follow the check-ins |
 | POST | `/episodes/:id/finish` | host | refuses while any racing team has not reached the pit stop |
 | POST | `/episodes/:id/reset` | host | testing: clears records of this and later episodes |
 | GET | `/episodes/:id/departures` | member | planned departure time per team |

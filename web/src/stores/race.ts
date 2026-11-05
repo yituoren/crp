@@ -215,8 +215,8 @@ export const useRace = defineStore('race', () => {
   async function loadEpisodes() {
     episodes.value = (await api('/episodes')).episodes;
     if (!loaded.value) {
-      // First load: default to the running episode; otherwise the last selection, otherwise the first. After that only the user switches.
-      const running = episodes.value.find((e) => e.status === 'running');
+      // First load: default to the running episode (the later one while a continuous episode overlaps its predecessor); otherwise the last selection, otherwise the first. After that only the user switches.
+      const running = [...episodes.value].reverse().find((e) => e.status === 'running');
       if (running) selectEpisode(running.id);
       else if (!episodes.value.some((e) => e.id === currentEpisodeId.value) && episodes.value[0]) selectEpisode(episodes.value[0].id);
     } else if (!episodes.value.some((e) => e.id === currentEpisodeId.value) && episodes.value[0]) {
