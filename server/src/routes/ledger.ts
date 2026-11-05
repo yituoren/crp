@@ -175,8 +175,8 @@ export function listItemLog(eventId: number, episodeId?: number | null, teamId?:
      WHERE ${conds.join(' AND ')} ORDER BY l.created_at DESC, l.id DESC LIMIT 500`, ...params,
   ).map((r) => {
     // a fired twist card shows whom it hit, or that it is still waiting / missed
-    const effectLabel = r.effect_status === 'pending' ? '待命中' : r.effect_status === 'void' ? '落空' : null;
-    const target = r.target_team_id ?? (r.effect_status && r.effect_status !== 'void' ? r.effect_target : null);
+    const effectLabel = r.effect_status === 'pending' || r.effect_status === 'queued' ? '待命中' : r.effect_status === 'void' ? '落空' : null;
+    const target = r.target_team_id ?? (r.effect_status && !['void', 'pending', 'queued'].includes(r.effect_status) ? r.effect_target : null);
     return { ...r, team_name: labels.get(r.team_id) ?? r.team_name, target_name: target ? labels.get(target) ?? null : null, target_label: r.target_label ?? effectLabel };
   });
 }

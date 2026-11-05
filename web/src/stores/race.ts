@@ -25,7 +25,7 @@ export const useRace = defineStore('race', () => {
   // Clock for waits that end by themselves (twist effects); coarse on purpose
   const nowMs = ref(Date.now());
   setInterval(() => { nowMs.value = Date.now(); }, 2000);
-  /** The twist effect in force on a team's leg (missile hit / reflected hold), if any */
+  /** The twist effect in force on a team's leg (a missile that landed, directly or reflected), if any */
   const effectOn = (teamId: number, legId: number) => effects.value.find((e) => e.status === 'hit' && e.target_team_id === teamId && e.leg_id === legId) ?? null;
   /** Still waiting because of a twist effect: the time it ends */
   function waitingUntil(teamId: number, legId: number): string | null {

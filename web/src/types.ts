@@ -53,7 +53,7 @@ export const isTipItem = (name: string) => name.includes('锦囊');
 /** A twist card effect on one team (see server/src/twist.ts); options = answers the target can still give */
 export interface TwistEffect {
   id: number; episode_id: number; item_name: string; source_team_id: number; target_team_id: number | null; leg_id: number | null;
-  mode: 'delay_start' | 'hold'; status: 'pending' | 'hit' | 'shielded' | 'reflected' | 'void' | 'cancelled'; wait_min: number;
+  mode: 'delay_start'; status: 'pending' | 'queued' | 'hit' | 'shielded' | 'reflected' | 'void' | 'cancelled'; wait_min: number;
   wait_from: string | null; wait_until: string | null; reflected_from_id: number | null; decided: number; note: string;
   source_name: string; target_name: string | null; options: { shield: boolean; reflect: boolean };
 }

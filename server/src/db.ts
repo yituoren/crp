@@ -178,8 +178,9 @@ CREATE TABLE IF NOT EXISTS leg_tips (
   created_at TEXT NOT NULL
 );
 -- Twist card effects (one row per effect on one team; reflections are new rows pointing at the reflected one).
--- status: pending (fired, target not known yet) | hit (in force) | shielded | reflected | void (no valid target) | cancelled (use reverted)
--- mode: delay_start (the leg's start moves wait_min later) | hold (the team waits mid-leg until wait_until)
+-- status: pending (fired, target not known yet; or reflected, waiting for its target's next arrival) | queued (behind another effect on
+-- the same team) | hit (in force) | shielded | reflected | void (no valid target) | cancelled (use reverted)
+-- mode: delay_start (the leg's start moves wait_min later)
 CREATE TABLE IF NOT EXISTS twist_effects (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   episode_id INTEGER NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,

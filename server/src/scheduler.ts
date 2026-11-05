@@ -1,11 +1,13 @@
 import { all, get, now } from './db.js';
 import { withEvent, type EventRow } from './auth.js';
 import { notify } from './util.js';
+import { settleTwists } from './twist.js';
 import { SYSTEM_USER, departurePlan, recordDeparture, startBlockedReason, startEpisodeNow, type EpisodeRow } from './episodeStart.js';
 
-/** Runs every second: start episodes whose scheduled time has come; record departures that are due in running episodes */
+/** Runs every second: start episodes whose scheduled time has come; record departures that are due in running episodes; settle twist cards that can no longer land */
 function tick() {
   const t = now();
+  settleTwists();
   // Every episode may start once the previous one has started. Continuous episodes start when their first team is due to depart
   for (const ep of all<EpisodeRow>("SELECT * FROM episodes WHERE continuous_wait_min IS NOT NULL AND status = 'pending'")) {
     const ev = get<EventRow>('SELECT * FROM events WHERE id = ?', ep.event_id);

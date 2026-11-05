@@ -7,7 +7,7 @@ import { teamLabelMap } from './teams.js';
 import { addLedgerEntry, revertLedgerEntry } from './ledger.js';
 import { episodeInEvent } from './episodes.js';
 import { prevEndTime, emptyProgress, chainAfterComplete, upsertProgress, chainedStart } from '../progressCore.js';
-import { holdReason, onArrival, listEffects, answerOptions, answerEffect, assertCanAnswer, type Effect } from '../twist.js';
+import { onArrival, listEffects, answerOptions, answerEffect, assertCanAnswer, type Effect } from '../twist.js';
 
 export const progressRoutes = new Hono<Env>();
 
@@ -224,7 +224,6 @@ progressRoutes.post('/progress', async (c) => {
         // start time = the previous completed leg's end time (empty for the first leg); a side quest's start comes from "start side quest" and is not chained
         if (!next.arrived_at && leg.type !== 'SQ') next.arrived_at = prevEndTime(episodeId, teamId, leg.sort);
         if (next.arrived_at && t < next.arrived_at) throw bad(next.arrived_at > now() ? '飞弹等待中，开始时间还没到，不能记录' : `完成时间不能早于开始时间（${next.arrived_at}）`);
-        { const h = holdReason(episodeId, teamId, legId, t); if (h) throw bad(h); }
         next.completed_at = t;
       }
       break;
