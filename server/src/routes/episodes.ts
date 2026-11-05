@@ -70,11 +70,16 @@ export function loadEpisodes(eventId: number) {
     if (!shopByLeg.has(it.leg_id)) shopByLeg.set(it.leg_id, []);
     shopByLeg.get(it.leg_id)!.push(it);
   }
+  const tipsByLeg = new Map<number, any[]>();
+  for (const t of all('SELECT t.* FROM leg_tips t JOIN legs l ON l.id = t.leg_id JOIN episodes e ON e.id = l.episode_id WHERE e.event_id = ? ORDER BY t.sort, t.id', eventId)) {
+    if (!tipsByLeg.has(t.leg_id)) tipsByLeg.set(t.leg_id, []);
+    tipsByLeg.get(t.leg_id)!.push({ id: t.id, code: t.code, tip: t.tip });
+  }
   const legsByEp = new Map<number, any[]>();
   for (const l of legs) {
     if (!legsByEp.has(l.episode_id)) legsByEp.set(l.episode_id, []);
     const norm = {};
-    legsByEp.get(l.episode_id)!.push({ ...l, ...norm, attachments: attByLeg.get(l.id) ?? [], cutoffs: cutoffsByLeg.get(l.id) ?? [], shop: shopByLeg.get(l.id) ?? [] });
+    legsByEp.get(l.episode_id)!.push({ ...l, ...norm, attachments: attByLeg.get(l.id) ?? [], cutoffs: cutoffsByLeg.get(l.id) ?? [], shop: shopByLeg.get(l.id) ?? [], tips: tipsByLeg.get(l.id) ?? [] });
   }
   return episodes.map((e) => ({ ...e, budget: fromCents(e.budget), legs: legsByEp.get(e.id) ?? [] }));
 }
@@ -99,7 +104,7 @@ export function legInEvent(c: Context, id: number) {
   return leg;
 }
 
-/** Leg list: judge criteria are visible only to hosts / admins and the crew assigned as station of that leg in the episode; others get null */
+/** Leg list: judge criteria and 锦囊 tip texts are visible only to hosts / admins and the crew assigned as station of that leg in the episode; others get null (tip ids stay, so a follow can pick one) */
 episodeRoutes.get('/episodes', (c) => {
   const user = c.get('user');
   const episodes = loadEpisodes(c.get('event').id);
@@ -108,7 +113,11 @@ episodeRoutes.get('/episodes', (c) => {
   for (const a of all<{ episode_id: number; leg_id: number | null; leg_ids: string | null }>("SELECT episode_id, leg_id, leg_ids FROM assignments WHERE user_id = ? AND role = 'station'", user.id)) {
     mine.set(a.episode_id, new Set(parseLegIds(a)));
   }
-  for (const ep of episodes as any[]) for (const l of ep.legs) if (!mine.get(ep.id)?.has(l.id)) l.judge_criteria = null;
+  for (const ep of episodes as any[]) for (const l of ep.legs) {
+    if (mine.get(ep.id)?.has(l.id)) continue;
+    l.judge_criteria = null;
+    l.tips = l.tips.map((t: any) => ({ ...t, tip: null }));
+  }
   return c.json({ episodes });
 });
 
@@ -344,6 +353,37 @@ episodeRoutes.put('/legs/:id/cutoffs', hostOnly, async (c) => {
     for (const old of before) if (!keep.has(old.id)) run('DELETE FROM leg_cutoffs WHERE id = ?', old.id);
   });
   audit(c.get('user'), 'update', 'leg_cutoffs', id, before, items);
+  notify('episodes', leg.episode_id);
+  return c.json({ ok: true });
+});
+
+/** Save the leg's 锦囊 tips as a whole: rows with an id are updated, others inserted, missing ones deleted. Content, not structure: editable while running */
+episodeRoutes.put('/legs/:id/tips', hostOnly, async (c) => {
+  const id = intParam(c, 'id');
+  const leg = legInEvent(c, id);
+  const b = await body(c);
+  if (!Array.isArray(b.items)) throw bad('items 必须是数组');
+  const items = b.items.map((it: any, i: number) => ({ id: int(it.id, 0) || 0, code: str(it.code, 50), tip: str(it.tip, 2000), sort: i }));
+  const codes = new Set<string>();
+  for (const it of items) {
+    if (!it.code) throw bad('锦囊 id 不能为空');
+    if (codes.has(it.code)) throw bad(`锦囊 id「${it.code}」重复`);
+    codes.add(it.code);
+  }
+  const before = all('SELECT * FROM leg_tips WHERE leg_id = ? ORDER BY sort, id', id);
+  tx(() => {
+    const keep = new Set<number>();
+    for (const it of items) {
+      if (it.id && get('SELECT 1 FROM leg_tips WHERE id = ? AND leg_id = ?', it.id, id)) {
+        run('UPDATE leg_tips SET code = ?, tip = ?, sort = ? WHERE id = ?', it.code, it.tip, it.sort, it.id);
+        keep.add(it.id);
+      } else {
+        keep.add(Number(run('INSERT INTO leg_tips(leg_id, code, tip, sort, created_at) VALUES (?,?,?,?,?)', id, it.code, it.tip, it.sort, now()).lastInsertRowid));
+      }
+    }
+    for (const old of before) if (!keep.has(old.id)) run('DELETE FROM leg_tips WHERE id = ?', old.id);
+  });
+  audit(c.get('user'), 'update', 'leg_tips', id, before, items);
   notify('episodes', leg.episode_id);
   return c.json({ ok: true });
 });

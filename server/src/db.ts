@@ -168,6 +168,15 @@ CREATE TABLE IF NOT EXISTS leg_cutoffs (
   sort INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
 );
+-- Tips for the "锦囊" card: per leg, an id (whose tip, e.g. a person) and the tip text revealed when a team uses the card on this leg
+CREATE TABLE IF NOT EXISTS leg_tips (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  leg_id INTEGER NOT NULL REFERENCES legs(id) ON DELETE CASCADE,
+  code TEXT NOT NULL,
+  tip TEXT NOT NULL DEFAULT '',
+  sort INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS cutoff_uses (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   episode_id INTEGER NOT NULL,
@@ -341,6 +350,8 @@ ensureColumn('announcements', 'event_id', 'INTEGER NOT NULL DEFAULT 1');
 ensureColumn('announcements', 'author_id', 'INTEGER'); // poster's account (null = system or legacy)
 ensureColumn('shop_items', 'needs_target', 'INTEGER NOT NULL DEFAULT 0'); // using it asks for a target team
 ensureColumn('item_log', 'target_team_id', 'INTEGER');              // target team of a use
+ensureColumn('item_log', 'tip_id', 'INTEGER');                      // leg tip chosen with a 锦囊 card
+ensureColumn('item_log', 'target_label', 'TEXT');                   // snapshot of the chosen tip id
 ensureColumn('audit_logs', 'event_id', 'INTEGER');
 ensureColumn('events', 'owner_id', 'INTEGER');
 ensureColumn('event_members', 'role', "TEXT NOT NULL DEFAULT 'crew'");

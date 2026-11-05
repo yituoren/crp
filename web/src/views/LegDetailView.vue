@@ -5,7 +5,7 @@ import { api } from '@/api';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { fmtDateTime } from '@/utils/time';
-import { LEG_TYPES, LEG_TYPE_LABEL, legTypeLabel, type LegType, legName, isDestinationLeg, stockText } from '@/types';
+import { LEG_TYPES, LEG_TYPE_LABEL, legTypeLabel, type LegType, legName, isDestinationLeg, stockText, isTipItem } from '@/types';
 import { fmtDurMs } from '@/utils/time';
 import { moneyMode, fmtMoney, moneyUnit } from '@/utils/money';
 import { reactive } from 'vue';
@@ -41,6 +41,11 @@ function shopItemOptions(i: number) {
   const taken = new Set(shop.value.filter((_, k) => k !== i).map((r) => r.itemId));
   return race.shopItems.filter((it) => !taken.has(it.id)).map((it) => ({ value: it.id, label: `${it.name}（${fmtMoney(it.price)} ${moneyUnit()}）` }));
 }
+// 锦囊 tips: the section shows once the event sells a 锦囊 card (or the leg already has tips)
+const tips = ref<{ id: number; code: string; tip: string }[]>([]);
+const showTips = computed(() => moneyMode() === 'coin' && (race.shopItems.some((i) => isTipItem(i.name)) || !!leg.value?.tips.length));
+function addTip() { tips.value.push({ id: 0, code: '', tip: '' }); }
+function removeTip(i: number) { tips.value.splice(i, 1); }
 const soldOf = (itemId: number | '') => leg.value?.shop.find((s) => s.item_id === itemId)?.sold ?? 0;
 const dirty = ref(false);
 let filling = false;
@@ -50,6 +55,7 @@ function fillForm() {
   Object.assign(form, { type: l.type, name: l.name, description: l.description, address: l.address, map_url: l.map_url, clue_text: l.clue_text, judge_criteria: l.judge_criteria ?? '', open_time: l.open_time, close_time: l.close_time, detour_a: l.detour_a, detour_b: l.detour_b, can_eliminate: !!l.can_eliminate, eliminate_count: l.eliminate_count || '' });
   cutoffs.value = (l.cutoffs ?? []).map((c) => ({ id: c.id, name: c.name, start: c.start_min, interval: c.interval_min, cost: c.cost ? String(c.cost) : '' }));
   shop.value = (l.shop ?? []).map((s) => ({ itemId: s.item_id, quantity: s.quantity ?? '' }));
+  tips.value = (l.tips ?? []).map((t) => ({ id: t.id, code: t.code, tip: t.tip ?? '' }));
   dirty.value = false;
   setTimeout(() => { filling = false; }, 0);
 }
@@ -57,6 +63,7 @@ watch(leg, () => { if (!dirty.value) fillForm(); }, { immediate: true });
 watch(form, () => { if (!filling) dirty.value = true; }, { deep: true });
 watch(cutoffs, () => { if (!filling) dirty.value = true; }, { deep: true });
 watch(shop, () => { if (!filling) dirty.value = true; }, { deep: true });
+watch(tips, () => { if (!filling) dirty.value = true; }, { deep: true });
 watch(() => form.can_eliminate, (on) => { if (!on) form.eliminate_count = ''; });
 watch(() => form.eliminate_count, (n) => { if (n !== '' && !(Number(n) >= 1)) form.eliminate_count = ''; });
 async function saveLeg() {
@@ -68,10 +75,13 @@ async function saveLeg() {
   const shopRows = shop.value.filter((r) => r.itemId !== '');
   if (shopRows.some((r) => r.quantity !== '' && !(Number.isInteger(Number(r.quantity)) && Number(r.quantity) >= 0))) { ui.toast('商品数量必须是非负整数，留空表示不限', 'error'); return; }
   const shopItems = shopRows.map((r) => ({ item_id: r.itemId, quantity: r.quantity === '' ? null : Number(r.quantity) }));
+  const tipItems = tips.value.map((t) => ({ id: t.id || undefined, code: t.code.trim(), tip: t.tip.trim() }));
+  if (tipItems.some((t) => !t.code)) { ui.toast('锦囊 id 不能为空', 'error'); return; }
   try {
     await api(`/legs/${leg.value.id}`, { method: 'PUT', body });
     if (race.structureEditable) await api(`/legs/${leg.value.id}/cutoffs`, { method: 'PUT', body: { items } });
     if (race.structureEditable && moneyMode() === 'coin') await api(`/legs/${leg.value.id}/shop`, { method: 'PUT', body: { items: shopItems } });
+    if (showTips.value) await api(`/legs/${leg.value.id}/tips`, { method: 'PUT', body: { items: tipItems } });
     await race.loadEpisodes(); fillForm(); ui.toast('环节已保存');
   } catch (e) { ui.error(e); }
 }
@@ -156,6 +166,17 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
             <div v-if="!race.shopItems.length" class="text-sm text-gray cutoff-empty">赛事设置里还没有商品，先到「后台 → 赛事设置」添加</div>
             <div v-else-if="!shop.length" class="text-sm text-gray cutoff-empty">本环节不开放商店</div>
           </div>
+          <div v-if="showTips" class="edit-section">
+            <div class="edit-section-head"><span class="edit-section-title">锦囊</span><button class="btn btn-text btn-sm" @click="addTip"><Icon name="add" size="16" />添加锦囊</button></div>
+            <div v-for="(t, i) in tips" :key="i" class="cutoff-edit">
+              <div class="cutoff-edit-top">
+                <input v-model="t.code" placeholder="id（使用锦囊卡时选择）" class="cutoff-name" />
+                <button class="icon-btn icon-btn-sm icon-btn-danger" title="删除" @click="removeTip(i)"><Icon name="delete" size="18" /></button>
+              </div>
+              <textarea v-model="t.tip" rows="2" placeholder="具体提示，使用后显示给跟队" />
+            </div>
+            <div v-if="!tips.length" class="text-sm text-gray cutoff-empty">没有锦囊</div>
+          </div>
           <div class="edit-section">
             <div class="edit-section-title">地点与时间</div>
             <div class="form-group"><label>地址</label><input v-model="form.address" placeholder="到站点后能直接找到的描述" /></div>
@@ -197,6 +218,8 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
           <div v-if="leg.shop.length && moneyMode() === 'coin'" class="mb-2">商店：<span v-for="it in leg.shop" :key="it.id" class="badge" :class="it.remaining === 0 ? 'badge-crew' : 'badge-info'" style="margin-right: 6px">{{ it.name }} · {{ stockText(it) }}</span></div>
           <div v-if="leg.can_eliminate" class="mb-2"><span class="badge badge-urgent">淘汰 {{ leg.eliminate_count }} 队</span><span class="text-gray text-sm"> 所有队伍到达后，最后到的 {{ leg.eliminate_count }} 队自动淘汰</span></div>
           <div v-if="leg.cutoffs.length" class="mb-2">熔断：<span v-for="c in leg.cutoffs" :key="c.id" class="badge badge-info" style="margin-right: 6px">{{ c.name }} · {{ fmtDurMs(c.start_min * 60000) }} 起 · 每 {{ fmtDurMs(c.interval_min * 60000) }}{{ moneyMode() === 'coin' && c.cost ? ` · ${c.cost} 币` : '' }}</span></div>
+          <!-- tip texts reach only hosts and this leg's station; everyone else sees the ids -->
+          <div v-if="leg.tips.length" class="mb-2">锦囊：<template v-if="leg.tips.some((t) => t.tip !== null)"><div v-for="t in leg.tips" :key="t.id" class="text-sm"><span class="badge badge-info">{{ t.code }}</span> <span class="pre">{{ t.tip || '（未填写提示）' }}</span></div></template><span v-for="t in leg.tips" v-else :key="t.id" class="badge badge-info" style="margin-right: 6px">{{ t.code }}</span></div>
           <div v-if="leg.type === 'DT'" class="mb-2">绕道：A「{{ leg.detour_a || '未填写' }}」 / B「{{ leg.detour_b || '未填写' }}」</div>
           <div class="section-title text-sm">环节说明</div>
           <div class="pre" :class="{ 'text-gray': !leg.description }">{{ leg.description || '暂无说明' }}</div>

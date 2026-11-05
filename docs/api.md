@@ -80,6 +80,7 @@ All endpoints live under `/api`. Requests and responses are JSON unless noted. E
 | DELETE | `/legs/:id` | host¹ | |
 | PUT | `/episodes/:id/legs/order` | host¹ | `{ ids: [legId…] }` |
 | PUT | `/legs/:id/cutoffs` | host¹ | `{ items: [{ id?, name, start_min, interval_min, cost }] }` |
+| PUT | `/legs/:id/tips` | host | `{ items: [{ id?, code, tip }] }` 锦囊 tips of the leg (codes unique per leg); editable while running. In `GET /episodes` each leg has `tips: [{ id, code, tip }]`, with `tip` null unless the caller is a host or the leg's station |
 | PUT | `/legs/:id/shop` | host¹ | `{ items: [{ item_id, quantity }] }` (event shop item ids, each at most once; `quantity` null = unlimited); replaces the leg's stock, and the leg's `shop_open` becomes "list not empty" |
 | POST | `/legs/:id/attachments` | host / station of the leg | multipart `file` (image or PDF, ≤ 10 MB) |
 | DELETE | `/attachments/:id` | host / station of the leg | |
@@ -130,7 +131,7 @@ Leg fields: `type` (one of `SL RI TI DT RB FF Union Shuffle UT YD SB FO Trap SQ 
 | POST | `/ledger` | host / follow of the team / station on its own legs | `{ episodeId, teamId, kind: 'other'|'shop'|'cutoff', delta?, reason?, legId?, itemId? }`; shop purchases need coin mode, a leg whose stock lists the item and a remaining count above 0 (reverting a purchase returns the unit), and also write an item-log "+1" |
 | POST | `/ledger/:id/revert` | author or host | reverting a purchase refunds and removes the item (refused if already used); reverting a cutoff row deletes that use |
 | GET | `/item-log?episodeId=&teamId=` | member | item gains and uses (coin mode) |
-| POST | `/items/use` | host / follow of the team | `{ episodeId, teamId, itemName, legId?, targetTeamId? }` — one item per call, no money change; `targetTeamId` (another team of the event) is required for items marked `needs_target`, and the item log returns it with `target_name` |
+| POST | `/items/use` | host / follow of the team | `{ episodeId, teamId, itemName, legId?, targetTeamId? }` — one item per call, no money change; `targetTeamId` (another team of the event) is required for items marked `needs_target`, and the item log returns it with `target_name`. Items whose name contains 「锦囊」 take `tipId` instead: a tip of the leg the team is on now (started, not finished); the response carries `tip: { code, tip }`, and the item log returns `target_label` (the code) and `tip_text` (only to hosts and the team's follow) |
 | POST | `/item-log/:id/revert` | author or host | only `use` rows; purchases are reverted through the ledger |
 
 ## Announcements

@@ -36,7 +36,11 @@ async function revert(l: ItemLogEntry) {
           <td><template v-if="l.leg_id && race.legById.get(l.leg_id)"><LegTag :type="race.legById.get(l.leg_id)!.type" /> {{ legName(race.legById.get(l.leg_id)!) }}</template><template v-else>{{ l.leg_name || '其他' }}</template></td>
           <td>{{ l.item_name }}</td>
           <td class="c">{{ kindText(l) }}</td>
-          <td>{{ l.target_name ?? '' }}</td>
+          <td>
+            <!-- a revealed 锦囊 tip can be reopened by hosts and the team's follow -->
+            <button v-if="l.tip_text !== null && l.target_label" class="btn btn-text btn-sm" @click="ui.alert(`锦囊提示 · ${l.target_label}`, l.tip_text || '（未填写提示）')">{{ l.target_label }}</button>
+            <template v-else>{{ l.target_name ?? l.target_label ?? '' }}</template>
+          </td>
           <td>{{ l.operator_name }}</td>
           <td class="c">
             <span v-if="l.reverted" class="revert-note">{{ revertedBy(l) }}撤销</span>

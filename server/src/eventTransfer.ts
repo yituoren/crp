@@ -44,6 +44,7 @@ function selectEventTables(eventId: number): Record<string, Row[]> {
     episodes: all('SELECT * FROM episodes WHERE event_id = ? ORDER BY id', eventId),
     legs: all(`SELECT * FROM legs WHERE episode_id IN (${ep}) ORDER BY id`, eventId),
     leg_cutoffs: all(`SELECT * FROM leg_cutoffs WHERE leg_id IN (${lg}) ORDER BY id`, eventId),
+    leg_tips: all(`SELECT * FROM leg_tips WHERE leg_id IN (${lg}) ORDER BY id`, eventId),
     leg_shop_items: all(`SELECT * FROM leg_shop_items WHERE leg_id IN (${lg}) ORDER BY id`, eventId),
     attachments: all(`SELECT * FROM attachments WHERE leg_id IN (${lg}) ORDER BY id`, eventId),
     teams: all('SELECT * FROM teams WHERE event_id = ? ORDER BY id', eventId),
@@ -153,6 +154,7 @@ export function importEvent(d: Dump, me: AuthUser): { id: number; hash: string; 
     copy('episodes', (r) => ({ ...r, event_id: evId, start_at: r.status === 'pending' && r.start_at && r.start_at <= nowIso ? null : r.start_at }));
     copy('legs', (r) => ({ ...r, episode_id: ref('episodes', r.episode_id) }));
     copy('leg_cutoffs', (r) => ({ ...r, leg_id: ref('legs', r.leg_id) }));
+    copy('leg_tips', (r) => ({ ...r, leg_id: ref('legs', r.leg_id) }));
     copy('leg_shop_items', (r) => { const leg = ref('legs', r.leg_id), item = ref('shop_items', r.shop_item_id); return leg && item ? { ...r, leg_id: leg, shop_item_id: item } : null; });
     // Files from before per-leg stock: an open shop sold every item without limit
     if (!d.tables.leg_shop_items) {
@@ -178,7 +180,7 @@ export function importEvent(d: Dump, me: AuthUser): { id: number; hash: string; 
       try { if (legIds) legIds = JSON.stringify((JSON.parse(legIds) as number[]).map((id) => ref('legs', id)).filter(Boolean)); } catch { legIds = null; }
       return { ...r, episode_id: ref('episodes', r.episode_id), user_id: user, team_id: ref('teams', r.team_id), leg_id: ref('legs', r.leg_id), leg_ids: legIds };
     });
-    copy('progress', (r) => ({ ...r, episode_id: ref('episodes', r.episode_id), team_id: ref('teams', r.team_id), leg_id: ref('legs', r.leg_id), target_team_id: ref('teams', r.target_team_id), recorded_by: mapUser(r.recorded_by) }));
+    copy('progress', (r) => ({ ...r, episode_id: ref('episodes', r.episode_id), team_id: ref('teams', r.team_id), leg_id: ref('legs', r.leg_id), target_team_id: ref('teams', r.target_team_id), tip_id: ref('leg_tips', r.tip_id), recorded_by: mapUser(r.recorded_by) }));
     // leg_id 0 means "other" and stays 0
     copy('penalties', (r) => ({ ...r, episode_id: ref('episodes', r.episode_id), team_id: ref('teams', r.team_id), leg_id: r.leg_id ? ref('legs', r.leg_id) : r.leg_id, applied_by: mapUser(r.applied_by), reverts_id: null }));
     copy('pitstop_results', (r) => ({ ...r, episode_id: ref('episodes', r.episode_id), team_id: ref('teams', r.team_id) }));

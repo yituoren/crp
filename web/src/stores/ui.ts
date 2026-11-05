@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 interface ToastItem { id: number; text: string; type: 'success' | 'error' | 'info' }
-interface ConfirmState { title: string; message: string; okText: string; danger: boolean; resolve: (v: boolean) => void }
+interface ConfirmState { title: string; message: string; okText: string; danger: boolean; alert?: boolean; resolve: (v: boolean) => void }
 interface TimeState { title: string; message: string; value: string; resolve: (v: string | null) => void }
 
 export const useUi = defineStore('ui', () => {
@@ -25,6 +25,10 @@ export const useUi = defineStore('ui', () => {
       confirmState.value = { title, message, okText: opts.okText ?? '确认', danger: opts.danger ?? false, resolve };
     });
   }
+  /** Message with a single OK button */
+  function alert(title: string, message: string) {
+    return new Promise<void>((resolve) => { confirmState.value = { title, message, okText: '知道了', danger: false, alert: true, resolve: () => resolve() }; });
+  }
   function closeConfirm(v: boolean) {
     confirmState.value?.resolve(v);
     confirmState.value = null;
@@ -37,5 +41,5 @@ export const useUi = defineStore('ui', () => {
     timeState.value?.resolve(ok ? timeState.value.value : null);
     timeState.value = null;
   }
-  return { toasts, confirmState, timeState, online, toast, error, confirm, closeConfirm, askTime, closeTime };
+  return { toasts, confirmState, timeState, online, toast, error, confirm, alert, closeConfirm, askTime, closeTime };
 });

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { all, get, run, tx, now, fromCents } from '../db.js';
-import { canAdjustCurrency, type Env, isAdminRole, isHostRole } from '../auth.js';
+import { canAdjustCurrency, getAssignment, type Env, isAdminRole, isHostRole } from '../auth.js';
 import { audit, body, str, int, notify, bad, forbidden, notFound, money, currencyMode, editLockReason } from '../util.js';
 import { teamLabelMap, inventoryCount } from './teams.js';
 import { shopStock } from './episodes.js';
@@ -169,11 +169,20 @@ export function listItemLog(eventId: number, episodeId?: number | null, teamId?:
   if (teamId) { conds.push('l.team_id = ?'); params.push(teamId); }
   const labels = teamLabelMap();
   return all<any>(
-    `SELECT l.*, t.name AS team_name, g.name AS leg_name FROM item_log l JOIN teams t ON t.id = l.team_id LEFT JOIN legs g ON g.id = l.leg_id
+    `SELECT l.*, t.name AS team_name, g.name AS leg_name, lt.tip AS tip_text FROM item_log l JOIN teams t ON t.id = l.team_id LEFT JOIN legs g ON g.id = l.leg_id LEFT JOIN leg_tips lt ON lt.id = l.tip_id
      WHERE ${conds.join(' AND ')} ORDER BY l.created_at DESC, l.id DESC LIMIT 500`, ...params,
   ).map((r) => ({ ...r, team_name: labels.get(r.team_id) ?? r.team_name, target_name: r.target_team_id ? labels.get(r.target_team_id) ?? null : null }));
 }
-ledgerRoutes.get('/item-log', (c) => c.json({ items: listItemLog(c.get('event').id, Number(c.req.query('episodeId')) || null, Number(c.req.query('teamId')) || null) }));
+/** A revealed 锦囊 tip is shown only to hosts and the team's follow in that episode */
+ledgerRoutes.get('/item-log', (c) => {
+  const user = c.get('user');
+  const items = listItemLog(c.get('event').id, Number(c.req.query('episodeId')) || null, Number(c.req.query('teamId')) || null);
+  if (!isHostRole(user.role)) for (const r of items) if (r.tip_text !== null && getAssignment(r.episode_id ?? 0, user.id)?.team_id !== r.team_id) r.tip_text = null;
+  return c.json({ items });
+});
+
+/** The 锦囊 card ("xx的锦囊卡") is recognised by name: using it picks one of the current leg's tips and reveals it */
+export const isTipItem = (name: string) => name.includes('锦囊');
 
 /** Use one bag item: no balance change, only an item-log row; attributed to the team's current leg. Items marked as needing a target take another team of the event */
 ledgerRoutes.post('/items/use', async (c) => {
@@ -200,13 +209,23 @@ ledgerRoutes.post('/items/use', async (c) => {
     if (!target || target.event_id !== c.get('event').id) throw bad('对象队伍不存在');
     if (targetId === teamId) throw bad('对象不能是本队');
   }
-  if (!legId && episodeId) legId = get<{ leg_id: number }>(
+  const currentLeg = episodeId ? get<{ leg_id: number }>(
     `SELECT p.leg_id FROM progress p JOIN legs l ON l.id = p.leg_id WHERE p.episode_id = ? AND p.team_id = ? AND p.arrived_at IS NOT NULL AND p.completed_at IS NULL ORDER BY l.sort DESC, l.id DESC LIMIT 1`, episodeId, teamId,
-  )?.leg_id ?? null;
-  const r = run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, target_team_id) VALUES (?,?,?,?,-1,?,?,?,?,?)', episodeId, teamId, legId, itemName, 'use', user.id, user.displayName, now(), targetId);
-  audit(user, 'item_use', 'team', teamId, undefined, { item: itemName, legId, targetTeamId: targetId });
+  )?.leg_id ?? null : null;
+  if (!legId) legId = currentLeg;
+  // 锦囊: the tip must be one of the leg the team is on right now
+  let tip: { id: number; code: string; tip: string } | undefined;
+  if (isTipItem(itemName)) {
+    if (!currentLeg) throw bad('本队当前不在任何环节中，不能使用锦囊');
+    tip = get('SELECT id, code, tip FROM leg_tips WHERE id = ? AND leg_id = ?', int(b.tipId, 0), currentLeg);
+    if (!tip) throw bad('请选择本队当前环节的一个锦囊 id');
+    legId = currentLeg;
+  }
+  const r = run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, target_team_id, tip_id, target_label) VALUES (?,?,?,?,-1,?,?,?,?,?,?,?)',
+    episodeId, teamId, legId, itemName, 'use', user.id, user.displayName, now(), targetId, tip?.id ?? null, tip?.code ?? null);
+  audit(user, 'item_use', 'team', teamId, undefined, { item: itemName, legId, targetTeamId: targetId, tip: tip?.code });
   notify('ledger', episodeId); notify('teams');
-  return c.json({ id: Number(r.lastInsertRowid) });
+  return c.json({ id: Number(r.lastInsertRowid), tip: tip ? { code: tip.code, tip: tip.tip } : null });
 });
 
 /** Revert an item use: the item returns to the bag. Purchases are reverted through the ledger (which syncs here) */
@@ -224,7 +243,7 @@ ledgerRoutes.post('/item-log/:id/revert', (c) => {
   if (orig.reverts_id) throw bad('撤销记录本身不能再撤销');
   const newId = tx(() => {
     run('UPDATE item_log SET reverted = 1 WHERE id = ?', id);
-    const r = run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, reverts_id, target_team_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)', orig.episode_id, orig.team_id, orig.leg_id, orig.item_name, -orig.delta, orig.kind, user.id, user.displayName, now(), id, orig.target_team_id ?? null);
+    const r = run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, reverts_id, target_team_id, tip_id, target_label) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', orig.episode_id, orig.team_id, orig.leg_id, orig.item_name, -orig.delta, orig.kind, user.id, user.displayName, now(), id, orig.target_team_id ?? null, orig.tip_id ?? null, orig.target_label ?? null);
     return Number(r.lastInsertRowid);
   });
   audit(user, 'item_use_revert', 'team', orig.team_id, { id }, { revertId: newId });

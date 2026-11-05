@@ -34,7 +34,7 @@ export const RECORD_MODE_LABEL: Record<RecordMode, string> = { none: '不记录�
 export interface Attachment { id: number; leg_id: number; filename: string; mime: string; size: number; url: string; created_at: string }
 export interface Leg {
   id: number; episode_id: number; sort: number; type: LegType; name: string; description: string; address: string; map_url: string;
-  clue_text: string; judge_criteria: string | null; open_time: string; close_time: string; detour_a: string; detour_b: string; needs_staff: number; record_mode: RecordMode; cutoff_start: number; cutoff_interval: number; shop_open: number; can_eliminate: number; eliminate_count: number; attachments: Attachment[]; cutoffs: Cutoff[]; shop: LegShopItem[];
+  clue_text: string; judge_criteria: string | null; open_time: string; close_time: string; detour_a: string; detour_b: string; needs_staff: number; record_mode: RecordMode; cutoff_start: number; cutoff_interval: number; shop_open: number; can_eliminate: number; eliminate_count: number; attachments: Attachment[]; cutoffs: Cutoff[]; shop: LegShopItem[]; tips: LegTip[];
 }
 export interface Episode { id: number; code: string; name: string; budget: number; sort: number; status: 'pending' | 'running' | 'finished'; notes: string; started_at: string | null; finished_at: string | null; start_at: string | null; inherit_rank: number; start_gap_min: number; continuous_wait_min: number | null; legs: Leg[] }
 /** label: "number short name" when a short name is set, otherwise full_label ("number A&B") */
@@ -46,6 +46,10 @@ export interface Progress {
 }
 export interface Penalty { id: number; episode_id: number; team_id: number; team_name: string; minutes: number; reason: string; applied_at: string; applied_by: number | null; applied_by_name: string | null; reverted: number; reverts_id: number | null; leg_id: number | null; leg_name: string | null; kind: 'shop' | 'other'; item_id: number | null; item_name: string | null }
 export interface Cutoff { id: number; name: string; start_min: number; interval_min: number; cost: number }
+/** A leg's 锦囊 tip: tip text is null for crew who may not see it (only hosts and the leg's station do) */
+export interface LegTip { id: number; code: string; tip: string | null }
+/** The 锦囊 card ("xx的锦囊卡") is recognised by name */
+export const isTipItem = (name: string) => name.includes('锦囊');
 export interface CutoffUse { id: number; episode_id: number; leg_id: number; team_id: number; cutoff_id: number; cutoff_name: string; used_at: string; used_by: number | null; used_by_name: string; ledger_id: number | null }
 export interface ShopItem { id: number; name: string; price: number; sort: number; needs_target: number }
 /** One item a leg's shop sells: quantity null = unlimited; remaining = quantity minus purchases on this leg */
@@ -57,5 +61,5 @@ export interface PitstopRow {
   penalty_minutes: number; final_time: string | null; rank: number | null; eliminated: boolean; note: string;
 }
 export interface LedgerEntry { id: number; episode_id: number | null; episode_code: string | null; team_id: number; team_name: string; team_code: string; delta: number; balance_after: number; reason: string; operator_id: number | null; operator_name: string; created_at: string; reverted: number; reverts_id: number | null; leg_id: number | null; leg_name: string | null; kind?: 'shop' | 'cutoff' | 'other' | 'use'; item_name?: string | null }
-export interface ItemLogEntry { id: number; episode_id: number | null; team_id: number; team_name: string; leg_id: number | null; leg_name: string | null; item_name: string; delta: number; kind: 'buy' | 'use'; ledger_id: number | null; operator_id: number | null; operator_name: string; created_at: string; reverted: number; reverts_id: number | null; target_team_id: number | null; target_name: string | null }
+export interface ItemLogEntry { id: number; episode_id: number | null; team_id: number; team_name: string; leg_id: number | null; leg_name: string | null; item_name: string; delta: number; kind: 'buy' | 'use'; ledger_id: number | null; operator_id: number | null; operator_name: string; created_at: string; reverted: number; reverts_id: number | null; target_team_id: number | null; target_name: string | null; tip_id: number | null; target_label: string | null; tip_text: string | null }
 export interface Announcement { id: number; content: string; level: 'info' | 'warning' | 'urgent'; created_by: string; created_at: string; pinned_at: string | null; audience: string; author_id: number | null }
