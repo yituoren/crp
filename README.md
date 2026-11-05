@@ -90,7 +90,7 @@ server/src
   util.ts             audit log, notify (Socket.IO), validation helpers
   elimination.ts      automatic elimination and lock points
   episodeStart.ts     episode start, departure plan, auto departures
-  scheduler.ts        5-second tick for scheduled starts and departures
+  scheduler.ts        1-second tick for scheduled starts and departures
   progressCore.ts     progress upsert, chaining, final ranking
   routes/             auth events episodes teams assignments progress ledger announcements admin dashboard
 web/src

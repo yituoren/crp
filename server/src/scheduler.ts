@@ -3,7 +3,7 @@ import { withEvent, type EventRow } from './auth.js';
 import { notify } from './util.js';
 import { SYSTEM_USER, departurePlan, recordDeparture, startBlockedReason, startEpisodeNow, type EpisodeRow } from './episodeStart.js';
 
-/** Runs every few seconds: start episodes whose scheduled time has come; record departures that are due in running episodes */
+/** Runs every second: start episodes whose scheduled time has come; record departures that are due in running episodes */
 function tick() {
   const t = now();
   // Every episode may start once the previous one has started. Continuous episodes start when their first team is due to depart
@@ -30,7 +30,7 @@ function tick() {
   }
 }
 
-export function startScheduler(intervalMs = 5000) {
+export function startScheduler(intervalMs = 1000) {
   const safeTick = () => { try { tick(); } catch (e) { console.error('[scheduler]', e); } };
   safeTick();
   return setInterval(safeTick, intervalMs);
