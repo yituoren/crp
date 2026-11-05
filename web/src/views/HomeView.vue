@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import logoUrl from '@/assets/logo-wordmark.png';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { api, setUnauthorizedHandler } from '@/api';
@@ -126,7 +127,7 @@ onMounted(() => {
   <div class="home" :class="{ 'drawer-open': drawer }">
     <div class="home-scrim" @click="drawer = false"></div>
     <aside class="home-side">
-      <div class="home-brand">CRP</div>
+      <div class="home-brand"><img :src="logoUrl" alt="城市飞奔" /></div>
       <button class="home-compose" @click="openCreate"><Icon name="edit" size="22" />创建比赛</button>
       <nav class="home-nav">
         <a href="#" :class="{ active: tab === 'mine' }" @click.prevent="pickTab('mine')"><Icon name="inbox" size="20" /><span>我的比赛</span><em>{{ mineCount }}</em></a>
