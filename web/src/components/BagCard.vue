@@ -32,9 +32,9 @@ const targetNames = computed(() => selected.value.filter(needsTarget));
 const tipNames = computed(() => selected.value.filter(isTipItem));
 const currentLeg = computed(() => [...(race.currentEpisode?.legs ?? [])].reverse().find((l) => { const p = race.progressOf(props.teamId, l.id); return !!p?.arrived_at && !p.completed_at; }) ?? null);
 const tipOptions = computed(() => (currentLeg.value?.tips ?? []).map((t) => ({ value: String(t.id), label: t.code })));
-/** A twist card cannot pick a team this kind of card has already been played on in this episode */
+/** A twist card cannot pick a team this kind of card has already been played on in this episode (盗窃 has no such limit) */
 function taken(name: string, teamId: number) {
-  if (!isDirectedTwist(name)) return false;
+  if (!isDirectedTwist(name) || name.includes('盗窃')) return false;
   const kind = twistKind(name);
   if (kind) return race.effects.some((e) => e.kind === kind && e.target_team_id === teamId && ['pending', 'queued', 'hit'].includes(e.status));
   return race.itemLog.some((l) => l.item_name === name && l.kind === 'use' && !l.reverted && !l.reverts_id && l.target_team_id === teamId && l.episode_id === race.currentEpisode?.id);

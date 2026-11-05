@@ -18,7 +18,7 @@ import { recomputeEliminations } from './elimination.js';
  *  - 决斗 (duel), played at a task point against a team: once both have finished that task the faster net time (to the millisecond, no
  *    draw) wins 4 coins from the loser; coins the loser lacks become a penalty, 5 minutes per coin.
  *  - 盗窃 (steal): the cards are drawn offline; online the user picks the target and the item drawn, which moves between the bags
- *    (or nothing, when the target had no card or blocked it).
+ *    (or nothing, when the target had no card or blocked it). A team can be stolen from any number of times.
  *  - 验牌 / 合流 and everything else are handled by hand.
  *  - Twist cards cannot be used in the event's last episode (the final).
  *  - 护盾 (shield) cancels a missile / 让路 / 让行 on the team; 反弹 (reflect) cancels it and gives the same effect to the card's user at
@@ -131,8 +131,8 @@ export function checkUse(episodeId: number | null, teamId: number, itemName: str
     if (!point || ['RI', 'SQ', 'SL', 'PS'].includes(point.type)) throw bad(`「${itemName}」要在到达任务点时使用（本队当前不在任务点）`);
     if (kind === 'uturn' && !detourBefore(point)) throw bad('回转只能在绕道（DT）之后的下一个任务点使用');
   }
-  // directed cards cannot pick a team already hit (or about to be) by this kind of card
-  if (targetId && isDirected(itemName)) {
+  // directed cards cannot pick a team already hit (or about to be) by this kind of card; 盗窃 has no such limit
+  if (targetId && isDirected(itemName) && !isSteal(itemName)) {
     const taken = kind
       ? get("SELECT 1 FROM twist_effects WHERE episode_id = ? AND target_team_id = ? AND kind = ? AND status IN ('pending', 'queued', 'hit')", episodeId, targetId, kind)
       : get('SELECT 1 FROM item_log WHERE episode_id = ? AND target_team_id = ? AND item_name = ? AND kind = ? AND reverted = 0 AND reverts_id IS NULL', episodeId, targetId, itemName, 'use');
