@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { useUi } from '@/stores/ui';
+import { useRace } from '@/stores/race';
+import { fmtDateMinute } from '@/utils/time';
 const ui = useUi();
+const race = useRace();
 </script>
 
 <template>
@@ -15,6 +18,20 @@ const ui = useUi();
         <button v-if="!ui.confirmState.alert" class="btn btn-text" @click="ui.closeConfirm(false)">取消</button>
         <button class="btn" :class="ui.confirmState.danger ? 'btn-danger' : ''" @click="ui.closeConfirm(true)">{{ ui.confirmState.okText }}</button>
       </div>
+    </div>
+  </div>
+
+  <!-- System departure notices pop up for the team's follow until acknowledged -->
+  <div v-if="race.popupAnnouncements.length" class="modal-overlay">
+    <div class="modal modal-sm">
+      <h3>发车提醒</h3>
+      <div class="popup-anns">
+        <div v-for="a in race.popupAnnouncements" :key="a.id" class="alert alert-info">
+          <div class="pre">{{ a.content }}</div>
+          <div class="text-xs text-gray mt-1">{{ fmtDateMinute(a.created_at) }}</div>
+        </div>
+      </div>
+      <div class="modal-actions"><button class="btn" @click="race.dismissPopup()">知道了</button></div>
     </div>
   </div>
 

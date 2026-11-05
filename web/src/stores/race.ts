@@ -228,13 +228,32 @@ export const useRace = defineStore('race', () => {
   async function loadUsers() { users.value = (await api('/members')).users; }
   // Unread announcements: the last read id is stored on the account, consistent across devices
   const lastReadId = ref<number>(0);
+  // Own posts are never unread; hosts also see the system messages sent to one team's follows, but those do not count as unread for them
+  const countsAsUnread = (a: Announcement) => a.id > lastReadId.value && a.author_id !== auth.user?.id && (!auth.isHost || !a.audience.startsWith('follow:'));
+  // Pop-up: unread system departure notices for the team this account follows (hosts see them in the list only).
+  // Acknowledged ones are remembered on this device, because the read mark is a single id that must not skip older unread announcements
+  const ACK_KEY = 'crp.ackedDepartureNotices';
+  const loadAcked = () => { try { return new Set<number>(JSON.parse(localStorage.getItem(ACK_KEY) ?? '[]')); } catch { return new Set<number>(); } };
+  const ackedPopups = ref(loadAcked());
+  const popupAnnouncements = computed(() => announcements.value.filter((a) => a.audience.startsWith('follow:') && countsAsUnread(a) && !ackedPopups.value.has(a.id)).sort((a, b) => a.id - b.id));
   async function loadAnnouncements() {
     const d = await api('/announcements');
     announcements.value = d.announcements;
     lastReadId.value = Math.max(lastReadId.value, Number(d.lastReadId ?? 0));
   }
-  // Own posts are never unread; hosts also see the system messages sent to one team's follows, but those do not count as unread for them
-  const unreadAnnouncements = computed(() => announcements.value.filter((a) => a.id > lastReadId.value && a.author_id !== auth.user?.id && (!auth.isHost || !a.audience.startsWith('follow:'))).length);
+  /** Acknowledge the pop-up; the read mark moves up to just before the first other unread announcement */
+  async function dismissPopup() {
+    const shown = popupAnnouncements.value.map((a) => a.id);
+    ackedPopups.value = new Set([...ackedPopups.value, ...shown]);
+    try { localStorage.setItem(ACK_KEY, JSON.stringify([...ackedPopups.value].slice(-200))); } catch { /* memory only */ }
+    const otherUnread = announcements.value.filter((a) => countsAsUnread(a) && !ackedPopups.value.has(a.id)).map((a) => a.id);
+    const max = Math.min(Math.max(0, ...shown), otherUnread.length ? Math.min(...otherUnread) - 1 : Infinity);
+    if (max > lastReadId.value) {
+      lastReadId.value = max;
+      try { await api('/announcements/read', { method: 'POST', body: { id: max } }); } catch { /* sync next time */ }
+    }
+  }
+  const unreadAnnouncements = computed(() => announcements.value.filter(countsAsUnread).length);
   async function markAnnouncementsRead() {
     const max = Math.max(0, ...announcements.value.map((a) => a.id));
     if (max > lastReadId.value) {
@@ -296,7 +315,7 @@ export const useRace = defineStore('race', () => {
   }
 
   return {
-    episodes, teams, users, announcements, shopItems, loadShopItems, unreadAnnouncements, markAnnouncementsRead, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
+    episodes, teams, users, announcements, shopItems, loadShopItems, unreadAnnouncements, markAnnouncementsRead, popupAnnouncements, dismissPopup, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
     aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, isLocked, teamLocked, lockReason, structureEditable, cutoffUses, cutoffUseCount, cutoffReadyAt, parentOf, branchOf, branchLocked, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, currencyLegIds, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
     loadAll, reset, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, loadItemLog, itemLog, selectEpisode, invalidate,
   };

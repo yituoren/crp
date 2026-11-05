@@ -106,6 +106,8 @@ p { margin: 0 0 8px; }
 .ann-side .sel { width: 100%; }
 .ann-side .sel-btn { background: var(--surface); }
 .ann-side .sel-btn:hover { background: var(--surface); }
+.popup-anns { max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.popup-anns .alert { margin: 0; }
 .ann-send { margin-top: auto; height: 40px; }
 @media (max-width: 640px) { .ann-compose { flex-wrap: wrap; padding: 10px 12px 12px; } .ann-compose textarea { flex-basis: 100%; height: 86px; } .ann-side { flex-direction: row; width: 100%; } .ann-side .sel { flex: 1; } .ann-send { margin-top: 0; flex: none; } }
 .card { background: var(--surface); border: none; border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; box-shadow: none; }
