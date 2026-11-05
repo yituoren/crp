@@ -171,11 +171,11 @@ export function listItemLog(eventId: number, episodeId?: number | null, teamId?:
   return all<any>(
     `SELECT l.*, t.name AS team_name, g.name AS leg_name FROM item_log l JOIN teams t ON t.id = l.team_id LEFT JOIN legs g ON g.id = l.leg_id
      WHERE ${conds.join(' AND ')} ORDER BY l.created_at DESC, l.id DESC LIMIT 500`, ...params,
-  ).map((r) => ({ ...r, team_name: labels.get(r.team_id) ?? r.team_name }));
+  ).map((r) => ({ ...r, team_name: labels.get(r.team_id) ?? r.team_name, target_name: r.target_team_id ? labels.get(r.target_team_id) ?? null : null }));
 }
 ledgerRoutes.get('/item-log', (c) => c.json({ items: listItemLog(c.get('event').id, Number(c.req.query('episodeId')) || null, Number(c.req.query('teamId')) || null) }));
 
-/** Use one bag item: no balance change, only an item-log row; attributed to the team's current leg */
+/** Use one bag item: no balance change, only an item-log row; attributed to the team's current leg. Items marked as needing a target take another team of the event */
 ledgerRoutes.post('/items/use', async (c) => {
   const user = c.get('user');
   const b = await body(c);
@@ -192,11 +192,19 @@ ledgerRoutes.post('/items/use', async (c) => {
   if (epRow?.status === 'pending' && !isAdminRole(user.role)) throw bad(`${epRow.code} 尚未开始`);
   { const r = editLockReason(user, epRow, team as { status: string }); if (r) throw forbidden(r); }
   if (inventoryCount(teamId, itemName) < 1) throw bad(`背包里没有「${itemName}」`);
+  const needsTarget = !!get<{ needs_target: number }>('SELECT needs_target FROM shop_items WHERE event_id = ? AND name = ?', c.get('event').id, itemName)?.needs_target;
+  const targetId = int(b.targetTeamId, 0) || null;
+  if (needsTarget && !targetId) throw bad(`使用「${itemName}」需要选择对象队伍`);
+  if (targetId) {
+    const target = get<{ event_id: number }>('SELECT event_id FROM teams WHERE id = ?', targetId);
+    if (!target || target.event_id !== c.get('event').id) throw bad('对象队伍不存在');
+    if (targetId === teamId) throw bad('对象不能是本队');
+  }
   if (!legId && episodeId) legId = get<{ leg_id: number }>(
     `SELECT p.leg_id FROM progress p JOIN legs l ON l.id = p.leg_id WHERE p.episode_id = ? AND p.team_id = ? AND p.arrived_at IS NOT NULL AND p.completed_at IS NULL ORDER BY l.sort DESC, l.id DESC LIMIT 1`, episodeId, teamId,
   )?.leg_id ?? null;
-  const r = run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at) VALUES (?,?,?,?,-1,?,?,?,?)', episodeId, teamId, legId, itemName, 'use', user.id, user.displayName, now());
-  audit(user, 'item_use', 'team', teamId, undefined, { item: itemName, legId });
+  const r = run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, target_team_id) VALUES (?,?,?,?,-1,?,?,?,?,?)', episodeId, teamId, legId, itemName, 'use', user.id, user.displayName, now(), targetId);
+  audit(user, 'item_use', 'team', teamId, undefined, { item: itemName, legId, targetTeamId: targetId });
   notify('ledger', episodeId); notify('teams');
   return c.json({ id: Number(r.lastInsertRowid) });
 });
@@ -216,7 +224,7 @@ ledgerRoutes.post('/item-log/:id/revert', (c) => {
   if (orig.reverts_id) throw bad('撤销记录本身不能再撤销');
   const newId = tx(() => {
     run('UPDATE item_log SET reverted = 1 WHERE id = ?', id);
-    const r = run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, reverts_id) VALUES (?,?,?,?,?,?,?,?,?,?)', orig.episode_id, orig.team_id, orig.leg_id, orig.item_name, -orig.delta, orig.kind, user.id, user.displayName, now(), id);
+    const r = run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, reverts_id, target_team_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)', orig.episode_id, orig.team_id, orig.leg_id, orig.item_name, -orig.delta, orig.kind, user.id, user.displayName, now(), id, orig.target_team_id ?? null);
     return Number(r.lastInsertRowid);
   });
   audit(user, 'item_use_revert', 'team', orig.team_id, { id }, { revertId: newId });

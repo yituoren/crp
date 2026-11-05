@@ -58,7 +58,7 @@ All endpoints live under `/api`. Requests and responses are JSON unless noted. E
 | POST | `/join-requests/:id/approve` | host | approves and adds as crew |
 | POST | `/join-requests/:id/reject` | host | |
 | GET | `/shop/items` | member | coin mode shop items |
-| PUT | `/shop/items` | host | `{ items: [{ id?, name, price }] }` (missing ids are deleted, and removed from every leg's stock) |
+| PUT | `/shop/items` | host | `{ items: [{ id?, name, price, needsTarget? }] }`; `needsTarget` items need a target team when used (missing ids are deleted, and removed from every leg's stock) |
 | GET | `/export` | host | downloads the event as a `.crp` file (gzip JSON, `format: 'crp-event-v1'`, attachments embedded; no accounts) |
 | GET | `/audit?limit=` | admin | this event's audit log |
 | DELETE | `/` (the event itself) | host | `{ name }` must equal the event name; deletes episodes, legs, attachments and their files, teams, records, ledger, item log, announcements, shop items, members and join requests (accounts and audit rows are kept), then emits `event-deleted` |
@@ -130,7 +130,7 @@ Leg fields: `type` (one of `SL RI TI DT RB FF Union Shuffle UT YD SB FO Trap SQ 
 | POST | `/ledger` | host / follow of the team / station on its own legs | `{ episodeId, teamId, kind: 'other'|'shop'|'cutoff', delta?, reason?, legId?, itemId? }`; shop purchases need coin mode, a leg whose stock lists the item and a remaining count above 0 (reverting a purchase returns the unit), and also write an item-log "+1" |
 | POST | `/ledger/:id/revert` | author or host | reverting a purchase refunds and removes the item (refused if already used); reverting a cutoff row deletes that use |
 | GET | `/item-log?episodeId=&teamId=` | member | item gains and uses (coin mode) |
-| POST | `/items/use` | host / follow of the team | `{ episodeId, teamId, itemName, legId? }` — one item per call, no money change |
+| POST | `/items/use` | host / follow of the team | `{ episodeId, teamId, itemName, legId?, targetTeamId? }` — one item per call, no money change; `targetTeamId` (another team of the event) is required for items marked `needs_target`, and the item log returns it with `target_name` |
 | POST | `/item-log/:id/revert` | author or host | only `use` rows; purchases are reverted through the ledger |
 
 ## Announcements

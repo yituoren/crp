@@ -47,7 +47,7 @@ export interface Progress {
 export interface Penalty { id: number; episode_id: number; team_id: number; team_name: string; minutes: number; reason: string; applied_at: string; applied_by: number | null; applied_by_name: string | null; reverted: number; reverts_id: number | null; leg_id: number | null; leg_name: string | null; kind: 'shop' | 'other'; item_id: number | null; item_name: string | null }
 export interface Cutoff { id: number; name: string; start_min: number; interval_min: number; cost: number }
 export interface CutoffUse { id: number; episode_id: number; leg_id: number; team_id: number; cutoff_id: number; cutoff_name: string; used_at: string; used_by: number | null; used_by_name: string; ledger_id: number | null }
-export interface ShopItem { id: number; name: string; price: number; sort: number }
+export interface ShopItem { id: number; name: string; price: number; sort: number; needs_target: number }
 /** One item a leg's shop sells: quantity null = unlimited; remaining = quantity minus purchases on this leg */
 export interface LegShopItem { id: number; item_id: number; name: string; price: number; quantity: number | null; sold: number; remaining: number | null }
 /** "已售 n · 剩 m" / "已售 n · 售罄" / "已售 n · 不限" */
@@ -57,5 +57,5 @@ export interface PitstopRow {
   penalty_minutes: number; final_time: string | null; rank: number | null; eliminated: boolean; note: string;
 }
 export interface LedgerEntry { id: number; episode_id: number | null; episode_code: string | null; team_id: number; team_name: string; team_code: string; delta: number; balance_after: number; reason: string; operator_id: number | null; operator_name: string; created_at: string; reverted: number; reverts_id: number | null; leg_id: number | null; leg_name: string | null; kind?: 'shop' | 'cutoff' | 'other' | 'use'; item_name?: string | null }
-export interface ItemLogEntry { id: number; episode_id: number | null; team_id: number; team_name: string; leg_id: number | null; leg_name: string | null; item_name: string; delta: number; kind: 'buy' | 'use'; ledger_id: number | null; operator_id: number | null; operator_name: string; created_at: string; reverted: number; reverts_id: number | null }
+export interface ItemLogEntry { id: number; episode_id: number | null; team_id: number; team_name: string; leg_id: number | null; leg_name: string | null; item_name: string; delta: number; kind: 'buy' | 'use'; ledger_id: number | null; operator_id: number | null; operator_name: string; created_at: string; reverted: number; reverts_id: number | null; target_team_id: number | null; target_name: string | null }
 export interface Announcement { id: number; content: string; level: 'info' | 'warning' | 'urgent'; created_by: string; created_at: string; pinned_at: string | null; audience: string; author_id: number | null }

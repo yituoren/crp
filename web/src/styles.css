@@ -311,7 +311,9 @@ select.input-sm { padding-right: 26px; background-position: right 8px center; }
 .field-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .settings-split { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr); gap: 24px; align-items: start; }
 .shop-editor { background: var(--surface-2); border-radius: 12px; padding: 14px 16px; }
-.shop-row { display: grid; grid-template-columns: minmax(0, 1fr) 120px 32px; gap: 8px; align-items: center; margin-bottom: 8px; }
+.shop-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; align-items: center; margin-bottom: 14px; }
+.shop-target { display: flex; align-items: center; gap: 4px; font-size: 13px; white-space: nowrap; cursor: pointer; color: var(--gray-700); }
+.shop-target input { margin: 0; }
 .settings-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-200); }
 @media (max-width: 900px) { .settings-grid { grid-template-columns: 1fr; } .settings-split { grid-template-columns: 1fr; } }
 @media (max-width: 520px) { .field-2 { grid-template-columns: 1fr; } }

@@ -339,6 +339,8 @@ ensureColumn('episodes', 'event_id', 'INTEGER NOT NULL DEFAULT 1');
 ensureColumn('teams', 'event_id', 'INTEGER NOT NULL DEFAULT 1');
 ensureColumn('announcements', 'event_id', 'INTEGER NOT NULL DEFAULT 1');
 ensureColumn('announcements', 'author_id', 'INTEGER'); // poster's account (null = system or legacy)
+ensureColumn('shop_items', 'needs_target', 'INTEGER NOT NULL DEFAULT 0'); // using it asks for a target team
+ensureColumn('item_log', 'target_team_id', 'INTEGER');              // target team of a use
 ensureColumn('audit_logs', 'event_id', 'INTEGER');
 ensureColumn('events', 'owner_id', 'INTEGER');
 ensureColumn('event_members', 'role', "TEXT NOT NULL DEFAULT 'crew'");

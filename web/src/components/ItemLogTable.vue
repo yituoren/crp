@@ -28,7 +28,7 @@ async function revert(l: ItemLogEntry) {
   <div v-if="!rows.length" class="empty-rows">暂无记录</div>
   <div v-else class="scroll-table">
     <table v-mobile-table class="table table-dense">
-      <thead><tr><th>时间</th><th v-if="!teamId">队伍</th><th>环节</th><th>道具</th><th class="c">类型</th><th class="c">变动</th><th>操作人</th><th class="c">其他</th></tr></thead>
+      <thead><tr><th>时间</th><th v-if="!teamId">队伍</th><th>环节</th><th>道具</th><th class="c">类型</th><th>对象</th><th>操作人</th><th class="c">其他</th></tr></thead>
       <tbody>
         <tr v-for="l in rows" :key="l.id" :class="{ 'row-reverted': l.reverted }">
           <td>{{ fmtDateTime(l.created_at) }}</td>
@@ -36,11 +36,11 @@ async function revert(l: ItemLogEntry) {
           <td><template v-if="l.leg_id && race.legById.get(l.leg_id)"><LegTag :type="race.legById.get(l.leg_id)!.type" /> {{ legName(race.legById.get(l.leg_id)!) }}</template><template v-else>{{ l.leg_name || '其他' }}</template></td>
           <td>{{ l.item_name }}</td>
           <td class="c">{{ kindText(l) }}</td>
-          <td class="c" :class="l.delta > 0 ? 'log-positive' : 'log-negative'">{{ l.delta > 0 ? `+${l.delta}` : l.delta }}</td>
+          <td>{{ l.target_name ?? '' }}</td>
           <td>{{ l.operator_name }}</td>
           <td class="c">
             <span v-if="l.reverted" class="revert-note">{{ revertedBy(l) }}撤销</span>
-            <span v-else-if="l.kind === 'buy'" class="text-xs text-gray">经费流水撤销</span>
+            <span v-else-if="l.kind === 'buy'" class="text-xs text-gray">在经费流水处撤销</span>
             <button v-else-if="race.canRevert(l.operator_id, l.team_id)" class="btn btn-text btn-sm" @click="revert(l)"><Icon name="undo" size="16" />撤销</button>
           </td>
         </tr>

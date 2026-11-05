@@ -141,7 +141,7 @@ eventInfoRoutes.put('/info', hostOnly, async (c) => {
 
 // ---------- Shop (coin mode): items and prices are maintained by hosts in the event settings ----------
 export function listShopItems(eventId: number) {
-  return all<{ id: number; name: string; price: number; sort: number }>('SELECT id, name, price, sort FROM shop_items WHERE event_id = ? ORDER BY sort, id', eventId).map((i) => ({ ...i, price: fromCents(i.price) }));
+  return all<{ id: number; name: string; price: number; sort: number; needs_target: number }>('SELECT id, name, price, sort, needs_target FROM shop_items WHERE event_id = ? ORDER BY sort, id', eventId).map((i) => ({ ...i, price: fromCents(i.price) }));
 }
 eventInfoRoutes.get('/shop/items', (c) => c.json({ items: listShopItems(c.get('event').id) }));
 /** Save the shop items as a whole: rows with an id are updated, others inserted, missing ones deleted (ledger rows keep a name snapshot, so history survives) */
@@ -149,17 +149,17 @@ eventInfoRoutes.put('/shop/items', hostOnly, async (c) => {
   const ev = c.get('event');
   const b = await body(c);
   if (!Array.isArray(b.items)) throw bad('items 必须是数组');
-  const items = b.items.map((it: any, i: number) => ({ id: int(it.id, 0) || 0, name: str(it.name, 50), price: money(it.price, '价格'), sort: i }));
+  const items = b.items.map((it: any, i: number) => ({ id: int(it.id, 0) || 0, name: str(it.name, 50), price: money(it.price, '价格'), sort: i, needsTarget: it.needsTarget ? 1 : 0 }));
   for (const it of items) { if (!it.name) throw bad('商品名称不能为空'); if (it.price <= 0) throw bad(`「${it.name}」的价格必须大于 0`); }
   const before = listShopItems(ev.id);
   tx(() => {
     const keep = new Set<number>();
     for (const it of items) {
       if (it.id && get('SELECT 1 FROM shop_items WHERE id = ? AND event_id = ?', it.id, ev.id)) {
-        run('UPDATE shop_items SET name = ?, price = ?, sort = ? WHERE id = ?', it.name, it.price, it.sort, it.id);
+        run('UPDATE shop_items SET name = ?, price = ?, sort = ?, needs_target = ? WHERE id = ?', it.name, it.price, it.sort, it.needsTarget, it.id);
         keep.add(it.id);
       } else {
-        const r = run('INSERT INTO shop_items(event_id, name, price, sort, created_at) VALUES (?,?,?,?,?)', ev.id, it.name, it.price, it.sort, now());
+        const r = run('INSERT INTO shop_items(event_id, name, price, sort, needs_target, created_at) VALUES (?,?,?,?,?,?)', ev.id, it.name, it.price, it.sort, it.needsTarget, now());
         keep.add(Number(r.lastInsertRowid));
       }
     }

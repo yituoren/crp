@@ -17,9 +17,9 @@ const tab = ref<'settings' | 'members' | 'audit'>('settings');
 // Event settings
 const settings = reactive({ name: '', inviteCode: '', teamSize: 2, currencyMode: 'yuan', rbGap: 2 });
 // Shop items (coin mode): edited as a whole and saved at once
-const shop = reactive<{ items: { id: number; name: string; price: string }[] }>({ items: [] });
-function fillShop() { shop.items = race.shopItems.map((i) => ({ id: i.id, name: i.name, price: String(i.price) })); }
-function addItem() { shop.items.push({ id: 0, name: '', price: '' }); }
+const shop = reactive<{ items: { id: number; name: string; price: string; needsTarget: boolean }[] }>({ items: [] });
+function fillShop() { shop.items = race.shopItems.map((i) => ({ id: i.id, name: i.name, price: String(i.price), needsTarget: !!i.needs_target })); }
+function addItem() { shop.items.push({ id: 0, name: '', price: '', needsTarget: false }); }
 function removeItem(i: number) { shop.items.splice(i, 1); }
 function fill() {
   const e = auth.event;
@@ -32,7 +32,7 @@ async function saveAll() {
     await api('/info', { method: 'PUT', body: settings });
     await auth.loadEvent(auth.event.hash);
     if (settings.currencyMode === 'coin') {
-      await api('/shop/items', { method: 'PUT', body: { items: shop.items.map((i) => ({ id: i.id || undefined, name: i.name.trim(), price: i.price })) } });
+      await api('/shop/items', { method: 'PUT', body: { items: shop.items.map((i) => ({ id: i.id || undefined, name: i.name.trim(), price: i.price, needsTarget: i.needsTarget })) } });
       await race.loadShopItems();
     }
     fill();
@@ -133,9 +133,11 @@ onMounted(() => { fill(); if (auth.isAdmin) loadAudit(); });
           <div v-if="settings.currencyMode === 'coin'" class="shop-editor">
             <div class="flex-between mb-2"><span class="settings-subtitle">商店商品</span><button class="btn btn-text btn-sm" @click="addItem"><Icon name="add" size="16" />添加商品</button></div>
             <div v-for="(it, i) in shop.items" :key="i" class="shop-row">
+              <!-- two rows per item: name + delete, then price + "needs a target" -->
               <input v-model="it.name" placeholder="商品名称" />
-              <input v-model="it.price" type="number" min="1" step="1" inputmode="numeric" placeholder="价格（币）" />
               <button class="icon-btn icon-btn-sm icon-btn-danger" title="删除" @click="removeItem(i)"><Icon name="delete" size="18" /></button>
+              <input v-model="it.price" type="number" min="1" step="1" inputmode="numeric" placeholder="价格（币）" />
+              <label class="shop-target" title="使用时要选一支对象队伍（如让路、决斗、盗窃）"><input v-model="it.needsTarget" type="checkbox" />需选对象</label>
             </div>
             <div v-if="!shop.items.length" class="text-sm text-gray">还没有商品，点「添加商品」开始。</div>
           </div>

@@ -4,6 +4,7 @@ import { api } from '@/api';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import ItemLogTable from './ItemLogTable.vue';
+import Modal from './Modal.vue';
 
 /**
  * Bag card: lists a team's items separately; select several and click "use" to write one use record per item,
@@ -23,12 +24,28 @@ function toggle(name: string) {
   if (i >= 0) selected.value.splice(i, 1); else selected.value.push(name);
 }
 const busy = ref(false);
+// Items marked "needs a target" in the event settings ask for a target team before use
+const needsTarget = (name: string) => !!race.shopItems.find((i) => i.name === name)?.needs_target;
+const targetNames = computed(() => selected.value.filter(needsTarget));
+const targetOptions = computed(() => race.teams.filter((t) => t.status === 'alive' && t.id !== props.teamId).map((t) => ({ value: String(t.id), label: t.label })));
+const picking = ref(false);
+const targets = ref<Record<string, string>>({});
 async function useSelected() {
   const names = [...selected.value]; if (!names.length || !team.value) return;
+  if (targetNames.value.length) { targets.value = {}; picking.value = true; return; }
   if (!(await ui.confirm('使用物品', `「${team.value.label}」使用：${names.join('、')}。每件物品记一条使用记录，用掉的从背包里消失。`))) return;
+  await submit(names);
+}
+async function confirmTargets() {
+  const missing = targetNames.value.find((n) => !targets.value[n]);
+  if (missing) { ui.toast(`请选择「${missing}」的对象`, 'error'); return; }
+  picking.value = false;
+  await submit([...selected.value]);
+}
+async function submit(names: string[]) {
   busy.value = true;
   try {
-    for (const name of names) await api('/items/use', { method: 'POST', body: { episodeId: race.currentEpisode?.id ?? null, teamId: props.teamId, itemName: name } });
+    for (const name of names) await api('/items/use', { method: 'POST', body: { episodeId: race.currentEpisode?.id ?? null, teamId: props.teamId, itemName: name, targetTeamId: targets.value[name] ? Number(targets.value[name]) : undefined } });
     selected.value = [];
     await Promise.all([race.loadTeams(), race.loadLedger()]);
     ui.toast(`已使用 ${names.length} 件物品`);
@@ -53,6 +70,14 @@ async function useSelected() {
         <button class="btn btn-tonal btn-sm" :disabled="!selected.length || busy" @click="useSelected">使用</button>
       </div>
     </template>
+    <Modal v-if="picking" title="使用物品" small @close="picking = false">
+      <div class="text-sm text-gray mb-2">「{{ team?.label }}」使用：{{ selected.join('、') }}。每件物品记一条使用记录，用掉的从背包里消失。</div>
+      <div v-for="n in targetNames" :key="n" class="form-group"><label>{{ n }} 的对象</label><MSelect v-model="targets[n]" outlined placeholder="选择队伍" :options="targetOptions" /></div>
+      <div class="modal-actions">
+        <button class="btn btn-text" @click="picking = false">取消</button>
+        <button class="btn" :disabled="busy" @click="confirmTargets">使用</button>
+      </div>
+    </Modal>
     <!-- Item log: gains and uses, separate from the money ledger -->
     <div class="bag-log"><ItemLogTable :team-id="teamId" :limit="plain ? 10 : 0" /></div>
   </div>
