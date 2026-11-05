@@ -37,6 +37,12 @@ export function startEpisodeNow(ep: EpisodeRow, user: AuthUser, t: string): stri
   return issued;
 }
 
+/** The one start rule for every episode (manual, scheduled or continuous): it may start once the previous episode has started; episodes may overlap */
+export function startBlockedReason(ep: EpisodeRow): string | null {
+  const prev = previousEpisode(ep);
+  return prev && prev.status === 'pending' ? `${prev.code} 还没有开始，不能开始 ${ep.code}` : null;
+}
+
 /** The previous episode in order */
 export function previousEpisode(ep: EpisodeRow) {
   return get<EpisodeRow>('SELECT * FROM episodes WHERE event_id = ? AND (sort < ? OR (sort = ? AND id < ?)) ORDER BY sort DESC, id DESC LIMIT 1', ep.event_id, ep.sort, ep.sort, ep.id) ?? null;

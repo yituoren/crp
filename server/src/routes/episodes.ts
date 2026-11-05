@@ -4,8 +4,7 @@ import path from 'node:path';
 import { all, get, run, tx, now, UPLOAD_DIR, fromCents } from '../db.js';
 import { hostOnly, canUploadToLeg, isAdminRole, isHostRole, parseLegIds, type Env, type EventRow } from '../auth.js';
 import { audit, body, str, int, intParam, notify, bad, notFound, forbidden, money, isoOrNull } from '../util.js';
-import { startEpisodeNow, departurePlan, isContinuous, previousEpisode, type EpisodeRow } from '../episodeStart.js';
-import { continuousStartBlocked } from '../scheduler.js';
+import { startEpisodeNow, departurePlan, previousEpisode, startBlockedReason, type EpisodeRow } from '../episodeStart.js';
 import { teamLabelMap } from './teams.js';
 import { recomputeEliminations, lockFromAfterLastRecord } from '../elimination.js';
 
@@ -176,19 +175,9 @@ episodeRoutes.post('/episodes/:id/start', hostOnly, (c) => {
   const id = intParam(c, 'id');
   const ep = episodeInEvent(c, id);
   if (ep.status === 'running') throw bad('该赛段已在进行中');
-  if (isContinuous(ep as EpisodeRow)) {
-    // continuous: may start while the previous episode still runs (testing; normally it starts by itself when the first team is due)
-    const prev = previousEpisode(ep as EpisodeRow);
-    if (!prev || prev.status === 'pending') throw bad('上一赛段还没有开始');
-    const blocked = continuousStartBlocked(ep as EpisodeRow, prev);
-    if (blocked) throw bad(blocked);
-    const issued = startEpisodeNow(ep as EpisodeRow, c.get('user'), now());
-    return c.json({ ok: true, issuedBudgetTo: issued, alreadyStarted: !!ep.started_at });
-  }
-  const running = get("SELECT code FROM episodes WHERE status = 'running' AND id != ? AND event_id = ?", id, ep.event_id);
-  if (running) throw bad(`${running.code} 仍在进行中，请先结束它再开始新的赛段`);
-  const unfinished = all("SELECT code FROM episodes WHERE event_id = ? AND (sort < ? OR (sort = ? AND id < ?)) AND status != 'finished' ORDER BY sort, id", ep.event_id, ep.sort, ep.sort, id);
-  if (unfinished.length) throw bad(`前面的赛段还没有结束：${unfinished.map((e) => e.code).join('、')}`);
+  // the previous episode only has to have started; it may still be running
+  const blocked = startBlockedReason(ep as EpisodeRow);
+  if (blocked) throw bad(blocked);
   const issued = startEpisodeNow(ep as EpisodeRow, c.get('user'), now());
   return c.json({ ok: true, issuedBudgetTo: issued, alreadyStarted: !!ep.started_at });
 });
