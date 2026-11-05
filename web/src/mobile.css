@@ -107,10 +107,11 @@
   .table.m-cards tr { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface-3); }
   .table.m-cards tr:hover { background: var(--surface-3); }
   .table.m-cards td { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 26px; padding: 0; border: none; white-space: normal; font-size: 13px; text-align: left; }
-  .table.m-cards td::before { content: attr(data-label); color: var(--gray-500); font-size: 12px; flex: none; }
+  .table.m-cards td::before { content: attr(data-label); color: var(--gray-500); font-size: 12px; flex: none; margin-right: auto; } /* values (e.g. leg tag + name) stay together on the right */
   .table.m-cards td[data-label="其他"], .table.m-cards td[data-label="操作"] { grid-column: 1 / -1; justify-content: flex-end; }
   .table.m-cards td[data-label="其他"]::before, .table.m-cards td[data-label="操作"]::before { display: none; }
-  .table.m-cards td[data-label="原因"], .table.m-cards td[data-label="说明"], .table.m-cards td[data-label="变更前"], .table.m-cards td[data-label="变更后"], .table.m-cards td[data-label="对象"] { grid-column: 1 / -1; }
+  .table.m-cards td[data-label="原因"], .table.m-cards td[data-label="说明"], .table.m-cards td[data-label="变更前"], .table.m-cards td[data-label="变更后"], .table.m-cards td[data-label="对象"], .table.m-cards td[data-label="环节"] { grid-column: 1 / -1; }
+  .table.m-cards td.m-empty { display: none; } /* optional fields with nothing to show */
   .table.m-cards td.c { justify-content: space-between; }
   .table.m-cards .row-reverted td:not(:last-child) { text-decoration: none; }
   .table.m-cards .row-reverted { opacity: .55; }

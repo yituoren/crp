@@ -61,7 +61,8 @@ watch(() => race.announcements, () => race.markAnnouncementsRead());
           <div class="pre">{{ a.content }}</div>
           <div class="flex-between mt-1">
             <span class="flex" style="gap: 6px"><span v-if="a.pinned_at" class="badge badge-warning">置顶</span><span v-if="audienceText(a.audience)" class="badge badge-info">{{ audienceText(a.audience) }}</span><span class="text-xs text-gray">{{ a.created_by }} · {{ fmtDateMinute(a.created_at) }}</span></span>
-            <span v-if="auth.isHost || a.author_id === auth.user?.id" class="flex" style="gap: 6px">
+            <!-- actions stay on the right, also when they wrap below the meta line on a phone -->
+            <span v-if="auth.isHost || a.author_id === auth.user?.id" class="flex" style="gap: 6px; margin-left: auto">
               <button v-if="auth.isHost" class="btn btn-text btn-sm" @click="pin(a.id, !a.pinned_at)"><Icon name="push_pin" size="16" />{{ a.pinned_at ? '取消置顶' : '置顶' }}</button>
               <button class="btn btn-text btn-text-danger btn-sm" @click="remove(a.id)"><Icon name="delete" size="16" />删除</button>
             </span>
