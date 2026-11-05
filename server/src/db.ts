@@ -180,7 +180,7 @@ CREATE TABLE IF NOT EXISTS leg_tips (
 -- Twist card effects (one row per effect on one team; reflections are new rows pointing at the reflected one).
 -- status: pending (fired, target not known yet; or reflected, waiting for its target's next arrival) | queued (behind another effect on
 -- the same team) | hit (in force) | shielded | reflected | void (no valid target) | cancelled (use reverted)
--- mode: delay_start (the leg's start moves wait_min later)
+-- mode: delay_start (the leg's start moves wait_min later) | uturn (sent back to the detour: leg_id is the DT leg) | duel
 CREATE TABLE IF NOT EXISTS twist_effects (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   episode_id INTEGER NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
@@ -377,6 +377,9 @@ ensureColumn('item_log', 'tip_id', 'INTEGER');                      // leg tip c
 ensureColumn('item_log', 'target_label', 'TEXT');                   // snapshot of the chosen tip id
 ensureColumn('item_log', 'effect_id', 'INTEGER');                   // shield / reflect use answering a twist effect
 ensureColumn('announcements', 'effect_id', 'INTEGER');              // system notice about a twist effect (its pop-up asks for shield / reflect)
+ensureColumn('twist_effects', 'kind', "TEXT NOT NULL DEFAULT 'missile'"); // missile | uturn | yield | yield_next | duel
+ensureColumn('twist_effects', 'point_leg_id', 'INTEGER');          // the task point the card was played at (point cards)
+ensureColumn('twist_effects', 'released', 'INTEGER NOT NULL DEFAULT 0'); // the wait ended and the point was settled again
 ensureColumn('audit_logs', 'event_id', 'INTEGER');
 ensureColumn('events', 'owner_id', 'INTEGER');
 ensureColumn('event_members', 'role', "TEXT NOT NULL DEFAULT 'crew'");
@@ -454,7 +457,14 @@ export function get<T = Row>(sql: string, ...params: Param[]): T | undefined {
 export function run(sql: string, ...params: Param[]) {
   return db.prepare(sql).run(...params);
 }
+/** Run in a transaction; nested calls join the outer one */
+let txDepth = 0;
 export function tx<T>(fn: () => T): T {
+  if (txDepth > 0) return fn();
+  txDepth++;
+  try { return txOuter(fn); } finally { txDepth--; }
+}
+function txOuter<T>(fn: () => T): T {
   db.exec('BEGIN');
   try {
     const r = fn();

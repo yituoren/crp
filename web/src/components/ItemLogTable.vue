@@ -39,7 +39,7 @@ async function revert(l: ItemLogEntry) {
           <td>
             <!-- a revealed 锦囊 tip can be reopened by hosts and the team's follow -->
             <button v-if="l.tip_text !== null && l.target_label" class="btn btn-text btn-sm" @click="ui.alert(`锦囊提示 · ${l.target_label}`, l.tip_text || '（未填写提示）')">{{ l.target_label }}</button>
-            <template v-else>{{ l.target_name ?? l.target_label ?? '' }}</template>
+            <template v-else>{{ [l.target_name, l.target_label].filter(Boolean).join(' · ') }}</template>
           </td>
           <td>{{ l.operator_name }}</td>
           <td class="c">

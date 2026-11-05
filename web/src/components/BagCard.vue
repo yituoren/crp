@@ -5,7 +5,7 @@ import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import ItemLogTable from './ItemLogTable.vue';
 import Modal from './Modal.vue';
-import { isTipItem, legName } from '@/types';
+import { isTipItem, legName, twistKind, isDirectedTwist } from '@/types';
 
 /**
  * Bag card: lists a team's items separately; select several and click "use" to write one use record per item,
@@ -25,14 +25,21 @@ function toggle(name: string) {
   if (i >= 0) selected.value.splice(i, 1); else selected.value.push(name);
 }
 const busy = ref(false);
-// Items marked "needs a target" in the event settings ask for a target team before use
-const needsTarget = (name: string) => !isTipItem(name) && !!race.shopItems.find((i) => i.name === name)?.needs_target;
+// Directed twist cards always ask for a target team, other twist cards with logic never do; other items follow the "needs a target" setting
+const needsTarget = (name: string) => !isTipItem(name) && (isDirectedTwist(name) || (!twistKind(name) && !!race.shopItems.find((i) => i.name === name)?.needs_target));
 const targetNames = computed(() => selected.value.filter(needsTarget));
 // 锦囊 cards pick one of the tips of the leg the team is on right now (started, not finished)
 const tipNames = computed(() => selected.value.filter(isTipItem));
 const currentLeg = computed(() => [...(race.currentEpisode?.legs ?? [])].reverse().find((l) => { const p = race.progressOf(props.teamId, l.id); return !!p?.arrived_at && !p.completed_at; }) ?? null);
 const tipOptions = computed(() => (currentLeg.value?.tips ?? []).map((t) => ({ value: String(t.id), label: t.code })));
-const targetOptions = computed(() => race.teams.filter((t) => t.status === 'alive' && t.id !== props.teamId).map((t) => ({ value: String(t.id), label: t.label })));
+/** A twist card cannot pick a team this kind of card has already been played on in this episode */
+function taken(name: string, teamId: number) {
+  if (!isDirectedTwist(name)) return false;
+  const kind = twistKind(name);
+  if (kind) return race.effects.some((e) => e.kind === kind && e.target_team_id === teamId && ['pending', 'queued', 'hit'].includes(e.status));
+  return race.itemLog.some((l) => l.item_name === name && l.kind === 'use' && !l.reverted && !l.reverts_id && l.target_team_id === teamId && l.episode_id === race.currentEpisode?.id);
+}
+const targetOptionsFor = (name: string) => race.teams.filter((t) => t.status === 'alive' && t.id !== props.teamId && !taken(name, t.id)).map((t) => ({ value: String(t.id), label: t.label }));
 const picking = ref(false);
 const targets = ref<Record<string, string>>({});
 async function useSelected() {
@@ -87,7 +94,7 @@ async function submit(names: string[]) {
     </template>
     <Modal v-if="picking" title="使用物品" small @close="picking = false">
       <div class="text-sm text-gray mb-2">「{{ team?.label }}」使用：{{ selected.join('、') }}。每件物品记一条使用记录，用掉的从背包里消失。</div>
-      <div v-for="n in targetNames" :key="n" class="form-group"><label>{{ n }} 的对象</label><MSelect v-model="targets[n]" outlined placeholder="选择队伍" :options="targetOptions" /></div>
+      <div v-for="n in targetNames" :key="n" class="form-group"><label>{{ n }} 的对象</label><MSelect v-model="targets[n]" outlined placeholder="选择队伍" :options="targetOptionsFor(n)" /></div>
       <div v-for="n in tipNames" :key="n" class="form-group"><label>{{ n }}：选择「{{ currentLeg ? legName(currentLeg) : '' }}」的锦囊</label><MSelect v-model="targets[n]" outlined placeholder="选择 id" :options="tipOptions" /></div>
       <div class="modal-actions">
         <button class="btn btn-text" @click="picking = false">取消</button>

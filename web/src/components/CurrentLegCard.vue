@@ -37,7 +37,8 @@ const showCutoff = computed(() => (race.currentEpisode?.legs ?? []).some((l) => 
 // Waiting because of a twist card (missile): when it ends
 const waitUntil = computed(() => (currentLeg.value ? race.waitingUntil(props.teamId, currentLeg.value.id) : null));
 const waitEffect = computed(() => (currentLeg.value ? race.effectOn(props.teamId, currentLeg.value.id) : null));
-const nothing = computed(() => !showTransport.value && !showCutoff.value && !waitUntil.value);
+const uturn = computed(() => (currentLeg.value ? race.uturnOn(props.teamId, currentLeg.value.id) : null));
+const nothing = computed(() => !showTransport.value && !showCutoff.value && !waitUntil.value && !(uturn.value && !race.progressOf(props.teamId, currentLeg.value!.id)?.completed_at));
 
 // ---- Transport ----
 const TRANSPORT = ['单车', '打车', '地铁', '公交'] as const;
@@ -90,6 +91,7 @@ async function confirmTransport() {
     </div>
     <div v-if="nothing" class="empty-rows">暂无操作</div>
     <template v-else>
+      <div v-if="uturn" class="alert alert-warning">被{{ uturn.source_name }}的「{{ uturn.item_name }}」作用：完成绕道的另一个分支（{{ uturn.note }}）后，在本环节重新记录完成</div>
       <div v-if="waitUntil" class="alert alert-warning">被{{ waitEffect?.source_name }}的「{{ waitEffect?.item_name }}」作用，原地等待到 {{ fmtTime(waitUntil) }}，之前不能记录</div>
       <!-- Transport -->
       <div v-if="showTransport" class="cl-section">

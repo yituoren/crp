@@ -4,7 +4,7 @@ import { canAdjustCurrency, getAssignment, type Env, isAdminRole, isHostRole } f
 import { audit, body, str, int, notify, bad, forbidden, notFound, money, currencyMode, editLockReason } from '../util.js';
 import { teamLabelMap, inventoryCount } from './teams.js';
 import { shopStock } from './episodes.js';
-import { checkUse, afterUse, beforeRevertUse, isMissile } from '../twist.js';
+import { checkUse, afterUse, beforeRevertUse, kindOf, isDirected } from '../twist.js';
 
 export const ledgerRoutes = new Hono<Env>();
 
@@ -208,9 +208,9 @@ ledgerRoutes.post('/items/use', async (c) => {
   if (epRow?.status === 'pending' && !isAdminRole(user.role)) throw bad(`${epRow.code} 尚未开始`);
   { const r = editLockReason(user, epRow, team as { status: string }); if (r) throw forbidden(r); }
   if (inventoryCount(teamId, itemName) < 1) throw bad(`背包里没有「${itemName}」`);
-  checkUse(episodeId, teamId, itemName);
-  // a missile finds its target by itself, whatever the item setting says
-  const needsTarget = !isMissile(itemName) && !!get<{ needs_target: number }>('SELECT needs_target FROM shop_items WHERE event_id = ? AND name = ?', c.get('event').id, itemName)?.needs_target;
+  // twist cards with logic decide by themselves: directed ones always need a target, missile / 让行 never take one
+  const twist = kindOf(itemName);
+  const needsTarget = isDirected(itemName) || !twist && !!get<{ needs_target: number }>('SELECT needs_target FROM shop_items WHERE event_id = ? AND name = ?', c.get('event').id, itemName)?.needs_target;
   const targetId = int(b.targetTeamId, 0) || null;
   if (needsTarget && !targetId) throw bad(`使用「${itemName}」需要选择对象队伍`);
   if (targetId) {
@@ -222,6 +222,7 @@ ledgerRoutes.post('/items/use', async (c) => {
     `SELECT p.leg_id FROM progress p JOIN legs l ON l.id = p.leg_id WHERE p.episode_id = ? AND p.team_id = ? AND p.arrived_at IS NOT NULL AND p.completed_at IS NULL ORDER BY l.sort DESC, l.id DESC LIMIT 1`, episodeId, teamId,
   )?.leg_id ?? null : null;
   if (!legId) legId = currentLeg;
+  checkUse(episodeId, teamId, itemName, needsTarget ? targetId : null, currentLeg);
   // 锦囊: the tip must be one of the leg the team is on right now
   let tip: { id: number; code: string; tip: string } | undefined;
   if (isTipItem(itemName)) {
@@ -230,10 +231,11 @@ ledgerRoutes.post('/items/use', async (c) => {
     if (!tip) throw bad('请选择本队当前环节的一个锦囊 id');
     legId = currentLeg;
   }
+  const target = needsTarget || !twist ? targetId : null;
   const r = run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, target_team_id, tip_id, target_label) VALUES (?,?,?,?,-1,?,?,?,?,?,?,?)',
-    episodeId, teamId, legId, itemName, 'use', user.id, user.displayName, now(), targetId, tip?.id ?? null, tip?.code ?? null);
+    episodeId, teamId, legId, itemName, 'use', user.id, user.displayName, now(), target, tip?.id ?? null, tip?.code ?? null);
   audit(user, 'item_use', 'team', teamId, undefined, { item: itemName, legId, targetTeamId: targetId, tip: tip?.code });
-  afterUse(episodeId, teamId, itemName, Number(r.lastInsertRowid), targetId);
+  afterUse(episodeId, teamId, itemName, Number(r.lastInsertRowid), target, currentLeg);
   notify('ledger', episodeId); notify('teams');
   return c.json({ id: Number(r.lastInsertRowid), tip: tip ? { code: tip.code, tip: tip.tip } : null });
 });

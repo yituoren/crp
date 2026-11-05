@@ -7,7 +7,7 @@ import { teamLabelMap } from './teams.js';
 import { addLedgerEntry, revertLedgerEntry } from './ledger.js';
 import { episodeInEvent } from './episodes.js';
 import { prevEndTime, emptyProgress, chainAfterComplete, upsertProgress, chainedStart } from '../progressCore.js';
-import { onArrival, listEffects, answerOptions, answerEffect, assertCanAnswer, type Effect } from '../twist.js';
+import { onArrival, onLegCompleted, listEffects, answerOptions, answerEffect, assertCanAnswer, type Effect } from '../twist.js';
 
 export const progressRoutes = new Hono<Env>();
 
@@ -259,8 +259,7 @@ progressRoutes.post('/progress', async (c) => {
     tx(() => {
       upsertProgress(episodeId, teamId, legId, next, user.id);
       if (action === 'complete') chainAfterComplete(episodeId, teamId, leg.sort, next.completed_at, user.id, leg.type);
-      // a Route Info "arrival" may be the one a pending missile waits for
-      if (action === 'complete' && leg.type === 'RI' && next.completed_at) onArrival(episodeId, teamId, legId, leg.sort, next.completed_at);
+      if (action === 'complete' && next.completed_at) twistAfterComplete(episodeId, teamId, leg, next.completed_at);
       if (action === 'complete' && leg.type === 'Union' && next.target_team_id) {
         // the partner team is completed at the same time; both continue separately afterwards
         const mate = get('SELECT * FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, next.target_team_id, legId);
@@ -268,6 +267,7 @@ progressRoutes.post('/progress', async (c) => {
           const mateNext = { ...mate, arrived_at: mate.arrived_at ?? prevEndTime(episodeId, mate.team_id, leg.sort), completed_at: next.completed_at };
           upsertProgress(episodeId, mate.team_id, legId, mateNext, user.id);
           chainAfterComplete(episodeId, mate.team_id, leg.sort, next.completed_at, user.id);
+          twistAfterComplete(episodeId, mate.team_id, leg, next.completed_at);
           audit(user, 'progress:complete', 'progress', `${episodeId}/${mate.team_id}/${legId}`, mate, mateNext);
         }
       }
@@ -281,6 +281,18 @@ progressRoutes.post('/progress', async (c) => {
   return c.json({ progress, already });
 });
 
+/**
+ * Twist cards after a completion: duels on this leg may settle; if the completion started a task point (the team arrived there),
+ * the cards waiting at that point are settled
+ */
+function twistAfterComplete(episodeId: number, teamId: number, leg: { id: number; sort: number; type: string }, endAt: string) {
+  onLegCompleted(episodeId, teamId, leg.id);
+  if (leg.type === 'SQ') return;
+  const nextLeg = get<{ id: number; type: string }>("SELECT id, type FROM legs WHERE episode_id = ? AND sort > ? AND type != 'SQ' ORDER BY sort, id LIMIT 1", episodeId, leg.sort);
+  if (!nextLeg || nextLeg.type === 'RI') return;
+  const np = get('SELECT arrived_at, completed_at FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, nextLeg.id);
+  if (np?.arrived_at && !np.completed_at) onArrival(episodeId, teamId, nextLeg.id, endAt);
+}
 /** End time of the previous completed leg; null when none (the first leg's start stays empty) */
 /** A side quest follows its main leg: parent = the leg before the side quest; branch = the leg after the main leg (if it is a side quest) */
 function parentLegOf(leg: { episode_id: number; sort: number; type: string }) {
@@ -350,6 +362,7 @@ progressRoutes.put('/progress/:episodeId/:teamId/:legId', async (c) => {
   tx(() => {
     upsertProgress(episodeId, teamId, legId, next, user.id);
     rechainAfterEdit(episodeId, teamId, legRow.sort, before?.completed_at ?? null, next.completed_at, user.id, legRow.type);
+    if (!before?.completed_at && next.completed_at) twistAfterComplete(episodeId, teamId, legRow, next.completed_at);
   });
   audit(user, 'progress:edit', 'progress', `${episodeId}/${teamId}/${legId}`, before, next);
   notify('progress', episodeId);

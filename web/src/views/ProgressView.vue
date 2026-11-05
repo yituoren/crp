@@ -35,9 +35,13 @@ function branchElapsed(teamId: number, legId: number, mainEndMs: number | null):
 }
 /** A twist effect (missile) in force on this leg: its start time shows in red */
 function hitTitle(teamId: number, legId: number) {
-  const e = race.effectOn(teamId, legId);
   // a reflected effect's source is the team that reflected it
-  return e ? `${e.item_name}${e.reflected_from_id ? '（被反弹）' : ''}：来自 ${e.source_name}，原地等待 ${e.wait_min} 分钟` : '';
+  return race.effectsOn(teamId, legId).map((e) => `${e.item_name}${e.reflected_from_id ? '（被反弹）' : ''}：来自 ${e.source_name}，原地等待 ${e.wait_min} 分钟`).join('\n');
+}
+/** A 回转 sent the team back to this detour: its new completion time shows in red */
+function uturnTitle(teamId: number, legId: number) {
+  const e = race.uturnOn(teamId, legId);
+  return e ? `${e.item_name}：来自 ${e.source_name}（${e.note}）` : '';
 }
 function cell(teamId: number, legId: number, single: boolean, isPs = false) {
   const p = race.progressOf(teamId, legId);
@@ -186,7 +190,7 @@ async function exportXlsx() {
       return [
         cellOf(c.start, 'time', c.cls, hit),
         ...(branchOf(l) ? [cellOf(b.start, 'time', b.cls), cellOf(b.end, 'time', b.cls), cellOf(b.dur, 'dur', b.cls)] : []),
-        cellOf(c.end, 'time', c.cls), cellOf(c.dur, 'dur', c.cls),
+        cellOf(c.end, 'time', c.cls, !!race.uturnOn(t.id, l.id)), cellOf(c.dur, 'dur', c.cls),
         ...tail,
       ];
     }),
@@ -245,7 +249,7 @@ async function exportXlsx() {
                   <td class="mx2-cell mx2-branch" :class="[branchCell(t.id, l.id).cls, kindCls(branchCell(t.id, l.id).end, 'time')]">{{ branchCell(t.id, l.id).end }}</td>
                   <td class="mx2-cell mx2-branch" :class="[branchCell(t.id, l.id).cls, kindCls(branchCell(t.id, l.id).dur, 'dur')]">{{ branchCell(t.id, l.id).dur }}</td>
                 </template>
-                <td class="mx2-cell" :class="[cell(t.id, l.id, false, l.type === 'PS').cls, kindCls(cell(t.id, l.id, false, l.type === 'PS').end, 'time')]">{{ cell(t.id, l.id, false, l.type === 'PS').end }}</td>
+                <td class="mx2-cell" :class="[cell(t.id, l.id, false, l.type === 'PS').cls, kindCls(cell(t.id, l.id, false, l.type === 'PS').end, 'time'), { 'mx2-hit': !!race.uturnOn(t.id, l.id) }]" :title="uturnTitle(t.id, l.id)">{{ cell(t.id, l.id, false, l.type === 'PS').end }}</td>
                 <td class="mx2-cell" :class="[cell(t.id, l.id, false, l.type === 'PS').cls, kindCls(cell(t.id, l.id, false, l.type === 'PS').dur, 'dur'), { 'mx2-last': !extraCol(l) }]">{{ cell(t.id, l.id, false, l.type === 'PS').dur }}</td>
               </template>
               <td v-for="(c, i) in extraCols(l)" :key="c" class="mx2-cell mx2-extra" :class="[kindCls(extraVal(t.id, l, i), extraKind(l, i)), { 'mx2-last': i === extraCols(l).length - 1 }]">{{ extraVal(t.id, l, i) }}</td>

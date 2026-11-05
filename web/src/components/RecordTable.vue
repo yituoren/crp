@@ -57,13 +57,13 @@ function detourOptions(): string[] {
           <td><strong>{{ team.label }}</strong> <TeamStatus v-if="team.status !== 'alive'" :status="team.status" /></td>
           <td>{{ locked ? '-' : race.waitingUntil(team.id, leg.id) ? '等待中' : stateOf(p) }}</td>
           <td v-if="withStart"><span class="record-time" :class="{ 'record-hit': !!race.effectOn(team.id, leg.id) }">{{ fmtTime(p?.arrived_at) }}</span></td>
-          <td><span class="record-time">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td>
+          <td><span class="record-time" :class="{ 'record-hit': !!race.uturnOn(team.id, leg.id) }">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td>
           <td v-if="showTarget" class="c">
             <MSelect v-if="inline(can, p)" sm style="width: 130px" :model-value="p?.target_team_id ?? ''" :options="[{ value: '', label: leg.type === 'Union' ? '未选择' : '未使用' }, ...race.teams.filter((x) => x.id !== team.id).map((t) => ({ value: t.id, label: t.label }))]" @update:model-value="rec.setValue('target', team.id, leg.id, String($event))" />
             <span v-else>{{ p?.target_team_id ? race.teamById.get(p.target_team_id)?.label : '-' }}</span>
           </td>
           <td v-if="leg.type === 'DT'" class="c">
-            <MSelect v-if="inline(can, p)" sm style="width: 120px" :model-value="p?.detour_choice ?? ''" :options="[{ value: '', label: '未选' }, ...detourOptions().map((o) => ({ value: o, label: o }))]" @update:model-value="rec.setValue('detour', team.id, leg.id, String($event))" />
+            <MSelect v-if="inline(can, p) && p?.detour_choice !== '回转'" sm style="width: 120px" :model-value="p?.detour_choice ?? ''" :options="[{ value: '', label: '未选' }, ...detourOptions().map((o) => ({ value: o, label: o }))]" @update:model-value="rec.setValue('detour', team.id, leg.id, String($event))" />
             <span v-else>{{ p?.detour_choice || '-' }}</span>
           </td>
           <td v-if="leg.type === 'RB'" class="c">

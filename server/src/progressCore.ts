@@ -15,11 +15,14 @@ export function prevEndTime(episodeId: number, teamId: number, sort: number): st
  */
 export function chainedStart(episodeId: number, teamId: number, legId: number, endAt: string | null, apply = true): string | null {
   if (!endAt) return null;
-  const ef = get<{ id: number; wait_min: number }>("SELECT id, wait_min FROM twist_effects WHERE episode_id = ? AND target_team_id = ? AND leg_id = ? AND status = 'hit' AND mode = 'delay_start'", episodeId, teamId, legId);
-  if (!ef) return endAt;
-  const start = new Date(new Date(endAt).getTime() + ef.wait_min * 60000).toISOString();
-  if (apply) run('UPDATE twist_effects SET wait_from = ?, wait_until = ? WHERE id = ?', endAt, start, ef.id);
-  return start;
+  // waits there run one after another (e.g. 让路, then 让行)
+  let t = endAt;
+  for (const ef of all<{ id: number; wait_min: number }>("SELECT id, wait_min FROM twist_effects WHERE episode_id = ? AND target_team_id = ? AND leg_id = ? AND status = 'hit' AND mode = 'delay_start' ORDER BY id", episodeId, teamId, legId)) {
+    const until = new Date(new Date(t).getTime() + ef.wait_min * 60000).toISOString();
+    if (apply) run('UPDATE twist_effects SET wait_from = ?, wait_until = ? WHERE id = ?', t, until, ef.id);
+    t = until;
+  }
+  return t;
 }
 export function emptyProgress() {
   return { arrived_at: null, completed_at: null, detour_choice: null, roadblock_by: null, ff_result: null, target_team_id: null, note: '' };

@@ -25,8 +25,12 @@ export const useRace = defineStore('race', () => {
   // Clock for waits that end by themselves (twist effects); coarse on purpose
   const nowMs = ref(Date.now());
   setInterval(() => { nowMs.value = Date.now(); }, 2000);
-  /** The twist effect in force on a team's leg (a missile that landed, directly or reflected), if any */
-  const effectOn = (teamId: number, legId: number) => effects.value.find((e) => e.status === 'hit' && e.target_team_id === teamId && e.leg_id === legId) ?? null;
+  /** Twist effects that delayed the start of a team's leg (missile / 让路 / 让行), in the order they ran */
+  const effectsOn = (teamId: number, legId: number) => effects.value.filter((e) => e.status === 'hit' && e.mode === 'delay_start' && e.target_team_id === teamId && e.leg_id === legId).sort((a, b) => (a.wait_from ?? '').localeCompare(b.wait_from ?? ''));
+  /** The last of them (its end is when the team may start) */
+  const effectOn = (teamId: number, legId: number) => effectsOn(teamId, legId).at(-1) ?? null;
+  /** A 回转 that sent the team back to this detour leg (its new completion shows in red) */
+  const uturnOn = (teamId: number, legId: number) => effects.value.find((e) => e.status === 'hit' && e.mode === 'uturn' && e.target_team_id === teamId && e.leg_id === legId) ?? null;
   /** Still waiting because of a twist effect: the time it ends */
   function waitingUntil(teamId: number, legId: number): string | null {
     const e = effectOn(teamId, legId);
@@ -327,7 +331,7 @@ export const useRace = defineStore('race', () => {
   }
 
   return {
-    episodes, teams, users, announcements, shopItems, loadShopItems, unreadAnnouncements, markAnnouncementsRead, popupAnnouncements, dismissPopup, effects, effectOn, waitingUntil, nowMs, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
+    episodes, teams, users, announcements, shopItems, loadShopItems, unreadAnnouncements, markAnnouncementsRead, popupAnnouncements, dismissPopup, effects, effectsOn, effectOn, uturnOn, waitingUntil, nowMs, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
     aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, isLocked, teamLocked, lockReason, structureEditable, cutoffUses, cutoffUseCount, cutoffReadyAt, parentOf, branchOf, branchLocked, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, currencyLegIds, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
     loadAll, reset, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, loadItemLog, itemLog, selectEpisode, invalidate,
   };

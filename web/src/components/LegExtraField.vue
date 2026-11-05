@@ -32,7 +32,8 @@ const text = computed(() => {
 
 <template>
   <template v-if="!kind"><span class="text-gray">-</span></template>
-  <template v-else-if="!can"><span>{{ text }}</span></template>
+  <!-- a 回转 fixes the detour choice -->
+  <template v-else-if="!can || (kind === 'detour' && progress?.detour_choice === '回转')"><span>{{ text }}</span></template>
   <MSelect v-else-if="kind === 'detour'" sm class="extra-ctl" :model-value="progress?.detour_choice ?? ''" :options="[{ value: '', label: '绕道未选' }, ...detourOptions.map((o) => ({ value: o, label: o }))]" @update:model-value="rec.setValue('detour', teamId, leg.id, String($event))" />
   <MSelect v-else-if="kind === 'roadblock'" sm class="extra-ctl" :model-value="progress?.roadblock_by ?? ''" placeholder="路障完成人" :options="race.memberOptions(teamId, progress?.roadblock_by).map((m) => ({ value: m, label: m }))" @update:model-value="rec.setValue('roadblock', teamId, leg.id, String($event))" />
   <MSelect v-else-if="kind === 'ff'" sm class="extra-ctl" :model-value="progress?.ff_result ?? ''" :options="[{ value: '', label: '快进未尝试' }, { value: 'success', label: '快进成功' }, { value: 'fail', label: '快进失败' }]" @update:model-value="rec.setValue('ff', teamId, leg.id, String($event))" />

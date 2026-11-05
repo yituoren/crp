@@ -50,10 +50,23 @@ export interface Cutoff { id: number; name: string; start_min: number; interval_
 export interface LegTip { id: number; code: string; tip: string | null }
 /** The 锦囊 card ("xx的锦囊卡") is recognised by name */
 export const isTipItem = (name: string) => name.includes('锦囊');
+/** Twist cards with built-in logic, recognised by name (same rules as server/src/twist.ts) */
+export type TwistKind = 'missile' | 'uturn' | 'yield' | 'yield_next' | 'duel';
+export function twistKind(name: string): TwistKind | null {
+  if (name.includes('飞弹')) return 'missile';
+  if (name.includes('回转')) return 'uturn';
+  if (name.includes('让路')) return 'yield';
+  if (name.includes('让行')) return 'yield_next';
+  if (name.includes('决斗')) return 'duel';
+  return null;
+}
+/** Cards whose target team is picked on use */
+export const isDirectedTwist = (name: string) => ['uturn', 'yield', 'duel'].includes(twistKind(name) ?? '') || ['盗窃', '验牌'].some((k) => name.includes(k));
 /** A twist card effect on one team (see server/src/twist.ts); options = answers the target can still give */
 export interface TwistEffect {
-  id: number; episode_id: number; item_name: string; source_team_id: number; target_team_id: number | null; leg_id: number | null;
-  mode: 'delay_start'; status: 'pending' | 'queued' | 'hit' | 'shielded' | 'reflected' | 'void' | 'cancelled'; wait_min: number;
+  id: number; episode_id: number; item_name: string; kind: TwistKind; source_team_id: number; target_team_id: number | null; leg_id: number | null;
+  point_leg_id: number | null; released: number;
+  mode: 'delay_start' | 'uturn' | 'duel'; status: 'pending' | 'queued' | 'hit' | 'shielded' | 'reflected' | 'void' | 'cancelled'; wait_min: number;
   wait_from: string | null; wait_until: string | null; reflected_from_id: number | null; decided: number; note: string;
   source_name: string; target_name: string | null; options: { shield: boolean; reflect: boolean };
 }
