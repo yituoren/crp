@@ -398,8 +398,10 @@ ensureColumn('episodes', 'start_at', 'TEXT');
 ensureColumn('episodes', 'inherit_rank', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('episodes', 'start_gap_min', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('episodes', 'depart_base', 'TEXT');
+ensureColumn('episodes', 'continuous_wait_min', 'INTEGER');
 ensureColumn('teams', 'eliminated_leg_id', 'INTEGER');
 ensureColumn('teams', 'locked_from_leg_id', 'INTEGER');
+ensureColumn('teams', 'short_name', "TEXT NOT NULL DEFAULT ''");
 
 type Param = string | number | null;
 export type Row = Record<string, any>;

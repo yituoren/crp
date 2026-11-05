@@ -137,7 +137,7 @@ Leg fields: `type` (one of `SL RI TI DT RB FF Union Shuffle UT YD SB FO Trap SQ 
 
 | Method | Path | Role | Body / notes |
 |---|---|---|---|
-| GET | `/announcements` | member | |
+| GET | `/announcements` | member | audience `all` is for everyone; `follow:<episodeId>:<teamId>` (the system departure notice, sent when an automatic departure is recorded) is returned only to hosts and to that team's follows in that episode |
 | POST | `/announcements` | host | `{ content, level?, audience? }` |
 | POST | `/announcements/:id/pin` | host | `{ pinned }` |
 | DELETE | `/announcements/:id` | host | |

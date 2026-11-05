@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { all, get, run, now } from '../db.js';
-import { hostOnly, type Env } from '../auth.js';
+import { hostOnly, isHostRole, type Env } from '../auth.js';
 import { audit, body, str, int, intParam, notify, bad } from '../util.js';
 
 export const announcementRoutes = new Hono<Env>();
@@ -8,9 +8,11 @@ export const announcementRoutes = new Hono<Env>();
 announcementRoutes.get('/announcements', (c) => {
   const ev = c.get('event');
   const me = get('SELECT last_read_id FROM ann_reads WHERE user_id = ? AND event_id = ?', c.get('user').id, ev.id);
+  // Targeted system messages ("follow:<episodeId>:<teamId>") are visible to hosts and to that team's follows in that episode only
+  const visible = isHostRole(c.get('user').role) ? '1' : `(audience = 'all' OR EXISTS (SELECT 1 FROM assignments s WHERE s.user_id = ${Number(c.get('user').id)} AND s.role = 'follow' AND announcements.audience = 'follow:' || s.episode_id || ':' || s.team_id))`;
   // pinned first (newest pin first), then by publish time descending
   return c.json({
-    announcements: all('SELECT * FROM announcements WHERE event_id = ? ORDER BY (pinned_at IS NULL), pinned_at DESC, id DESC LIMIT 200', ev.id),
+    announcements: all(`SELECT * FROM announcements WHERE event_id = ? AND ${visible} ORDER BY (pinned_at IS NULL), pinned_at DESC, id DESC LIMIT 200`, ev.id),
     lastReadId: me?.last_read_id ?? 0,
   });
 });

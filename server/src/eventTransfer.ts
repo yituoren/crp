@@ -185,7 +185,13 @@ export function importEvent(d: Dump, me: AuthUser): { id: number; hash: string; 
     copy('currency_ledger', (r) => ({ ...r, episode_id: ref('episodes', r.episode_id), team_id: ref('teams', r.team_id), leg_id: r.leg_id ? ref('legs', r.leg_id) : r.leg_id, item_id: ref('shop_items', r.item_id), operator_id: mapUser(r.operator_id), reverts_id: null }));
     copy('item_log', (r) => ({ ...r, episode_id: ref('episodes', r.episode_id), team_id: ref('teams', r.team_id), leg_id: r.leg_id ? ref('legs', r.leg_id) : r.leg_id, ledger_id: ref('currency_ledger', r.ledger_id), operator_id: mapUser(r.operator_id), reverts_id: null }));
     copy('cutoff_uses', (r) => ({ ...r, episode_id: ref('episodes', r.episode_id), team_id: ref('teams', r.team_id), leg_id: ref('legs', r.leg_id), cutoff_id: ref('leg_cutoffs', r.cutoff_id) ?? 0, ledger_id: ref('currency_ledger', r.ledger_id), used_by: mapUser(r.used_by) }));
-    copy('announcements', (r) => ({ ...r, event_id: evId, pinned_at: r.pinned_at }));
+    copy('announcements', (r) => {
+      // targeted messages carry episode and team ids
+      const m = /^follow:(\d+):(\d+)$/.exec(String(r.audience ?? ''));
+      if (!m) return { ...r, event_id: evId };
+      const epId = ref('episodes', m[1]), teamId = ref('teams', m[2]);
+      return epId && teamId ? { ...r, event_id: evId, audience: `follow:${epId}:${teamId}` } : null;
+    });
     relink('penalties', 'reverts_id', 'penalties');
     relink('currency_ledger', 'reverts_id', 'currency_ledger');
     relink('item_log', 'reverts_id', 'item_log');

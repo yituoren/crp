@@ -108,7 +108,20 @@ export function recordDeparture(ep: EpisodeRow, teamId: number, at: string): boo
   upsertProgress(ep.id, teamId, first.id, { ...cur, arrived_at: at }, SYSTEM_USER.id);
   audit(SYSTEM_USER, 'progress:auto_start', 'progress', `${ep.id}/${teamId}/${first.id}`, cur, { at });
   if (isContinuous(ep)) issueBudgetAtDeparture(ep, teamId, at);
+  notifyFollowDeparture(ep, teamId, at);
   return true;
+}
+
+/**
+ * System announcement to the team's follows in this episode when its departure time comes. Audience "follow:<episodeId>:<teamId>":
+ * only those follows (and hosts) see it
+ */
+function notifyFollowDeparture(ep: EpisodeRow, teamId: number, at: string) {
+  const label = teamLabelMap().get(teamId) ?? '';
+  const hm = new Date(at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' });
+  run('INSERT INTO announcements(content, level, created_by, created_at, audience, event_id) VALUES (?,?,?,?,?,?)',
+    `${label} 已到 ${ep.code} 发车时间（${hm}），可以出发了`, 'info', SYSTEM_USER.displayName, new Date().toISOString(), `follow:${ep.id}:${teamId}`, ep.event_id);
+  notify('announcements');
 }
 
 /** Continuous episode: the episode budget goes to each team when it departs (once per team; an episode reset clears it with the ledger) */
