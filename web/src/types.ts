@@ -13,7 +13,7 @@ export const LEG_TYPE_LABEL: Record<LegType, string> = {
   SL: '起跑线', RI: '路线信息', TI: '任务点', DT: '绕道', RB: '路障', FF: '快进/捷径', Union: '联合', Shuffle: '洗牌', UT: '回转点', YD: '让路点', SB: '减速带', FO: '对抗', Trap: '陷阱', SQ: '支线', PS: '中继站',
 };
 export const TYPE_DEFAULTS: Record<LegType, { staff: boolean; mode: RecordMode }> = {
-  SL: { staff: true, mode: 'full' }, RI: { staff: false, mode: 'full' }, TI: { staff: true, mode: 'full' }, DT: { staff: true, mode: 'full' },
+  SL: { staff: true, mode: 'full' }, RI: { staff: true, mode: 'full' }, TI: { staff: true, mode: 'full' }, DT: { staff: true, mode: 'full' },
   RB: { staff: true, mode: 'full' }, FF: { staff: true, mode: 'full' }, Union: { staff: true, mode: 'full' }, Shuffle: { staff: true, mode: 'full' }, UT: { staff: true, mode: 'full' },
   YD: { staff: true, mode: 'full' }, SB: { staff: true, mode: 'full' }, FO: { staff: true, mode: 'full' }, Trap: { staff: true, mode: 'full' }, SQ: { staff: true, mode: 'full' }, PS: { staff: true, mode: 'full' },
 };

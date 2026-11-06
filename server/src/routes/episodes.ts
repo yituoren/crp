@@ -13,7 +13,7 @@ export type RecordMode = 'none' | 'single' | 'full';
 /** Defaults per leg type: whether station crew is needed, record mode */
 export const TYPE_DEFAULTS: Record<string, { staff: 0 | 1; mode: RecordMode }> = {
   SL: { staff: 1, mode: 'full' },   // Starting Line: departure
-  RI: { staff: 0, mode: 'full' },     // Route Info: no station, no time
+  RI: { staff: 1, mode: 'full' },     // Route Info: a station may be scheduled there too
   TI: { staff: 1, mode: 'full' },
   DT: { staff: 1, mode: 'full' },
   RB: { staff: 1, mode: 'full' },

@@ -301,11 +301,11 @@ if (ensureColumn('legs', 'needs_staff', 'INTEGER NOT NULL DEFAULT 1') || ensureC
   db.exec("UPDATE legs SET needs_staff = 0, record_mode = 'none' WHERE type = 'RI'");
   db.exec("UPDATE legs SET record_mode = 'single' WHERE type IN ('SL', 'PS')");
 }
-// Every leg records both a start and an end time; whether a station is needed depends on the type (only Route Info does not)
+// Every leg records both a start and an end time; every leg can have a station (Route Info too)
 ensureColumn('legs', 'cutoff_start', 'INTEGER NOT NULL DEFAULT 0');     // cutoff start time (minutes from the episode start)
 ensureColumn('legs', 'cutoff_interval', 'INTEGER NOT NULL DEFAULT 0');  // cutoff interval (minutes)
 db.exec("UPDATE legs SET record_mode = 'full' WHERE record_mode != 'full'");
-db.exec("UPDATE legs SET needs_staff = CASE WHEN type = 'RI' THEN 0 ELSE 1 END WHERE needs_staff != CASE WHEN type = 'RI' THEN 0 ELSE 1 END");
+db.exec('UPDATE legs SET needs_staff = 1 WHERE needs_staff != 1');
 ensureColumn('progress', 'target_team_id', 'INTEGER');
 ensureColumn('episodes', 'started_at', 'TEXT');
 ensureColumn('episodes', 'start_at', 'TEXT');            // scheduled start time (null = no automatic start)
