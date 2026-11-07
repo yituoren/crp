@@ -31,7 +31,8 @@ const currentLeg = computed<Leg | null>(() => {
   return cur;
 });
 const canUse = computed(() => race.canAdjustCurrencyFor(props.teamId) && !race.episodePending);
-const showTransport = computed(() => currentLeg.value?.type === 'RI');
+// route info legs and the way to the pit stop are both travel
+const showTransport = computed(() => ['RI', 'PS'].includes(currentLeg.value?.type ?? ''));
 const showShop = computed(() => isCoin.value && (currentLeg.value?.shop.length ?? 0) > 0);
 const showCutoff = computed(() => (race.currentEpisode?.legs ?? []).some((l) => { const p = race.progressOf(props.teamId, l.id); return !!p?.arrived_at && !p.completed_at && l.cutoffs.length > 0; }));
 // Waiting because of a twist card (missile): when it ends
