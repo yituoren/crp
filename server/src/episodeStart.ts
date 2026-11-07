@@ -2,7 +2,7 @@ import { all, get, run, tx } from './db.js';
 import { audit, notify } from './util.js';
 import type { AuthUser } from './auth.js';
 import { teamLabelMap } from './routes/teams.js';
-import { emptyProgress, finalRanking, upsertProgress } from './progressCore.js';
+import { emptyProgress, finalRanking, upsertProgress, pitstopNet } from './progressCore.js';
 
 export const SYSTEM_USER: AuthUser = { id: 0, username: 'system', displayName: '系统', role: 'admin' };
 
@@ -77,8 +77,8 @@ function checkins(episodeId: number): Map<number, string> {
 }
 /**
  * Continuous episode: every alive team that has checked in at the previous episode's pit stop departs a fixed wait later;
- * teams still racing there have no departure yet. The previous episode's penalties and credits are settled here, per team on its
- * net minutes: a penalty makes the team itself wait longer; credits do not add up: every continuing team waits the largest credit
+ * teams still racing there have no departure yet. The previous episode's penalties and credits settled at its pit stop are settled
+ * here, per team on its net minutes: a penalty makes the team itself wait longer; credits do not add up: every continuing team waits the largest credit
  * longer, less its own credit (the team with the largest credit departs on the plain wait)
  */
 function continuousPlan(ep: EpisodeRow): { teamId: number; at: string }[] {
@@ -87,8 +87,7 @@ function continuousPlan(ep: EpisodeRow): { teamId: number; at: string }[] {
   const wait = (ep.continuous_wait_min ?? 0) * 60000;
   const inAt = checkins(prev.id);
   const alive = all<{ id: number }>("SELECT id FROM teams WHERE event_id = ? AND status = 'alive' ORDER BY sort, id", ep.event_id).map((t) => t.id);
-  const net = new Map<number, number>();
-  for (const r of all<{ team_id: number; m: number }>('SELECT team_id, SUM(minutes) AS m FROM penalties WHERE episode_id = ? GROUP BY team_id', prev.id)) net.set(r.team_id, r.m ?? 0);
+  const net = pitstopNet(prev.id); // what was waited out at sudden-death legs is settled already
   const credit = (id: number) => Math.max(0, -(net.get(id) ?? 0));
   const maxCredit = alive.reduce((m, id) => Math.max(m, credit(id)), 0);
   return alive

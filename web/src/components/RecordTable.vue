@@ -56,7 +56,7 @@ function detourOptions(): string[] {
         <tr v-for="{ team, p, can, edit, block, locked } in rows" :key="team.id" :style="team.status !== 'alive' ? 'opacity:.55' : ''">
           <td><strong>{{ team.label }}</strong> <TeamStatus v-if="team.status !== 'alive'" :status="team.status" /></td>
           <td>{{ locked ? '-' : race.waitingUntil(team.id, leg.id) ? '等待中' : stateOf(p) }}</td>
-          <td v-if="withStart"><span class="record-time" :class="{ 'record-hit': !!race.effectOn(team.id, leg.id) }">{{ fmtTime(p?.arrived_at) }}</span></td>
+          <td v-if="withStart"><span class="record-time" :class="{ 'record-hit': race.startDelayed(team.id, leg.id) }">{{ fmtTime(race.taskStart(team.id, leg.id)) }}</span></td>
           <td><span class="record-time" :class="{ 'record-hit': !!race.uturnOn(team.id, leg.id) }">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td>
           <td v-if="showTarget" class="c">
             <MSelect v-if="inline(can, p)" sm style="width: 130px" :model-value="p?.target_team_id ?? ''" :options="[{ value: '', label: leg.type === 'Union' ? '未选择' : '未使用' }, ...race.teams.filter((x) => x.id !== team.id).map((t) => ({ value: t.id, label: t.label }))]" @update:model-value="rec.setValue('target', team.id, leg.id, String($event))" />

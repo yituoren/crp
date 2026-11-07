@@ -7,6 +7,7 @@ import { shopStock } from './episodes.js';
 import { checkUse, afterUse, beforeRevertUse, kindOf, isDirected, isSteal } from '../twist.js';
 import { SYSTEM_USER } from '../episodeStart.js';
 import { recomputeEliminations } from '../elimination.js';
+import { currentLegOf } from '../progressCore.js';
 
 export const ledgerRoutes = new Hono<Env>();
 
@@ -85,7 +86,7 @@ function revertPenaltyRow(id: number, user: { id: number }) {
 const DEBT_MIN_PER_COIN = 5;
 /**
  * Debt is settled at once (coin mode): when a change leaves the balance below zero, every coin short becomes 5 minutes
- * of penalty on the episode's pit stop (the last leg when there is none) and the balance goes back to 0. The
+ * of penalty on the leg the team is on (「其他」 before it has started the episode) and the balance goes back to 0. The
  * settlement row points at the change (debt_of), so reverting that change reverts the settlement and its penalty too.
  */
 export function settleDebt(teamId: number, causeId: number) {
@@ -96,17 +97,18 @@ export function settleDebt(teamId: number, causeId: number) {
   const episodeId: number | null = cause?.episode_id
     ?? get<{ id: number }>("SELECT id FROM episodes WHERE event_id = ? AND status != 'pending' ORDER BY sort DESC, id DESC LIMIT 1", team.event_id)?.id ?? null;
   if (!episodeId) return;
-  const leg = get<{ id: number }>("SELECT id FROM legs WHERE episode_id = ? ORDER BY (type = 'PS') DESC, sort DESC, id DESC LIMIT 1", episodeId);
+  // the penalty goes on the leg the team is on (「其他」 before it starts), settled like any penalty there
+  const legId = currentLegOf(episodeId, teamId);
   const lack = -team.currency;
   const coins = Math.ceil(lack / 100);
   const minutes = coins * DEBT_MIN_PER_COIN;
   tx(() => {
     const p = run('INSERT INTO penalties(episode_id, team_id, minutes, reason, applied_by, applied_at, leg_id) VALUES (?,?,?,?,?,?,?)',
-      episodeId, teamId, minutes, `欠费 ${coins} 币，罚时`, SYSTEM_USER.id, now(), leg?.id ?? null);
+      episodeId, teamId, minutes, `欠费 ${coins} 币，罚时`, SYSTEM_USER.id, now(), legId);
     const penaltyId = Number(p.lastInsertRowid);
     run('UPDATE teams SET currency = 0 WHERE id = ?', teamId);
     run('INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at, leg_id, kind, debt_of, penalty_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-      episodeId, teamId, lack, 0, `欠费 ${coins} 币，换成罚时 ${minutes} 分钟`, SYSTEM_USER.id, SYSTEM_USER.displayName, now(), leg?.id ?? null, 'other', causeId, penaltyId);
+      episodeId, teamId, lack, 0, `欠费 ${coins} 币，换成罚时 ${minutes} 分钟`, SYSTEM_USER.id, SYSTEM_USER.displayName, now(), legId, 'other', causeId, penaltyId);
     audit(SYSTEM_USER, 'debt_settle', 'team', teamId, { currency: fromCents(-lack) }, { minutes, causeId, penaltyId });
   });
   notify('progress', episodeId);
@@ -226,8 +228,8 @@ export function listItemLog(eventId: number, episodeId?: number | null, teamId?:
      FROM item_log l JOIN teams t ON t.id = l.team_id LEFT JOIN legs g ON g.id = l.leg_id LEFT JOIN leg_tips lt ON lt.id = l.tip_id LEFT JOIN twist_effects ef ON ef.item_log_id = l.id
      WHERE ${conds.join(' AND ')} ORDER BY l.created_at DESC, l.id DESC LIMIT 500`, ...params,
   ).map((r) => {
-    // a fired twist card shows whom it hit, or that it is still waiting / missed (a duel names its target and is settled by hand)
-    const effectLabel = r.effect_kind === 'duel' ? null : r.effect_status === 'pending' || r.effect_status === 'queued' ? '待命中' : r.effect_status === 'void' ? '落空' : null;
+    // a fired twist card shows whom it hit, or that it is still waiting / missed
+    const effectLabel = r.effect_status === 'pending' || r.effect_status === 'queued' ? '待命中' : r.effect_status === 'void' ? '落空' : null;
     const target = r.target_team_id ?? (r.effect_status && !['void', 'pending', 'queued'].includes(r.effect_status) ? r.effect_target : null);
     return { ...r, team_name: labels.get(r.team_id) ?? r.team_name, target_name: target ? labels.get(target) ?? null : null, target_label: r.target_label ?? effectLabel };
   });

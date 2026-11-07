@@ -37,7 +37,9 @@ const showShop = computed(() => isCoin.value && (currentLeg.value?.shop.length ?
 const showCutoff = computed(() => (race.currentEpisode?.legs ?? []).some((l) => { const p = race.progressOf(props.teamId, l.id); return !!p?.arrived_at && !p.completed_at && l.cutoffs.length > 0; }));
 // Waiting because of a twist card (missile): when it ends
 const waitUntil = computed(() => (currentLeg.value ? race.waitingUntil(props.teamId, currentLeg.value.id) : null));
-const waitEffect = computed(() => (currentLeg.value ? race.effectOn(props.teamId, currentLeg.value.id) : null));
+// the twist card being waited out; none while the penalties settled here are waited out after it
+const waitEffect = computed(() => { const e = currentLeg.value ? race.effectOn(props.teamId, currentLeg.value.id) : null; return e && e.wait_until === waitUntil.value ? e : null; });
+const settleMin = computed(() => (currentLeg.value ? race.progressOf(props.teamId, currentLeg.value.id)?.settle_min ?? 0 : 0));
 const uturn = computed(() => (currentLeg.value ? race.uturnOn(props.teamId, currentLeg.value.id) : null));
 const nothing = computed(() => !showTransport.value && !showCutoff.value && !waitUntil.value && !(uturn.value && !race.progressOf(props.teamId, currentLeg.value!.id)?.completed_at));
 
@@ -94,7 +96,8 @@ async function confirmTransport() {
     <template v-else>
       <div v-if="uturn" class="alert alert-warning">被{{ uturn.source_name }}的「{{ uturn.item_name }}」作用：完成绕道的另一个分支（{{ uturn.note }}）后，在本环节重新记录完成</div>
       <div v-if="waitUntil" class="alert alert-warning">
-        被{{ waitEffect?.source_name }}的「{{ waitEffect?.item_name }}」作用，原地等待到 {{ fmtTime(waitUntil) }}，之前不能记录
+        <template v-if="waitEffect">被{{ waitEffect.source_name }}的「{{ waitEffect.item_name }}」作用，原地等待到 {{ fmtTime(waitUntil) }}，之前不能记录</template>
+        <template v-else>结算前面环节的补时罚时 {{ settleMin }} 分钟，原地等待到 {{ fmtTime(waitUntil) }} 再开始任务，之前不能记录</template>
         <!-- the same choice as in the pop-up, for whoever records this team -->
         <div v-if="waitEffect && (waitEffect.options.shield || waitEffect.options.reflect)" class="popup-answer">
           <span class="text-sm">背包里有可用的卡，是否使用？</span>

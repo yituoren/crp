@@ -1,8 +1,8 @@
 import { all, get, run, tx, now } from './db.js';
-import { audit, notify, bad, forbidden } from './util.js';
+import { audit, notify, bad, forbidden, currencyMode } from './util.js';
 import type { AuthUser } from './auth.js';
 import { teamLabelMap, inventoryCount } from './routes/teams.js';
-import { upsertProgress } from './progressCore.js';
+import { upsertProgress, taskStartMs } from './progressCore.js';
 import { addLedgerEntry } from './routes/ledger.js';
 import { recomputeEliminations } from './elimination.js';
 
@@ -15,9 +15,9 @@ import { recomputeEliminations } from './elimination.js';
  *    other branch: its detour record reopens (choice "回转", the new completion shows in red) and everything after it is cleared;
  *    让路 (yield) makes the target wait 15 minutes when it arrives here; 让行 does that to the next team to arrive here.
  *    A target that has already passed the point makes 回转 / 让路 void.
- *  - 决斗 (duel), played at a task point against a team. Settled by hand for now (DUEL_AUTO_SETTLE off); when on: once both have
- *    finished that task the faster net time (to the millisecond, no draw) wins 4 coins from the loser; coins the loser lacks become
- *    a penalty, 5 minutes per coin.
+ *  - 决斗 (duel), played at a task point against a team: once both have finished that task the faster net time (to the millisecond,
+ *    no draw; penalties and credits on that leg included) wins 4 coins from the loser; coins the loser lacks are debt, settled as
+ *    a penalty on the loser's current leg (5 minutes per coin).
  *  - 盗窃 (steal): the cards are drawn offline; online the user picks the target and the item drawn, which moves between the bags
  *    (or nothing, when the target had no card or blocked it). Like every directed card, once per target per episode.
  *  - 验牌 / 合流 and everything else are handled by hand.
@@ -56,9 +56,7 @@ export const isDirected = (name: string) => ['uturn', 'yield', 'duel'].includes(
 const oncePerEpisode = (name: string) => ['yield', 'yield_next'].includes(kindOf(name) ?? '');
 const SHIELDABLE: Kind[] = ['missile', 'yield', 'yield_next'];
 const DUEL_STAKE = 400; // 4 coins (coin amounts are stored × 100)
-const DUEL_MIN_PER_COIN = 5;
-/** Off: duels are only recorded (target, announcements); the crew settles them by hand */
-const DUEL_AUTO_SETTLE = false;
+const DUEL_MIN_PER_COIN = 5; // same rate as any debt (see settleDebt)
 
 export type Effect = {
   id: number; episode_id: number; item_name: string; kind: Kind; item_log_id: number | null; source_team_id: number; target_team_id: number | null;
@@ -161,7 +159,7 @@ export function afterUse(episodeId: number | null, teamId: number, itemName: str
   // 决斗 / 盗窃 / 验牌: public announcement; 决斗 also pops up for the target's follow (盗窃 / 验牌 are played face to face)
   if (['决斗', '盗窃', '验牌'].some((k) => itemName.includes(k)) && targetId) {
     announce(episodeId, `${label(teamId)} 对 ${label(targetId)} 使用了「${itemName}」`, 'all');
-    if (itemName.includes('决斗')) announce(episodeId, `${label(teamId)} 对本队使用了「${itemName}」（在「${legLabel(currentLegId)}」）${DUEL_AUTO_SETTLE ? `：两队都完成这个任务后比较净用时，败者付给胜者 ${DUEL_STAKE / 100} 币` : '：结果由幕后手动结算'}`, toFollow(episodeId, targetId));
+    if (itemName.includes('决斗')) announce(episodeId, `${label(teamId)} 对本队使用了「${itemName}」（在「${legLabel(currentLegId)}」）：两队都完成这个任务后比较净用时，败者付给胜者 ${DUEL_STAKE / 100} 币`, toFollow(episodeId, targetId));
   }
   if (itemName.includes('合流')) announce(episodeId, `${label(teamId)} 使用了「${itemName}」`, 'all');
   const kind = kindOf(itemName);
@@ -171,7 +169,7 @@ export function afterUse(episodeId: number | null, teamId: number, itemName: str
     episodeId, itemName, kind, itemLogId, teamId, targetId, point, kind === 'duel' ? point : null, kind === 'duel' ? 'duel' : kind === 'uturn' ? 'uturn' : 'delay_start', 'pending', now());
   const ef = effect(Number(r.lastInsertRowid));
   if ((kind === 'uturn' || kind === 'yield') && targetId && point && progressOf(episodeId, targetId, point)?.arrived_at) voidEffect(ef, `${label(targetId)} 已经通过该点位`);
-  if (kind === 'duel' && DUEL_AUTO_SETTLE) settleDuel(ef);
+  if (kind === 'duel') settleDuel(ef);
   audit(SYSTEM, 'twist_play', 'twist_effect', ef.id, undefined, { itemName, teamId, targetId, point });
   notify('progress', episodeId);
 }
@@ -312,18 +310,19 @@ export function answerEffect(ef: Effect, answer: 'shield' | 'reflect' | 'accept'
 
 // ---------------- Duel ----------------
 
-/** Net time on a leg: end − start, minus the side quest run during it */
+/** Net time on a leg: end − task start, minus the side quest run during it, plus the penalties and credits recorded on the leg */
 function netMs(episodeId: number, teamId: number, leg: Leg): number | null {
   const p = progressOf(episodeId, teamId, leg.id);
   if (!p?.arrived_at || !p.completed_at) return null;
-  let ms = new Date(p.completed_at).getTime() - new Date(p.arrived_at).getTime();
+  let ms = new Date(p.completed_at).getTime() - taskStartMs(p)!;
+  ms += (get<{ m: number | null }>('SELECT SUM(minutes) AS m FROM penalties WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, leg.id)?.m ?? 0) * 60000;
   const br = get<{ id: number; type: string }>('SELECT id, type FROM legs WHERE episode_id = ? AND sort > ? ORDER BY sort, id LIMIT 1', episodeId, leg.sort);
   if (br?.type === 'SQ') { const b = progressOf(episodeId, teamId, br.id); if (b?.arrived_at && b.completed_at) ms -= new Date(b.completed_at).getTime() - new Date(b.arrived_at).getTime(); }
   return ms;
 }
 /** h:mm:ss.SSS (the duel compares to the millisecond) */
 const fmtDur = (ms: number) => { const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60; return `${h ? `${h}:` : ''}${String(m).padStart(h ? 2 : 1, '0')}:${String(s).padStart(2, '0')}.${String(ms % 1000).padStart(3, '0')}`; };
-/** Settle a duel once both teams have finished its task: the loser pays 4 coins, missing coins become 5 minutes of penalty each */
+/** Settle a duel once both teams have finished its task: the loser pays 4 coins; coins it lacks become debt (5 minutes of penalty each) */
 function settleDuel(ef: Effect) {
   if (ef.status !== 'pending' || !ef.leg_id || !ef.target_team_id) return;
   const leg = legOf(ef.leg_id)!;
@@ -337,16 +336,12 @@ function settleDuel(ef: Effect) {
     const sourceWins = a !== b ? a < b : finished(ef.source_team_id) <= finished(ef.target_team_id!);
     const [win, lose] = sourceWins ? [ef.source_team_id, ef.target_team_id] : [ef.target_team_id, ef.source_team_id];
     const balance = get<{ currency: number }>('SELECT currency FROM teams WHERE id = ?', lose)!.currency;
-    const pay = Math.min(DUEL_STAKE, Math.max(0, balance));
+    // the winner gets what the loser has (coin mode: debt is turned into penalty, it pays nobody)
+    const pay = currencyMode() === 'coin' ? Math.min(DUEL_STAKE, Math.max(0, balance)) : DUEL_STAKE;
     const lackCoins = Math.ceil((DUEL_STAKE - pay) / 100);
-    if (pay > 0) {
-      addLedgerEntry({ episodeId: ef.episode_id, teamId: lose, delta: -pay, reason: `${ef.item_name}：输给 ${label(win)}`, legId: leg.id, kind: 'other', user: SYSTEM });
-      addLedgerEntry({ episodeId: ef.episode_id, teamId: win, delta: pay, reason: `${ef.item_name}：赢 ${label(lose)}`, legId: leg.id, kind: 'other', user: SYSTEM });
-    }
-    if (lackCoins > 0) {
-      run('INSERT INTO penalties(episode_id, team_id, minutes, reason, applied_by, applied_at, leg_id) VALUES (?,?,?,?,?,?,?)',
-        ef.episode_id, lose, lackCoins * DUEL_MIN_PER_COIN, `${ef.item_name}：星币不足 ${lackCoins} 币，罚时`, SYSTEM.id, now(), leg.id);
-    }
+    // the loser's charge goes through the ledger: what it lacks is settled as debt
+    addLedgerEntry({ episodeId: ef.episode_id, teamId: lose, delta: -DUEL_STAKE, reason: `${ef.item_name}：输给 ${label(win)}`, legId: leg.id, kind: 'other', user: SYSTEM });
+    if (pay > 0) addLedgerEntry({ episodeId: ef.episode_id, teamId: win, delta: pay, reason: `${ef.item_name}：赢 ${label(lose)}`, legId: leg.id, kind: 'other', user: SYSTEM });
     result = `${label(win)} 胜，${label(lose)} 付给 ${label(win)} ${pay / 100} 币${lackCoins ? `，不足 ${lackCoins} 币罚时 ${lackCoins * DUEL_MIN_PER_COIN} 分钟` : ''}`;
   }
   run("UPDATE twist_effects SET status = 'hit', note = ?, resolved_at = ? WHERE id = ?", result, now(), ef.id);
@@ -355,7 +350,6 @@ function settleDuel(ef: Effect) {
 }
 /** Completion hook: a team finished a leg; duels on it involving the team may now be settled */
 export function onLegCompleted(episodeId: number, teamId: number, legId: number) {
-  if (!DUEL_AUTO_SETTLE) return;
   for (const ef of all<Effect>("SELECT * FROM twist_effects WHERE episode_id = ? AND kind = 'duel' AND status = 'pending' AND leg_id = ? AND (source_team_id = ? OR target_team_id = ?)", episodeId, legId, teamId, teamId)) settleDuel(ef);
 }
 

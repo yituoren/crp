@@ -6,7 +6,7 @@ import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forb
 import { teamLabelMap } from './teams.js';
 import { addLedgerEntry, revertLedgerEntry } from './ledger.js';
 import { episodeInEvent } from './episodes.js';
-import { prevEndTime, emptyProgress, chainAfterComplete, upsertProgress, chainedStart } from '../progressCore.js';
+import { prevEndTime, emptyProgress, chainAfterComplete, upsertProgress, chainedStart, taskStartMs, pitstopNet } from '../progressCore.js';
 import { onArrival, onLegCompleted, listEffects, answerOptions, answerEffect, assertCanAnswer, type Effect } from '../twist.js';
 
 export const progressRoutes = new Hono<Env>();
@@ -39,9 +39,9 @@ export function listCutoffUses(episodeId: number) {
 }
 /** When a team's cutoff becomes available next (ms); null = the team is not currently on this leg */
 function cutoffReadyAt(teamId: number, leg: { id: number; episode_id: number }, cf: { id: number; start_min: number; interval_min: number }): number | null {
-  const p = get<{ arrived_at: string | null; completed_at: string | null }>('SELECT arrived_at, completed_at FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', leg.episode_id, teamId, leg.id);
+  const p = get<{ arrived_at: string | null; completed_at: string | null; settle_min: number }>('SELECT arrived_at, completed_at, settle_min FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', leg.episode_id, teamId, leg.id);
   if (!p?.arrived_at || p.completed_at) return null;
-  let ready = new Date(p.arrived_at).getTime() + cf.start_min * 60000;
+  let ready = taskStartMs(p)! + cf.start_min * 60000; // counted from the task start: waiting is not part of it
   const last = get<{ used_at: string }>('SELECT used_at FROM cutoff_uses WHERE team_id = ? AND cutoff_id = ? ORDER BY used_at DESC, id DESC LIMIT 1', teamId, cf.id);
   if (last) ready = Math.max(ready, new Date(last.used_at).getTime() + cf.interval_min * 60000);
   return ready;
@@ -201,8 +201,8 @@ progressRoutes.post('/progress', async (c) => {
   // a side quest cannot start before its main leg does (e.g. while the team waits there because of a twist card)
   if (leg.type === 'SQ' && action === 'arrive') {
     const parent = parentLegOf(leg);
-    const ps = parent ? get<{ arrived_at: string | null }>('SELECT arrived_at FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, parent.id)?.arrived_at : null;
-    if (ps && t < ps) throw bad('主线还在原地等待，开始后才能进入支线');
+    const ps = parent ? taskStartMs(get('SELECT arrived_at, settle_min FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, parent.id)) : null;
+    if (ps && new Date(t).getTime() < ps) throw bad('主线还在原地等待，开始后才能进入支线');
   }
   const cur = before ?? {
     arrived_at: null, completed_at: null, detour_choice: null, roadblock_by: null, ff_result: null, target_team_id: null, note: '',
@@ -229,10 +229,13 @@ progressRoutes.post('/progress', async (c) => {
         }
         // start time = the previous completed leg's end time (empty for the first leg); a side quest's start comes from "start side quest" and is not chained
         if (!next.arrived_at && leg.type !== 'SQ') next.arrived_at = prevEndTime(episodeId, teamId, leg.sort);
-        if (next.arrived_at && t < next.arrived_at) {
-          // a start in the future is a twist card's wait (missile / 让路 / 让行): name the card
-          const card = next.arrived_at > now() ? get<{ item_name: string }>("SELECT item_name FROM twist_effects WHERE episode_id = ? AND target_team_id = ? AND leg_id = ? AND status = 'hit' AND mode = 'delay_start' ORDER BY wait_until DESC LIMIT 1", episodeId, teamId, legId)?.item_name : null;
-          throw bad(next.arrived_at > now() ? `「${card ?? 'twist 卡'}」原地等待中，开始时间还没到，不能记录` : `完成时间不能早于开始时间（${next.arrived_at}）`);
+        const startMs = taskStartMs(next);
+        if (startMs !== null && new Date(t).getTime() < startMs) {
+          // a start in the future is a wait on the spot: a twist card's (missile / 让路 / 让行; name the card), then the penalties settled here
+          const nowMs = Date.now();
+          const card = next.arrived_at! > now() ? get<{ item_name: string }>("SELECT item_name FROM twist_effects WHERE episode_id = ? AND target_team_id = ? AND leg_id = ? AND status = 'hit' AND mode = 'delay_start' ORDER BY wait_until DESC LIMIT 1", episodeId, teamId, legId)?.item_name : null;
+          if (startMs > nowMs) throw bad(next.arrived_at! > now() ? `「${card ?? 'twist 卡'}」原地等待中，开始时间还没到，不能记录` : `结算前面环节的补时罚时，原地等待中（${next.settle_min} 分钟），开始时间还没到，不能记录`);
+          throw bad(`完成时间不能早于开始时间（${new Date(startMs).toISOString()}）`);
         }
         next.completed_at = t;
       }
@@ -349,6 +352,7 @@ progressRoutes.put('/progress/:episodeId/:teamId/:legId', async (c) => {
     ff_result: ['success', 'fail'].includes(b.ffResult) ? b.ffResult : null,
     target_team_id: int(b.targetTeamId, 0) || null,
     note: str(b.note, 1000),
+    settle_min: before?.settle_min ?? 0, // kept up to date by the settlement
   };
   const episodeRow = get('SELECT status, code FROM episodes WHERE id = ?', episodeId)!;
   if (episodeRow.status === 'pending' && !isAdminRole(user.role)) throw bad(`${episodeRow.code} 尚未开始，开始赛段后才能操作`);
@@ -439,8 +443,7 @@ export function pitstopRows(episodeId: number) {
   const labels = teamLabelMap();
   const teams = all<any>('SELECT id, code, name, status, eliminated_leg_id FROM teams WHERE event_id = (SELECT event_id FROM episodes WHERE id = ?) ORDER BY sort, id', episodeId).map((t): any => ({ ...t, name: labels.get(t.id) ?? t.name }));
   const results = new Map(all('SELECT * FROM pitstop_results WHERE episode_id = ?', episodeId).map((r) => [r.team_id, r]));
-  const penalties = new Map<number, number>();
-  for (const p of all('SELECT team_id, SUM(minutes) AS m FROM penalties WHERE episode_id = ? GROUP BY team_id', episodeId)) penalties.set(p.team_id, p.m);
+  const penalties = pitstopNet(episodeId); // what was waited out at sudden-death legs is settled already
   const psProgress = new Map<number, string | null>();
   if (psLeg) for (const p of all('SELECT team_id, completed_at FROM progress WHERE episode_id = ? AND leg_id = ?', episodeId, psLeg.id)) psProgress.set(p.team_id, p.completed_at);
   const rows = teams.map((t) => {

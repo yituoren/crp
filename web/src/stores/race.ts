@@ -40,11 +40,30 @@ export const useRace = defineStore('race', () => {
   }
   /** A 回转 that sent the team back to this detour leg (its new completion shows in red) */
   const uturnOn = (teamId: number, legId: number) => effects.value.find((e) => e.status === 'hit' && e.mode === 'uturn' && e.target_team_id === teamId && e.leg_id === legId) ?? null;
-  /** Still waiting because of a twist effect: the time it ends */
-  function waitingUntil(teamId: number, legId: number): string | null {
-    const e = effectOn(teamId, legId);
-    return e?.wait_until && new Date(e.wait_until).getTime() > nowMs.value + auth.serverOffsetMs ? e.wait_until : null;
+  /** Task start on a leg: the start time (after any twist wait) + the penalties waited out there (sudden death) */
+  function taskStart(teamId: number, legId: number): string | null {
+    const p = progressOf(teamId, legId);
+    if (!p?.arrived_at) return null;
+    return p.settle_min ? new Date(new Date(p.arrived_at).getTime() + p.settle_min * 60000).toISOString() : p.arrived_at;
   }
+  /** Still waiting on the spot (a twist effect, then the penalties settled there): the time it ends */
+  function waitingUntil(teamId: number, legId: number): string | null {
+    const t = nowMs.value + auth.serverOffsetMs;
+    const e = effectOn(teamId, legId);
+    if (e?.wait_until && new Date(e.wait_until).getTime() > t) return e.wait_until;
+    const p = progressOf(teamId, legId);
+    const s = taskStart(teamId, legId);
+    return p?.settle_min && !p.completed_at && s && new Date(s).getTime() > t ? s : null;
+  }
+  /** What the team is waiting for (see waitingUntil): the twist card, or the settlement */
+  function waitLabel(teamId: number, legId: number): string {
+    const e = effectOn(teamId, legId);
+    return e?.wait_until && new Date(e.wait_until).getTime() > nowMs.value + auth.serverOffsetMs ? `「${e.item_name}」` : '结算补时罚时';
+  }
+  /** The start was moved (twist wait or settlement): shown in red */
+  const startDelayed = (teamId: number, legId: number) => !!effectOn(teamId, legId) || !!progressOf(teamId, legId)?.settle_min;
+  /** Net penalty minutes recorded on a leg for a team (reverts included as their negative rows) */
+  const legPenalty = (teamId: number, legId: number) => penalties.value.reduce((s, x) => (x.team_id === teamId && x.leg_id === legId ? s + x.minutes : s), 0);
   const loaded = ref(false);
 
   const currentEpisode = computed(() => episodes.value.find((e) => e.id === currentEpisodeId.value) ?? episodes.value[0] ?? null);
@@ -166,7 +185,7 @@ export const useRace = defineStore('race', () => {
   function cutoffReadyAt(teamId: number, leg: { id: number }, cf: Cutoff): number | null {
     const p = progressOf(teamId, leg.id);
     if (!p?.arrived_at || p.completed_at) return null;
-    let ready = new Date(p.arrived_at).getTime() + cf.start_min * 60000;
+    let ready = new Date(taskStart(teamId, leg.id)!).getTime() + cf.start_min * 60000; // from the task start: waiting is not part of it
     const last = cutoffUses.value.filter((u) => u.team_id === teamId && u.cutoff_id === cf.id).map((u) => new Date(u.used_at).getTime()).sort((a, b) => b - a)[0];
     if (last !== undefined) ready = Math.max(ready, last + cf.interval_min * 60000);
     return ready;
@@ -213,7 +232,7 @@ export const useRace = defineStore('race', () => {
     }
     const idx = ep.legs.findIndex((l) => l.id === legId);
     const self = ep.legs[idx];
-    { const w = waitingUntil(teamId, legId); if (w) return `「${effectOn(teamId, legId)?.item_name ?? 'twist 卡'}」原地等待中，${new Date(w).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })} 后可记录`; }
+    { const w = waitingUntil(teamId, legId); if (w) return `${waitLabel(teamId, legId)}原地等待中，${new Date(w).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })} 后可记录`; }
     if (self?.type === 'SQ') {
       // Side quest: can be entered while the main leg runs, mandatory legs are not checked
       const parent = parentOf(legId); const pp = parent ? progressOf(teamId, parent.id) : null;
@@ -342,7 +361,7 @@ export const useRace = defineStore('race', () => {
   }
 
   return {
-    episodes, teams, users, announcements, shopItems, loadShopItems, unreadAnnouncements, markAnnouncementsRead, popupAnnouncements, dismissPopup, effects, effectsOn, effectOn, uturnOn, answerTwist, waitingUntil, nowMs, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
+    episodes, teams, users, announcements, shopItems, loadShopItems, unreadAnnouncements, markAnnouncementsRead, popupAnnouncements, dismissPopup, effects, effectsOn, effectOn, uturnOn, answerTwist, waitingUntil, waitLabel, taskStart, startDelayed, legPenalty, nowMs, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
     aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, isLocked, teamLocked, lockReason, structureEditable, cutoffUses, cutoffUseCount, cutoffReadyAt, parentOf, branchOf, branchLocked, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, currencyLegIds, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
     loadAll, reset, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, loadItemLog, itemLog, selectEpisode, invalidate,
   };

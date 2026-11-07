@@ -43,6 +43,8 @@ export interface Assignment { id: number; episode_id: number; user_id: number; r
 export interface Progress {
   id: number; episode_id: number; team_id: number; leg_id: number; arrived_at: string | null; completed_at: string | null;
   detour_choice: string | null; roadblock_by: string | null; ff_result: 'success' | 'fail' | null; target_team_id: number | null; note: string; recorded_by: number | null; updated_at: string;
+  /** Minutes of earlier penalties waited out before the task (sudden-death legs); the task starts this much after arrived_at */
+  settle_min: number;
 }
 export interface Penalty { id: number; episode_id: number; team_id: number; team_name: string; minutes: number; reason: string; applied_at: string; applied_by: number | null; applied_by_name: string | null; reverted: number; reverts_id: number | null; leg_id: number | null; leg_name: string | null; kind: 'shop' | 'other'; item_id: number | null; item_name: string | null }
 export interface Cutoff { id: number; name: string; start_min: number; interval_min: number; cost: number }

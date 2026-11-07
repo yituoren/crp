@@ -453,6 +453,8 @@ if (ensureColumn('episodes', 'eliminate_count', 'INTEGER NOT NULL DEFAULT 0')) {
   db.exec(`UPDATE episodes SET eliminate_count = COALESCE((SELECT MAX(l.eliminate_count) FROM legs l WHERE l.episode_id = episodes.id AND l.type = 'PS' AND l.can_eliminate = 1), 0);
     UPDATE legs SET can_eliminate = 0, eliminate_count = 0 WHERE type = 'PS' AND can_eliminate = 1;`);
 }
+// Minutes of earlier penalties waited out before the task of a sudden-death leg (part of its start time)
+ensureColumn('progress', 'settle_min', 'INTEGER NOT NULL DEFAULT 0');
 
 type Param = string | number | null;
 export type Row = Record<string, any>;

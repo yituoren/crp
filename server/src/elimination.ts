@@ -1,12 +1,15 @@
 import { all, get, run } from './db.js';
+import { notify } from './util.js';
+import { pitstopNet, settleEvent, settlementOf } from './progressCore.js';
 
 /**
  * Automatic elimination, two kinds:
  * - Sudden death on a leg flagged as eliminating: once every team still racing has arrived at that leg, the last N
- *   to arrive are eliminated (finishing the task does not matter). Arrival = start time + the net penalty recorded on
- *   the episode's earlier legs; every leg type, the pit stop included, works the same way.
+ *   to arrive are eliminated (finishing the task does not matter). Arrival = start time + the net penalty of the episode's
+ *   earlier legs not settled yet (= the task start after waiting it out, less any open credit, see settlementOf); every leg
+ *   type, the pit stop included, works the same way.
  * - Episode elimination (set on the episode): once every team still racing has checked in at the pit stop, the last N
- *   by check-in + the episode's net penalty are eliminated (recorded on the pit stop, or the last leg without one).
+ *   by check-in + the net penalty settled there are eliminated (recorded on the pit stop, or the last leg without one).
  * Results are recomputed after any record changes, so teams come back or get eliminated again, until the episode is
  * finished: a finished episode keeps the eliminations it had. Withdrawn teams are excluded.
  */
@@ -21,16 +24,13 @@ export function legOrder(eventId: number): LegRow[] {
   );
 }
 
-/** A team's arrival on a leg: its start time (chained from the previous leg's end, falling back to its end time) + the net penalty on the episode's earlier legs */
+/** A team's arrival on a leg: its start time (chained from the previous leg's end, falling back to its end time) + the open net penalty of the episode's earlier legs */
 function arrivalMs(teamId: number, leg: LegRow): number | null {
   const p = get<{ arrived_at: string | null; completed_at: string | null }>('SELECT arrived_at, completed_at FROM progress WHERE team_id = ? AND leg_id = ?', teamId, leg.id);
   const base = p?.arrived_at ?? p?.completed_at ?? null;
   if (!base) return null;
-  const pen = get<{ m: number | null }>(
-    'SELECT SUM(p.minutes) AS m FROM penalties p JOIN legs l ON l.id = p.leg_id WHERE p.episode_id = ? AND p.team_id = ? AND (l.sort < ? OR (l.sort = ? AND l.id < ?))',
-    leg.episode_id, teamId, leg.sort, leg.sort, leg.id,
-  )?.m ?? 0;
-  return new Date(base).getTime() + pen * 60000;
+  const open = settlementOf(leg.episode_id, teamId).openBefore.get(leg.id) ?? 0;
+  return new Date(base).getTime() + open * 60000;
 }
 
 /** The leg where an episode ends: its pit stop, or the last leg when there is none */
@@ -38,12 +38,11 @@ function endLeg(legs: LegRow[]): LegRow | null {
   return [...legs].reverse().find((l) => l.type === 'PS') ?? legs[legs.length - 1] ?? null;
 }
 
-/** A team's check-in for episode elimination: manual check-in, else the end of the end leg; + the episode's net penalty */
-function checkinMs(teamId: number, episodeId: number, end: LegRow): number | null {
+/** A team's check-in for episode elimination: manual check-in, else the end of the end leg; + the net penalty settled at the pit stop */
+function checkinMs(teamId: number, episodeId: number, end: LegRow, pen: number): number | null {
   const r = get<{ checkin_at: string | null }>('SELECT checkin_at FROM pitstop_results WHERE episode_id = ? AND team_id = ?', episodeId, teamId);
   const base = r?.checkin_at ?? get<{ completed_at: string | null }>('SELECT completed_at FROM progress WHERE team_id = ? AND leg_id = ?', teamId, end.id)?.completed_at ?? null;
   if (!base) return null;
-  const pen = get<{ m: number | null }>('SELECT SUM(minutes) AS m FROM penalties WHERE episode_id = ? AND team_id = ?', episodeId, teamId)?.m ?? 0;
   return new Date(base).getTime() + pen * 60000;
 }
 
@@ -59,6 +58,8 @@ function cut(alive: Set<number>, elimAt: Map<number, number>, count: number, leg
 
 /** Recompute elimination status for the whole event; returns whether anything changed */
 export function recomputeEliminations(eventId: number): boolean {
+  // penalties are settled first: the rankings below depend on what was waited out
+  for (const id of settleEvent(eventId)) notify('progress', id);
   const legs = legOrder(eventId);
   const episodes = all<EpisodeRow>('SELECT id, status, eliminate_count FROM episodes WHERE event_id = ? ORDER BY sort, id', eventId);
   const teams = all<{ id: number; status: string; eliminated_leg_id: number | null; locked_from_leg_id: number | null }>(
@@ -76,7 +77,7 @@ export function recomputeEliminations(eventId: number): boolean {
     }
     for (const leg of epLegs) if (leg.can_eliminate) cut(alive, elimAt, leg.eliminate_count, leg.id, (id) => arrivalMs(id, leg));
     const end = endLeg(epLegs);
-    if (end) cut(alive, elimAt, ep.eliminate_count, end.id, (id) => checkinMs(id, ep.id, end));
+    if (end && ep.eliminate_count > 0) { const pen = pitstopNet(ep.id); cut(alive, elimAt, ep.eliminate_count, end.id, (id) => checkinMs(id, ep.id, end, pen.get(id) ?? 0)); }
   }
   const nextLegId = (legId: number) => { const i = legs.findIndex((l) => l.id === legId); return i >= 0 && i + 1 < legs.length ? legs[i + 1]!.id : -1; }; // -1 = no later leg, nothing to lock
   let changed = false;

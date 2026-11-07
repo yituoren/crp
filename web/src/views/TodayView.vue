@@ -78,7 +78,7 @@ const legRows = computed(() => {
             <tr v-for="{ leg, p, label, block, state, locked, isBranch } in legRows" :key="leg.id">
               <td><LegTag :type="leg.type" /> <router-link :to="{ name: 'leg', params: { episodeId: ep!.id, legId: leg.id } }">{{ legName(leg) }}</router-link></td>
               <td>{{ state }}</td>
-              <td><span class="record-time" :class="{ 'record-hit': !!race.effectOn(myTeam!.id, leg.id) }">{{ hasStart(leg.type) ? fmtTime(p?.arrived_at) : '-' }}</span></td>
+              <td><span class="record-time" :class="{ 'record-hit': race.startDelayed(myTeam!.id, leg.id) }">{{ hasStart(leg.type) ? fmtTime(race.taskStart(myTeam!.id, leg.id)) : '-' }}</span></td>
               <td><span class="record-time" :class="{ 'record-hit': !!race.uturnOn(myTeam!.id, leg.id) }">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td>
               <td class="c"><LegExtraField :leg="leg" :team-id="myTeam!.id" :progress="p" :can="!locked && !!p?.arrived_at && !p?.completed_at && !race.episodeFinished" /></td>
               <td class="c">

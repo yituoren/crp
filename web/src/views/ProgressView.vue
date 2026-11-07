@@ -33,10 +33,18 @@ function branchElapsed(teamId: number, legId: number, mainEndMs: number | null):
   const e = bp.completed_at ? new Date(bp.completed_at).getTime() : (mainEndMs ?? now.value);
   return Math.max(0, e - s);
 }
-/** A twist effect (missile) in force on this leg: its start time shows in red */
+/** A twist effect (missile) in force on this leg, or penalties waited out here (sudden death): its start time shows in red */
 function hitTitle(teamId: number, legId: number) {
   // a reflected effect's source is the team that reflected it
-  return race.effectsOn(teamId, legId).map((e) => `${e.item_name}${e.reflected_from_id ? '（被反弹）' : ''}：来自 ${e.source_name}，原地等待 ${e.wait_min} 分钟`).join('\n');
+  const lines = race.effectsOn(teamId, legId).map((e) => `${e.item_name}${e.reflected_from_id ? '（被反弹）' : ''}：来自 ${e.source_name}，原地等待 ${e.wait_min} 分钟`);
+  const p = race.progressOf(teamId, legId);
+  if (p?.settle_min && p.arrived_at) lines.push(`结算前面环节的补时罚时：${fmtTime(p.arrived_at)} 到达，原地等待 ${p.settle_min} 分钟`);
+  return lines.join('\n');
+}
+/** Durations include the penalties and credits recorded on the leg itself */
+function penTitle(teamId: number, legId: number) {
+  const m = race.legPenalty(teamId, legId);
+  return m ? `含本环节${m > 0 ? '罚时' : '补时'} ${Math.abs(m)} 分钟` : '';
 }
 /** A 回转 sent the team back to this detour: its new completion time shows in red */
 function uturnTitle(teamId: number, legId: number) {
@@ -48,18 +56,22 @@ function cell(teamId: number, legId: number, single: boolean, isPs = false) {
   // single-column legs only look at the end time (completed_at)
   if (single) return p?.completed_at ? { start: (isPs ? fmtTimeSec : fmtTime)(p.completed_at), end: '-', dur: '-', cls: 'mx-done' } : { start: '-', end: '-', dur: '-', cls: '' };
   if (!p || !p.arrived_at) return { start: '-', end: p?.completed_at ? fmtTime(p.completed_at) : '-', dur: '-', cls: p?.completed_at ? 'mx-done' : '' };
-  const startMs = new Date(p.arrived_at).getTime();
-  if (p.completed_at) { const endMs = new Date(p.completed_at).getTime(); return { start: fmtTime(p.arrived_at), end: (isPs ? fmtTimeSec : fmtTime)(p.completed_at), dur: fmtDurMs(endMs - startMs - branchElapsed(teamId, legId, endMs)), cls: 'mx-done' }; }
-  if (startMs > now.value) return { start: fmtTime(p.arrived_at), end: '等待中', dur: '-', cls: 'mx-arrived' }; // start delayed by a missile
-  return { start: fmtTime(p.arrived_at), end: '进行中', dur: fmtDurMs(now.value - startMs - branchElapsed(teamId, legId, null)), cls: 'mx-arrived' };
+  // the task start: after a twist wait and the penalties settled here
+  const start = race.taskStart(teamId, legId)!;
+  const startMs = new Date(start).getTime();
+  const pen = race.legPenalty(teamId, legId) * 60000;
+  if (p.completed_at) { const endMs = new Date(p.completed_at).getTime(); return { start: fmtTime(start), end: (isPs ? fmtTimeSec : fmtTime)(p.completed_at), dur: fmtDurMs(endMs - startMs - branchElapsed(teamId, legId, endMs) + pen), cls: 'mx-done' }; }
+  if (startMs > now.value) return { start: fmtTime(start), end: '等待中', dur: '-', cls: 'mx-arrived' }; // still waiting on the spot
+  return { start: fmtTime(start), end: '进行中', dur: fmtDurMs(now.value - startMs - branchElapsed(teamId, legId, null) + pen), cls: 'mx-arrived' };
 }
 /** Side quest columns: start / end / duration */
 function branchCell(teamId: number, legId: number) {
   const br = branchOf({ id: legId }); const bp = br ? race.progressOf(teamId, br.id) : null;
   if (!bp?.arrived_at) return { start: '-', end: '-', dur: '-', cls: '' };
   const s = new Date(bp.arrived_at).getTime();
-  if (bp.completed_at) return { start: fmtTime(bp.arrived_at), end: fmtTime(bp.completed_at), dur: fmtDurMs(new Date(bp.completed_at).getTime() - s), cls: 'mx-done' };
-  return { start: fmtTime(bp.arrived_at), end: '进行中', dur: fmtDurMs(now.value - s), cls: 'mx-arrived' };
+  const pen = race.legPenalty(teamId, br!.id) * 60000;
+  if (bp.completed_at) return { start: fmtTime(bp.arrived_at), end: fmtTime(bp.completed_at), dur: fmtDurMs(new Date(bp.completed_at).getTime() - s + pen), cls: 'mx-done' };
+  return { start: fmtTime(bp.arrived_at), end: '进行中', dur: fmtDurMs(now.value - s + pen), cls: 'mx-arrived' };
 }
 /** Legs with extra info get extra columns at the end of the group; pit stops get "penalty" and "final" */
 function extraCols(l: { type: string }): string[] {
@@ -184,7 +196,7 @@ async function exportXlsx() {
       const isPs = l.type === 'PS';
       const r = ranks[li]!.get(t.id);
       const tail = [...extraCols(l).map((_, i) => cellOf(extraVal(t.id, l, i), extraKind(l, i))), cellOf(r ? String(r) : '-', 'rank')];
-      const hit = !!race.effectOn(t.id, l.id);
+      const hit = race.startDelayed(t.id, l.id);
       if (isSingleCol(l)) { const c = cell(t.id, l.id, true, isPs); return [cellOf(c.start, 'time', c.cls, hit), ...tail]; }
       const c = cell(t.id, l.id, false, isPs); const b = branchCell(t.id, l.id);
       return [
@@ -240,17 +252,17 @@ async function exportXlsx() {
             </td>
             <template v-for="l in legs" :key="l.id">
               <template v-if="isSingleCol(l)">
-                <td class="mx2-cell mx2-first" :class="[cell(t.id, l.id, true, l.type === 'PS').cls, kindCls(cell(t.id, l.id, true, l.type === 'PS').start, 'time'), { 'mx2-last': !extraCol(l), 'mx2-hit': !!race.effectOn(t.id, l.id) }]" :title="hitTitle(t.id, l.id)">{{ cell(t.id, l.id, true, l.type === 'PS').start }}</td>
+                <td class="mx2-cell mx2-first" :class="[cell(t.id, l.id, true, l.type === 'PS').cls, kindCls(cell(t.id, l.id, true, l.type === 'PS').start, 'time'), { 'mx2-last': !extraCol(l), 'mx2-hit': race.startDelayed(t.id, l.id) }]" :title="hitTitle(t.id, l.id)">{{ cell(t.id, l.id, true, l.type === 'PS').start }}</td>
               </template>
               <template v-else>
-                <td class="mx2-cell mx2-first" :class="[cell(t.id, l.id, false, l.type === 'PS').cls, kindCls(cell(t.id, l.id, false, l.type === 'PS').start, 'time'), { 'mx2-hit': !!race.effectOn(t.id, l.id) }]" :title="hitTitle(t.id, l.id)">{{ cell(t.id, l.id, false, l.type === 'PS').start }}</td>
+                <td class="mx2-cell mx2-first" :class="[cell(t.id, l.id, false, l.type === 'PS').cls, kindCls(cell(t.id, l.id, false, l.type === 'PS').start, 'time'), { 'mx2-hit': race.startDelayed(t.id, l.id) }]" :title="hitTitle(t.id, l.id)">{{ cell(t.id, l.id, false, l.type === 'PS').start }}</td>
                 <template v-if="branchOf(l)">
                   <td class="mx2-cell mx2-branch" :class="[branchCell(t.id, l.id).cls, kindCls(branchCell(t.id, l.id).start, 'time')]">{{ branchCell(t.id, l.id).start }}</td>
                   <td class="mx2-cell mx2-branch" :class="[branchCell(t.id, l.id).cls, kindCls(branchCell(t.id, l.id).end, 'time')]">{{ branchCell(t.id, l.id).end }}</td>
-                  <td class="mx2-cell mx2-branch" :class="[branchCell(t.id, l.id).cls, kindCls(branchCell(t.id, l.id).dur, 'dur')]">{{ branchCell(t.id, l.id).dur }}</td>
+                  <td class="mx2-cell mx2-branch" :class="[branchCell(t.id, l.id).cls, kindCls(branchCell(t.id, l.id).dur, 'dur')]" :title="penTitle(t.id, branchOf(l)!.id)">{{ branchCell(t.id, l.id).dur }}</td>
                 </template>
                 <td class="mx2-cell" :class="[cell(t.id, l.id, false, l.type === 'PS').cls, kindCls(cell(t.id, l.id, false, l.type === 'PS').end, 'time'), { 'mx2-hit': !!race.uturnOn(t.id, l.id) }]" :title="uturnTitle(t.id, l.id)">{{ cell(t.id, l.id, false, l.type === 'PS').end }}</td>
-                <td class="mx2-cell" :class="[cell(t.id, l.id, false, l.type === 'PS').cls, kindCls(cell(t.id, l.id, false, l.type === 'PS').dur, 'dur'), { 'mx2-last': !extraCol(l) }]">{{ cell(t.id, l.id, false, l.type === 'PS').dur }}</td>
+                <td class="mx2-cell" :class="[cell(t.id, l.id, false, l.type === 'PS').cls, kindCls(cell(t.id, l.id, false, l.type === 'PS').dur, 'dur'), { 'mx2-last': !extraCol(l) }]" :title="penTitle(t.id, l.id)">{{ cell(t.id, l.id, false, l.type === 'PS').dur }}</td>
               </template>
               <td v-for="(c, i) in extraCols(l)" :key="c" class="mx2-cell mx2-extra" :class="[kindCls(extraVal(t.id, l, i), extraKind(l, i)), { 'mx2-last': i === extraCols(l).length - 1 }]">{{ extraVal(t.id, l, i) }}</td>
             </template>
