@@ -31,10 +31,6 @@ function argb(css: string): string {
   return 'FF' + m.slice(0, 3).map((n) => Math.round(n).toString(16).padStart(2, '0')).join('').toUpperCase();
 }
 function hexToRgb(hex: string) { const h = hex.replace('#', ''); return `rgb(${parseInt(h.slice(0, 2), 16)}, ${parseInt(h.slice(2, 4), 16)}, ${parseInt(h.slice(4, 6), 16)})`; }
-/** An ARGB colour mixed toward white */
-function tint(argbHex: string, keep: number): string {
-  return 'FF' + [2, 4, 6].map((i) => Math.round(255 - (255 - parseInt(argbHex.slice(i, i + 2), 16)) * keep).toString(16).padStart(2, '0')).join('').toUpperCase();
-}
 /** {GUID} for the data-bar extension ids; crypto.randomUUID only exists on HTTPS / localhost, getRandomValues everywhere */
 function guid(): string {
   const h = [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
@@ -67,13 +63,13 @@ export async function exportProgressXlsx(model: ExportModel, fileName: string) {
   ws.mergeCells(1, 1, 2, 1);
   let col = 2;
   const groupStart: number[] = [];
-  const groupFg: string[] = [];
+  const groupBg: string[] = [];
   for (const g of model.groups) {
     groupStart.push(col);
     const c = ws.getCell(1, col);
     c.value = g.title;
     const { bg, fg } = tagColors(g.type);
-    groupFg.push(fg);
+    groupBg.push(bg);
     c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
     c.font = { ...font, bold: true, color: { argb: fg } };
     if (g.subs.length > 1) ws.mergeCells(1, col, 1, col + g.subs.length - 1);
@@ -131,7 +127,7 @@ export async function exportProgressXlsx(model: ExportModel, fileName: string) {
   ws.getRow(1).height = 22;
 
   const buf = await wb.xlsx.writeBuffer();
-  const bars = [...barCols].map(([c, gi]) => ({ ref: `${colName(c)}3:${colName(c)}${lastRow}`, color: tint(groupFg[gi]!, 0.75) }));
+  const bars = [...barCols].map(([c, gi]) => ({ ref: `${colName(c)}3:${colName(c)}${lastRow}`, color: groupBg[gi]! })); // the header colour; Excel fades it to white itself
   const blob = model.rows.length && bars.length ? await addDataBars(JSZip, buf, bars) : new Blob([buf], { type: XLSX_TYPE });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
