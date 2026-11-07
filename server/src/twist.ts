@@ -304,7 +304,7 @@ export function answerEffect(ef: Effect, answer: 'shield' | 'reflect' | 'accept'
     settleAt(ef.episode_id, ef.target_team_id!, ef.leg_id!, ef.wait_from!);
   });
   audit(user, `twist_${answer}`, 'twist_effect', ef.id);
-  notify('progress', ef.episode_id); notify('ledger', ef.episode_id); notify('teams');
+  notify('progress', ef.episode_id); notify('ledger', ef.episode_id); notify('teams'); notify('announcements'); // the notice's answer buttons go away
 }
 
 // ---------------- Duel ----------------
@@ -385,6 +385,7 @@ export function settleTwists() {
     else if (ef.reflected_from_id && ef.status === 'pending' && ef.target_team_id && checkedIn(ef.episode_id).has(ef.target_team_id)) why = `${label(ef.target_team_id)} 已经签到`;
     if (why) { voidEffect(ef, why); touched.add(ef.episode_id); }
   }
+  if (touched.size) notify('announcements'); // waits that ended take the answer buttons off their notices
   for (const id of touched) {
     notify('progress', id);
     if (recomputeEliminations(eventOf(id))) notify('teams');

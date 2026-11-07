@@ -35,7 +35,7 @@ export const useRace = defineStore('race', () => {
     const ui = useUi();
     const text = { shield: '使用护盾挡下这次作用', reflect: '使用反弹，把作用转给使用者', accept: '不使用护盾或反弹，原地等待' }[ans];
     if (!(await ui.confirm('确认', `${text}？`))) return;
-    try { await api(`/effects/${effectId}/answer`, { method: 'POST', body: { answer: ans } }); await Promise.all([loadProgress(), loadTeams(), loadLedger()]); }
+    try { await api(`/effects/${effectId}/answer`, { method: 'POST', body: { answer: ans } }); await Promise.all([loadProgress(), loadTeams(), loadLedger(), loadAnnouncements()]); }
     catch (e) { ui.error(e); }
   }
   /** A 回转 that sent the team back to this detour leg (its new completion shows in red) */
@@ -254,9 +254,8 @@ export const useRace = defineStore('race', () => {
   // Unread announcements: the last read id is stored on the account, consistent across devices
   const lastReadId = ref<number>(0);
   // Own posts are never unread; hosts also see the system messages sent to one team's follows, but those count (and pop up) only for the team they follow themselves
-  // A system notice to the team this account follows in the current episode (hosts can be scheduled as follows too)
-  const toMyTeam = (a: Announcement) => myAssignment.value?.role === 'follow' && a.audience === `follow:${currentEpisode.value?.id}:${myAssignment.value.team_id}`;
-  const countsAsUnread = (a: Announcement) => a.id > lastReadId.value && a.author_id !== auth.user?.id && (!auth.isHost || !a.audience.startsWith('follow:') || toMyTeam(a));
+  // a.mine: a system notice to a team this account follows, in any episode (hosts can be scheduled as follows too)
+  const countsAsUnread = (a: Announcement) => a.id > lastReadId.value && a.author_id !== auth.user?.id && (!a.audience.startsWith('follow:') || a.mine);
   // Pop-up: unread system notices (departure, twist cards) for the team this account follows.
   // Acknowledged ones are remembered on this device, because the read mark is a single id that must not skip older unread announcements
   const ACK_KEY = 'crp.ackedDepartureNotices';

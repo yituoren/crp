@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { all, get, run, now } from '../db.js';
 import { hostOnly, isHostRole, type Env } from '../auth.js';
+import { answerOptions, type Effect } from '../twist.js';
 
 /** Audiences: all = every crew member; follows:<episodeIds> = the follows of the episodes running when it was posted (and hosts); hosts = hosts only (crew messages to the hosts); follow:<episodeId>:<teamId> = system notice to one team's follow */
 import { audit, body, str, int, intParam, notify, bad } from '../util.js';
@@ -15,9 +16,16 @@ announcementRoutes.get('/announcements', (c) => {
   const visible = isHostRole(c.get('user').role) ? '1' : `(audience = 'all' OR author_id = ${uid}
     OR (audience LIKE 'follows:%' AND EXISTS (SELECT 1 FROM assignments s WHERE s.user_id = ${uid} AND s.role = 'follow' AND ',' || substr(announcements.audience, 9) || ',' LIKE '%,' || s.episode_id || ',%'))
     OR EXISTS (SELECT 1 FROM assignments s WHERE s.user_id = ${uid} AND s.role = 'follow' AND announcements.audience = 'follow:' || s.episode_id || ':' || s.team_id))`;
+  // mine = a system notice to a team this account follows, in any episode (hosts scheduled as follows included): it pops up for them
+  const followed = new Set(all<{ k: string }>("SELECT 'follow:' || episode_id || ':' || team_id AS k FROM assignments WHERE user_id = ? AND role = 'follow'", uid).map((r) => r.k));
   // pinned first (newest pin first), then by publish time descending
   return c.json({
-    announcements: all(`SELECT * FROM announcements WHERE event_id = ? AND ${visible} ORDER BY (pinned_at IS NULL), pinned_at DESC, id DESC LIMIT 200`, ev.id),
+    announcements: all(`SELECT * FROM announcements WHERE event_id = ? AND ${visible} ORDER BY (pinned_at IS NULL), pinned_at DESC, id DESC LIMIT 200`, ev.id)
+      // a twist notice carries the answers its team can still give (shield / reflect), whichever episode is on screen
+      .map((a) => {
+        const ef = a.effect_id ? get<Effect>('SELECT * FROM twist_effects WHERE id = ?', a.effect_id) : null;
+        return { ...a, mine: followed.has(a.audience), options: ef ? answerOptions(ef) : null };
+      }),
     lastReadId: me?.last_read_id ?? 0,
   });
 });

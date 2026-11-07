@@ -5,6 +5,7 @@ import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { useUi } from '@/stores/ui';
 import { fmtDateMinute } from '@/utils/time';
+import type { Announcement } from '@/types';
 
 const auth = useAuth();
 const race = useRace();
@@ -36,6 +37,8 @@ function audienceText(a: string) {
   const team = race.teams.find((t) => t.id === Number(m[2]));
   return `发给 ${team?.label ?? '队伍'} 跟队`;
 }
+/** A twist hit still waiting for an answer: hosts can answer for any team, follows for their own */
+const answerable = (a: Announcement) => !!a.effect_id && !!(a.options?.shield || a.options?.reflect) && (auth.isHost || a.mine);
 onMounted(() => race.markAnnouncementsRead());
 watch(() => race.announcements, () => race.markAnnouncementsRead());
 </script>
@@ -59,6 +62,13 @@ watch(() => race.announcements, () => race.markAnnouncementsRead());
         <div v-for="a in race.announcements" :key="a.id" class="alert" :class="a.pinned_at ? 'alert-warning' : 'alert-info'">
           <!-- no whitespace around the content: .pre keeps it, which would indent the first line -->
           <div class="pre">{{ a.content }}</div>
+          <!-- a twist hit still waiting for shield / reflect: answerable here too (hosts for any team, follows for their own) -->
+          <div v-if="answerable(a)" class="popup-answer">
+            <span class="text-sm">该队背包里有可用的卡，是否使用？</span>
+            <button v-if="a.options?.shield" class="btn btn-tonal btn-sm" @click="race.answerTwist(a.effect_id!, 'shield')">使用护盾</button>
+            <button v-if="a.options?.reflect" class="btn btn-tonal btn-sm" @click="race.answerTwist(a.effect_id!, 'reflect')">使用反弹</button>
+            <button class="btn btn-text btn-sm" @click="race.answerTwist(a.effect_id!, 'accept')">不使用</button>
+          </div>
           <div class="flex-between mt-1">
             <span class="flex" style="gap: 6px"><span v-if="a.pinned_at" class="badge badge-warning">置顶</span><span v-if="audienceText(a.audience)" class="badge badge-info">{{ audienceText(a.audience) }}</span><span class="text-xs text-gray">{{ a.created_by }} · {{ fmtDateMinute(a.created_at) }}</span></span>
             <!-- actions stay on the right, also when they wrap below the meta line on a phone -->

@@ -3,12 +3,12 @@ import { computed, ref } from 'vue';
 import { useUi } from '@/stores/ui';
 import { useRace } from '@/stores/race';
 import { fmtDateMinute } from '@/utils/time';
+import type { Announcement } from '@/types';
 const ui = useUi();
 const race = useRace();
-/** A hit notice whose team can still shield or reflect: the pop-up asks before it can be closed */
-const effectOf = (effectId: number | null) => (effectId ? race.effects.find((e) => e.id === effectId) ?? null : null);
-const asks = (effectId: number | null) => { const e = effectOf(effectId); return !!e && (e.options.shield || e.options.reflect); };
-const undecided = computed(() => race.popupAnnouncements.some((a) => asks(a.effect_id)));
+/** A hit notice whose team can still shield or reflect: the pop-up asks before it can be closed (the options come with the notice) */
+const asks = (a: Announcement) => !!a.effect_id && !!(a.options?.shield || a.options?.reflect);
+const undecided = computed(() => race.popupAnnouncements.some(asks));
 const answering = ref(false);
 async function answer(effectId: number, ans: 'shield' | 'reflect' | 'accept') {
   answering.value = true;
@@ -39,10 +39,10 @@ async function answer(effectId: number, ans: 'shield' | 'reflect' | 'accept') {
         <div v-for="a in race.popupAnnouncements" :key="a.id" class="alert" :class="a.effect_id ? 'alert-warning' : 'alert-info'">
           <div class="pre">{{ a.content }}</div>
           <div class="text-xs text-gray mt-1">{{ fmtDateMinute(a.created_at) }}</div>
-          <div v-if="asks(a.effect_id)" class="popup-answer">
+          <div v-if="asks(a)" class="popup-answer">
             <span class="text-sm">背包里有可用的卡，是否使用？</span>
-            <button v-if="effectOf(a.effect_id)?.options.shield" class="btn btn-tonal btn-sm" :disabled="answering" @click="answer(a.effect_id!, 'shield')">使用护盾</button>
-            <button v-if="effectOf(a.effect_id)?.options.reflect" class="btn btn-tonal btn-sm" :disabled="answering" @click="answer(a.effect_id!, 'reflect')">使用反弹</button>
+            <button v-if="a.options?.shield" class="btn btn-tonal btn-sm" :disabled="answering" @click="answer(a.effect_id!, 'shield')">使用护盾</button>
+            <button v-if="a.options?.reflect" class="btn btn-tonal btn-sm" :disabled="answering" @click="answer(a.effect_id!, 'reflect')">使用反弹</button>
             <button class="btn btn-text btn-sm" :disabled="answering" @click="answer(a.effect_id!, 'accept')">不使用</button>
           </div>
         </div>
