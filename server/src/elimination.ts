@@ -3,7 +3,8 @@ import { all, get, run } from './db.js';
 /**
  * Automatic elimination: for every leg flagged as eliminating, once every team still racing has arrived at
  * that leg, the last N teams to arrive (N = the leg's elimination count) are eliminated; finishing the leg's
- * task does not matter. Pit stops sort by check-in time + net penalty. The result is reversible: it is recomputed after records are reverted or edited,
+ * task does not matter. Pit stops sort by check-in time + net penalty; other legs by start time + the net penalty recorded on the
+ * episode's earlier legs. The result is reversible: it is recomputed after records are reverted or edited,
  * so teams come back or get eliminated again. Withdrawn teams are excluded.
  */
 type LegRow = { id: number; episode_id: number; type: string; sort: number; can_eliminate: number; eliminate_count: number };
@@ -18,7 +19,7 @@ export function legOrder(eventId: number): LegRow[] {
 
 /**
  * A team's arrival time on a leg: pit stop = check-in (manual check-in wins) + the episode's net penalty;
- * otherwise the leg's start time (chained from the previous leg's end), falling back to its end time
+ * otherwise the leg's start time (chained from the previous leg's end, falling back to its end time) + the net penalty on the episode's earlier legs
  */
 function arrivalMs(teamId: number, leg: LegRow): number | null {
   const p = get<{ arrived_at: string | null; completed_at: string | null }>('SELECT arrived_at, completed_at FROM progress WHERE team_id = ? AND leg_id = ?', teamId, leg.id);
@@ -30,7 +31,12 @@ function arrivalMs(teamId: number, leg: LegRow): number | null {
     const pen = get<{ m: number | null }>('SELECT SUM(minutes) AS m FROM penalties WHERE episode_id = ? AND team_id = ?', leg.episode_id, teamId)?.m ?? 0;
     return new Date(base).getTime() + pen * 60000;
   }
-  return base ? new Date(base).getTime() : null;
+  if (!base) return null;
+  const pen = get<{ m: number | null }>(
+    'SELECT SUM(p.minutes) AS m FROM penalties p JOIN legs l ON l.id = p.leg_id WHERE p.episode_id = ? AND p.team_id = ? AND (l.sort < ? OR (l.sort = ? AND l.id < ?))',
+    leg.episode_id, teamId, leg.sort, leg.sort, leg.id,
+  )?.m ?? 0;
+  return new Date(base).getTime() + pen * 60000;
 }
 
 /** Recompute elimination status for the whole event; returns whether anything changed */
