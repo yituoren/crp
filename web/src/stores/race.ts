@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { api } from '@/api';
 import { useAuth } from './auth';
+import { useUi } from './ui';
 import { legName, type ShopItem, type CutoffUse, type TwistEffect, type Cutoff, type Announcement, type Assignment, type Episode, type LedgerEntry, type Penalty, type PitstopRow, type Progress, type Team, type User, type ItemLogEntry } from '@/types';
 
 
@@ -29,6 +30,14 @@ export const useRace = defineStore('race', () => {
   const effectsOn = (teamId: number, legId: number) => effects.value.filter((e) => e.status === 'hit' && e.mode === 'delay_start' && e.target_team_id === teamId && e.leg_id === legId).sort((a, b) => (a.wait_from ?? '').localeCompare(b.wait_from ?? ''));
   /** The last of them (its end is when the team may start) */
   const effectOn = (teamId: number, legId: number) => effectsOn(teamId, legId).at(-1) ?? null;
+  /** The hit team answers a twist effect (shield / reflect / accept), after confirming; used by the pop-up and the current leg card */
+  async function answerTwist(effectId: number, ans: 'shield' | 'reflect' | 'accept') {
+    const ui = useUi();
+    const text = { shield: '使用护盾挡下这次作用', reflect: '使用反弹，把作用转给使用者', accept: '不使用护盾或反弹，原地等待' }[ans];
+    if (!(await ui.confirm('确认', `${text}？`))) return;
+    try { await api(`/effects/${effectId}/answer`, { method: 'POST', body: { answer: ans } }); await Promise.all([loadProgress(), loadTeams(), loadLedger()]); }
+    catch (e) { ui.error(e); }
+  }
   /** A 回转 that sent the team back to this detour leg (its new completion shows in red) */
   const uturnOn = (teamId: number, legId: number) => effects.value.find((e) => e.status === 'hit' && e.mode === 'uturn' && e.target_team_id === teamId && e.leg_id === legId) ?? null;
   /** Still waiting because of a twist effect: the time it ends */
@@ -244,9 +253,11 @@ export const useRace = defineStore('race', () => {
   async function loadUsers() { users.value = (await api('/members')).users; }
   // Unread announcements: the last read id is stored on the account, consistent across devices
   const lastReadId = ref<number>(0);
-  // Own posts are never unread; hosts also see the system messages sent to one team's follows, but those do not count as unread for them
-  const countsAsUnread = (a: Announcement) => a.id > lastReadId.value && a.author_id !== auth.user?.id && (!auth.isHost || !a.audience.startsWith('follow:'));
-  // Pop-up: unread system departure notices for the team this account follows (hosts see them in the list only).
+  // Own posts are never unread; hosts also see the system messages sent to one team's follows, but those count (and pop up) only for the team they follow themselves
+  // A system notice to the team this account follows in the current episode (hosts can be scheduled as follows too)
+  const toMyTeam = (a: Announcement) => myAssignment.value?.role === 'follow' && a.audience === `follow:${currentEpisode.value?.id}:${myAssignment.value.team_id}`;
+  const countsAsUnread = (a: Announcement) => a.id > lastReadId.value && a.author_id !== auth.user?.id && (!auth.isHost || !a.audience.startsWith('follow:') || toMyTeam(a));
+  // Pop-up: unread system notices (departure, twist cards) for the team this account follows.
   // Acknowledged ones are remembered on this device, because the read mark is a single id that must not skip older unread announcements
   const ACK_KEY = 'crp.ackedDepartureNotices';
   const loadAcked = () => { try { return new Set<number>(JSON.parse(localStorage.getItem(ACK_KEY) ?? '[]')); } catch { return new Set<number>(); } };
@@ -331,7 +342,7 @@ export const useRace = defineStore('race', () => {
   }
 
   return {
-    episodes, teams, users, announcements, shopItems, loadShopItems, unreadAnnouncements, markAnnouncementsRead, popupAnnouncements, dismissPopup, effects, effectsOn, effectOn, uturnOn, waitingUntil, nowMs, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
+    episodes, teams, users, announcements, shopItems, loadShopItems, unreadAnnouncements, markAnnouncementsRead, popupAnnouncements, dismissPopup, effects, effectsOn, effectOn, uturnOn, answerTwist, waitingUntil, nowMs, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
     aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, isLocked, teamLocked, lockReason, structureEditable, cutoffUses, cutoffUseCount, cutoffReadyAt, parentOf, branchOf, branchLocked, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, currencyLegIds, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
     loadAll, reset, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, loadItemLog, itemLog, selectEpisode, invalidate,
   };

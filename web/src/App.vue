@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { api } from '@/api';
 import { useUi } from '@/stores/ui';
 import { useRace } from '@/stores/race';
 import { fmtDateMinute } from '@/utils/time';
@@ -12,11 +11,8 @@ const asks = (effectId: number | null) => { const e = effectOf(effectId); return
 const undecided = computed(() => race.popupAnnouncements.some((a) => asks(a.effect_id)));
 const answering = ref(false);
 async function answer(effectId: number, ans: 'shield' | 'reflect' | 'accept') {
-  const text = { shield: '使用护盾挡下这次作用', reflect: '使用反弹，把作用转给使用者', accept: '不使用护盾或反弹，原地等待' }[ans];
-  if (!(await ui.confirm('确认', `${text}？`))) return;
   answering.value = true;
-  try { await api(`/effects/${effectId}/answer`, { method: 'POST', body: { answer: ans } }); await Promise.all([race.loadProgress(), race.loadTeams(), race.loadLedger()]); }
-  catch (e) { ui.error(e); } finally { answering.value = false; }
+  try { await race.answerTwist(effectId, ans); } finally { answering.value = false; }
 }
 </script>
 

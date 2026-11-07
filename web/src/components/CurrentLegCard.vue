@@ -92,7 +92,16 @@ async function confirmTransport() {
     <div v-if="nothing" class="empty-rows">暂无操作</div>
     <template v-else>
       <div v-if="uturn" class="alert alert-warning">被{{ uturn.source_name }}的「{{ uturn.item_name }}」作用：完成绕道的另一个分支（{{ uturn.note }}）后，在本环节重新记录完成</div>
-      <div v-if="waitUntil" class="alert alert-warning">被{{ waitEffect?.source_name }}的「{{ waitEffect?.item_name }}」作用，原地等待到 {{ fmtTime(waitUntil) }}，之前不能记录</div>
+      <div v-if="waitUntil" class="alert alert-warning">
+        被{{ waitEffect?.source_name }}的「{{ waitEffect?.item_name }}」作用，原地等待到 {{ fmtTime(waitUntil) }}，之前不能记录
+        <!-- the same choice as in the pop-up, for whoever records this team -->
+        <div v-if="waitEffect && (waitEffect.options.shield || waitEffect.options.reflect)" class="popup-answer">
+          <span class="text-sm">背包里有可用的卡，是否使用？</span>
+          <button v-if="waitEffect.options.shield" class="btn btn-tonal btn-sm" @click="race.answerTwist(waitEffect.id, 'shield')">使用护盾</button>
+          <button v-if="waitEffect.options.reflect" class="btn btn-tonal btn-sm" @click="race.answerTwist(waitEffect.id, 'reflect')">使用反弹</button>
+          <button class="btn btn-text btn-sm" @click="race.answerTwist(waitEffect.id, 'accept')">不使用</button>
+        </div>
+      </div>
       <!-- Transport -->
       <div v-if="showTransport" class="cl-section">
         <div class="cl-label">交通</div>
