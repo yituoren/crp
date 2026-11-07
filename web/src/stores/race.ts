@@ -204,7 +204,7 @@ export const useRace = defineStore('race', () => {
     }
     const idx = ep.legs.findIndex((l) => l.id === legId);
     const self = ep.legs[idx];
-    { const w = waitingUntil(teamId, legId); if (w) return `${effectOn(teamId, legId)?.item_name ?? '飞弹'}等待中，${new Date(w).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })} 后可记录`; }
+    { const w = waitingUntil(teamId, legId); if (w) return `「${effectOn(teamId, legId)?.item_name ?? 'twist 卡'}」原地等待中，${new Date(w).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })} 后可记录`; }
     if (self?.type === 'SQ') {
       // Side quest: can be entered while the main leg runs, mandatory legs are not checked
       const parent = parentOf(legId); const pp = parent ? progressOf(teamId, parent.id) : null;

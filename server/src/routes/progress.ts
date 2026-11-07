@@ -223,7 +223,11 @@ progressRoutes.post('/progress', async (c) => {
         }
         // start time = the previous completed leg's end time (empty for the first leg); a side quest's start comes from "start side quest" and is not chained
         if (!next.arrived_at && leg.type !== 'SQ') next.arrived_at = prevEndTime(episodeId, teamId, leg.sort);
-        if (next.arrived_at && t < next.arrived_at) throw bad(next.arrived_at > now() ? '飞弹等待中，开始时间还没到，不能记录' : `完成时间不能早于开始时间（${next.arrived_at}）`);
+        if (next.arrived_at && t < next.arrived_at) {
+          // a start in the future is a twist card's wait (missile / 让路 / 让行): name the card
+          const card = next.arrived_at > now() ? get<{ item_name: string }>("SELECT item_name FROM twist_effects WHERE episode_id = ? AND target_team_id = ? AND leg_id = ? AND status = 'hit' AND mode = 'delay_start' ORDER BY wait_until DESC LIMIT 1", episodeId, teamId, legId)?.item_name : null;
+          throw bad(next.arrived_at > now() ? `「${card ?? 'twist 卡'}」原地等待中，开始时间还没到，不能记录` : `完成时间不能早于开始时间（${next.arrived_at}）`);
+        }
         next.completed_at = t;
       }
       break;
