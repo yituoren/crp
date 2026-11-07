@@ -198,6 +198,12 @@ progressRoutes.post('/progress', async (c) => {
     if (new Date(at).getTime() > Date.now() + 2 * 60 * 1000) throw bad('记录时间不能晚于当前时间');
     t = at;
   }
+  // a side quest cannot start before its main leg does (e.g. while the team waits there because of a twist card)
+  if (leg.type === 'SQ' && action === 'arrive') {
+    const parent = parentLegOf(leg);
+    const ps = parent ? get<{ arrived_at: string | null }>('SELECT arrived_at FROM progress WHERE episode_id = ? AND team_id = ? AND leg_id = ?', episodeId, teamId, parent.id)?.arrived_at : null;
+    if (ps && t < ps) throw bad('主线还在原地等待，开始后才能进入支线');
+  }
   const cur = before ?? {
     arrived_at: null, completed_at: null, detour_choice: null, roadblock_by: null, ff_result: null, target_team_id: null, note: '',
   };

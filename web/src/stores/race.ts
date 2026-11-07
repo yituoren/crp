@@ -218,6 +218,7 @@ export const useRace = defineStore('race', () => {
       // Side quest: can be entered while the main leg runs, mandatory legs are not checked
       const parent = parentOf(legId); const pp = parent ? progressOf(teamId, parent.id) : null;
       if (!pp?.arrived_at) return '主线还没有开始';
+      if (parent && waitingUntil(teamId, parent.id)) return '主线还在原地等待，开始后才能进入支线';
       if (pp.completed_at) return auth.isHost ? null : '主线已完成';
       return null;
     }
