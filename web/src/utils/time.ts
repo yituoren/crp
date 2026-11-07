@@ -74,6 +74,10 @@ export function fmtDurMs(ms: number): string {
   const h = Math.floor(m / 60);
   return h ? `${h} h ${m % 60} m` : `${m} m`;
 }
+/** Penalty minutes with a sign, in the duration format: "+5 m", "-1 h 10 m" ("0 m" for none) */
+export function fmtPenMin(min: number): string {
+  return `${min > 0 ? '+' : min < 0 ? '-' : ''}${fmtDurMs(Math.abs(min) * 60000)}`;
+}
 export function fmtDuration(a?: string | null, b?: string | null): string {
   if (!a || !b) return '-';
   return fmtDurMs(new Date(b).getTime() - new Date(a).getTime());

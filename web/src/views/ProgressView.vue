@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
-import { fmtTime, fmtTimeSec, fmtDurMs } from '@/utils/time';
+import { fmtTime, fmtTimeSec, fmtDurMs, fmtPenMin } from '@/utils/time';
 import { legName, endLabel, startLabel, hasStart, typeCode, type LegType } from '@/types';
 import { exportProgressXlsx, type ExportCell, type ExportGroup, type ExportRow } from '@/utils/progressExport';
 import { useUi } from '@/stores/ui';
@@ -38,20 +38,21 @@ function hitTitle(teamId: number, legId: number) {
   // a reflected effect's source is the team that reflected it
   const lines = race.effectsOn(teamId, legId).map((e) => `${e.item_name}${e.reflected_from_id ? '（被反弹）' : ''}：来自 ${e.source_name}，原地等待 ${e.wait_min} 分钟`);
   const p = race.progressOf(teamId, legId);
-  if (p?.settle_min && p.arrived_at) lines.push(`结算前面环节的补时罚时：${fmtTime(p.arrived_at)} 到达，原地等待 ${p.settle_min} 分钟`);
+  if (p?.settle_min && p.arrived_at) lines.push(`结算前面环节的补时罚时：${fmtTime(p.arrived_at)} 到达，原地等待 ${fmtDurMs(p.settle_min * 60000)}`);
   return lines.join('\n');
 }
 /** Durations include the penalties and credits recorded on the leg itself */
 function penTitle(teamId: number, legId: number) {
   const m = race.legPenalty(teamId, legId);
-  return m ? `含本环节${m > 0 ? '罚时' : '补时'} ${Math.abs(m)} 分钟` : '';
+  return m ? `含本环节${m > 0 ? '罚时' : '补时'} ${fmtDurMs(Math.abs(m) * 60000)}` : '';
 }
 /** A 回转 sent the team back to this detour: its new completion time shows in red */
 function uturnTitle(teamId: number, legId: number) {
   const e = race.uturnOn(teamId, legId);
   return e ? `${e.item_name}：来自 ${e.source_name}（${e.note}）` : '';
 }
-function cell(teamId: number, legId: number, single: boolean, isPs = false) {
+type MxCell = { start: string; end: string; dur: string; cls: string; ms?: number };
+function cell(teamId: number, legId: number, single: boolean, isPs = false): MxCell {
   const p = race.progressOf(teamId, legId);
   // single-column legs only look at the end time (completed_at)
   if (single) return p?.completed_at ? { start: (isPs ? fmtTimeSec : fmtTime)(p.completed_at), end: '-', dur: '-', cls: 'mx-done' } : { start: '-', end: '-', dur: '-', cls: '' };
@@ -60,18 +61,19 @@ function cell(teamId: number, legId: number, single: boolean, isPs = false) {
   const start = race.taskStart(teamId, legId)!;
   const startMs = new Date(start).getTime();
   const pen = race.legPenalty(teamId, legId) * 60000;
-  if (p.completed_at) { const endMs = new Date(p.completed_at).getTime(); return { start: fmtTime(start), end: (isPs ? fmtTimeSec : fmtTime)(p.completed_at), dur: fmtDurMs(endMs - startMs - branchElapsed(teamId, legId, endMs) + pen), cls: 'mx-done' }; }
+  if (p.completed_at) { const endMs = new Date(p.completed_at).getTime(); const ms = endMs - startMs - branchElapsed(teamId, legId, endMs) + pen; return { start: fmtTime(start), end: (isPs ? fmtTimeSec : fmtTime)(p.completed_at), dur: fmtDurMs(ms), ms, cls: 'mx-done' }; }
   if (startMs > now.value) return { start: fmtTime(start), end: '等待中', dur: '-', cls: 'mx-arrived' }; // still waiting on the spot
-  return { start: fmtTime(start), end: '进行中', dur: fmtDurMs(now.value - startMs - branchElapsed(teamId, legId, null) + pen), cls: 'mx-arrived' };
+  const ms = now.value - startMs - branchElapsed(teamId, legId, null) + pen;
+  return { start: fmtTime(start), end: '进行中', dur: fmtDurMs(ms), ms, cls: 'mx-arrived' };
 }
 /** Side quest columns: start / end / duration */
-function branchCell(teamId: number, legId: number) {
+function branchCell(teamId: number, legId: number): MxCell {
   const br = branchOf({ id: legId }); const bp = br ? race.progressOf(teamId, br.id) : null;
   if (!bp?.arrived_at) return { start: '-', end: '-', dur: '-', cls: '' };
   const s = new Date(bp.arrived_at).getTime();
   const pen = race.legPenalty(teamId, br!.id) * 60000;
-  if (bp.completed_at) return { start: fmtTime(bp.arrived_at), end: fmtTime(bp.completed_at), dur: fmtDurMs(new Date(bp.completed_at).getTime() - s + pen), cls: 'mx-done' };
-  return { start: fmtTime(bp.arrived_at), end: '进行中', dur: fmtDurMs(now.value - s + pen), cls: 'mx-arrived' };
+  const ms = (bp.completed_at ? new Date(bp.completed_at).getTime() : now.value) - s + pen;
+  return { start: fmtTime(bp.arrived_at), end: bp.completed_at ? fmtTime(bp.completed_at) : '进行中', dur: fmtDurMs(ms), ms, cls: bp.completed_at ? 'mx-done' : 'mx-arrived' };
 }
 /** Legs with extra info get extra columns at the end of the group; pit stops get "penalty" and "final" */
 function extraCols(l: { type: string }): string[] {
@@ -87,7 +89,7 @@ const extraCol = (l: { type: string }) => extraCols(l).length > 0;
 function extraVal(teamId: number, l: { id: number; type: string }, i = 0): string {
   if (l.type === 'PS') {
     const r = race.pitstop.find((x) => x.team_id === teamId);
-    if (i === 0) return !r || !r.penalty_minutes ? '-' : r.penalty_minutes > 0 ? `+${r.penalty_minutes} 分` : `${r.penalty_minutes} 分`;
+    if (i === 0) return !r || !r.penalty_minutes ? '-' : fmtPenMin(r.penalty_minutes);
     return r?.final_time ? fmtTimeSec(r.final_time) : '-';
   }
   const p = race.progressOf(teamId, l.id);
@@ -179,14 +181,14 @@ const exporting = ref(false);
 async function exportXlsx() {
   const e = ep.value; if (!e) return;
   const state = (cls: string) => (cls === 'mx-done' ? 'done' as const : cls === 'mx-arrived' ? 'arrived' as const : undefined);
-  const cellOf = (text: string, kind: CellKind | 'rank', cls = '', hit = false): ExportCell => ({ text, kind: text === '-' ? 'blank' : kind, state: state(cls), hit });
+  const cellOf = (text: string, kind: CellKind | 'rank', cls = '', hit = false, ms?: number): ExportCell => ({ text, kind: text === '-' ? 'blank' : kind, state: state(cls), hit, ms: text === '-' ? undefined : ms });
   const groups: ExportGroup[] = legs.value.map((l) => {
     const br = branchOf(l);
     const subs = isSingleCol(l)
       ? [{ label: endLabel(l.type) }]
       : [{ label: startLabel(l.type) }, ...(br ? [{ label: '支线开始', branch: true }, { label: '支线结束', branch: true }, { label: '支线用时', branch: true }] : []), { label: endLabel(l.type) }, { label: '用时' }];
-    // the rank is the last column of every leg group
-    return { title: `${typeCode(l.type)} · ${legName(l)}${br ? `　/　SQ · ${legName(br)}` : ''}`, type: l.type, subs: [...subs, ...extraCols(l).map((c) => ({ label: c })), { label: '排名' }] };
+    // the current rank (after this leg) is the last column of every leg group
+    return { title: `${typeCode(l.type)} · ${legName(l)}${br ? `　/　SQ · ${legName(br)}` : ''}`, type: l.type, subs: [...subs, ...extraCols(l).map((c) => ({ label: c })), { label: '当前排名' }] };
   });
   const ranks = legs.value.map((l) => legRanks(l));
   // teams in number order (race.teams is sorted by number), only those shown in this episode
@@ -201,8 +203,8 @@ async function exportXlsx() {
       const c = cell(t.id, l.id, false, isPs); const b = branchCell(t.id, l.id);
       return [
         cellOf(c.start, 'time', c.cls, hit),
-        ...(branchOf(l) ? [cellOf(b.start, 'time', b.cls), cellOf(b.end, 'time', b.cls), cellOf(b.dur, 'dur', b.cls)] : []),
-        cellOf(c.end, 'time', c.cls, !!race.uturnOn(t.id, l.id)), cellOf(c.dur, 'dur', c.cls),
+        ...(branchOf(l) ? [cellOf(b.start, 'time', b.cls), cellOf(b.end, 'time', b.cls), cellOf(b.dur, 'dur', b.cls, false, b.ms)] : []),
+        cellOf(c.end, 'time', c.cls, !!race.uturnOn(t.id, l.id)), cellOf(c.dur, 'dur', c.cls, false, c.ms),
         ...tail,
       ];
     }),
