@@ -23,12 +23,12 @@ const arrivedCount = (legId: number) => race.aliveTeams.filter((t) => { const p 
 
 // ---- Episode editing ----
 const epEditing = ref(false);
-const epForm = reactive({ name: '', budget: 0, status: 'pending', notes: '', startAt: '', inheritRank: false, startGapMin: 0, continuous: false, waitMin: 0 });
+const epForm = reactive({ name: '', budget: 0, status: 'pending', notes: '', startAt: '', inheritRank: false, startGapMin: 0, continuous: false, waitMin: 0, eliminate: false, eliminateCount: '' as number | '' });
 /** Whether this is the first episode (no previous ranking to inherit) */
 const isFirstEp = computed(() => !!ep.value && race.episodes[0]?.id === ep.value.id);
 function openEpEdit() {
   if (!ep.value) return;
-  Object.assign(epForm, { name: ep.value.name, budget: ep.value.budget, status: ep.value.status, notes: ep.value.notes, startAt: toLocalInput(ep.value.start_at).slice(0, 16), inheritRank: !!ep.value.inherit_rank, startGapMin: ep.value.start_gap_min || 0, continuous: ep.value.continuous_wait_min !== null, waitMin: ep.value.continuous_wait_min ?? 0 });
+  Object.assign(epForm, { name: ep.value.name, budget: ep.value.budget, status: ep.value.status, notes: ep.value.notes, startAt: toLocalInput(ep.value.start_at).slice(0, 16), inheritRank: !!ep.value.inherit_rank, startGapMin: ep.value.start_gap_min || 0, continuous: ep.value.continuous_wait_min !== null, waitMin: ep.value.continuous_wait_min ?? 0, eliminate: ep.value.eliminate_count > 0, eliminateCount: ep.value.eliminate_count || '' });
   epEditing.value = true;
 }
 async function saveEp() {
@@ -36,10 +36,13 @@ async function saveEp() {
   // a continuous episode starts by itself when its first team is due, so the scheduled start and rank stagger do not apply
   const body = { name: epForm.name, budget: epForm.budget, status: epForm.status, notes: epForm.notes,
     startAt: !continuous && epForm.startAt ? fromLocalInput(epForm.startAt) : null, inheritRank: !continuous && !isFirstEp.value && epForm.inheritRank, startGapMin: epForm.startGapMin,
-    continuousWaitMin: continuous ? Math.max(0, Math.round(Number(epForm.waitMin) || 0)) : null };
+    continuousWaitMin: continuous ? Math.max(0, Math.round(Number(epForm.waitMin) || 0)) : null, eliminateCount: epForm.eliminate ? Number(epForm.eliminateCount) : 0 };
+  if (epForm.eliminate && !(Number.isInteger(Number(epForm.eliminateCount)) && Number(epForm.eliminateCount) >= 1)) { ui.toast('勾选了赛段淘汰，请填写淘汰队数', 'error'); return; }
   if (!continuous && epForm.startAt && !body.startAt) { ui.toast('自动开始时间格式不正确', 'error'); return; }
   try { await api(`/episodes/${ep.value!.id}`, { method: 'PUT', body }); await race.loadEpisodes(); epEditing.value = false; ui.toast('赛段已保存'); } catch (e) { ui.error(e); }
 }
+/** Episode elimination is structure: hosts set it before the episode starts, admins at any time */
+const elimEditable = computed(() => auth.isAdmin || ep.value?.status === 'pending');
 /** Summary text for the scheduled start */
 const autoStartText = computed(() => {
   const e = ep.value;
@@ -140,6 +143,7 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
         <template v-if="ep.started_at"> · 开始于 {{ fmtDateTime(ep.started_at) }}{{ ep.budget ? (ep.continuous_wait_min !== null ? '（各队发车时补充到余额）' : '（已补充到各队余额）') : '' }}</template>
         <template v-if="autoStartText && (!ep.started_at || ep.continuous_wait_min !== null)"> · {{ autoStartText }}</template>
         <template v-if="ep.finished_at"> · 结束于 {{ fmtDateTime(ep.finished_at) }}</template>
+        <template v-if="ep.eliminate_count"> · 赛段淘汰 {{ ep.eliminate_count }} 队（所有队伍签到后，按签到加本赛段净罚时，最后 {{ ep.eliminate_count }} 队淘汰{{ ep.status === 'finished' ? '，已锁定' : '' }}）</template>
       </div>
       <div v-if="ep.notes" class="pre mt-1">{{ ep.notes }}</div>
     </div>
@@ -185,6 +189,8 @@ const statusLabel: Record<string, string> = { pending: '未开始', running: '�
         <div v-if="epForm.inheritRank" class="form-group" style="max-width: 200px"><label>发车间隔（m）</label><input v-model.number="epForm.startGapMin" type="number" min="0" step="1" inputmode="numeric" /></div>
       </template>
     </template>
+    <label class="check-row elim-row"><input v-model="epForm.eliminate" type="checkbox" :disabled="!elimEditable" /> 赛段淘汰：所有队伍签到后淘汰最后<input v-model.number="epForm.eliminateCount" type="number" min="1" step="1" inputmode="numeric" class="elim-count" :disabled="!epForm.eliminate || !elimEditable" @click.prevent.stop /><span>队</span></label>
+    <div class="text-xs text-gray mb-2" style="margin-top: -8px">按签到时间加本赛段净罚时排序，签到或罚时变动后实时重算，结束赛段后锁定。{{ elimEditable ? '' : '赛段已开始，只有管理员可以修改。' }}</div>
     <div class="form-group"><label>状态（一般用「开始赛段 / 结束赛段」按钮切换，这里可手工修正）</label><MSelect v-model="epForm.status" outlined :options="[{ value: 'pending', label: '未开始' }, { value: 'running', label: '进行中' }, { value: 'finished', label: '已结束' }]" /></div>
     <div class="form-group"><label>赛段说明（所有幕后可见）</label><textarea v-model="epForm.notes" /></div>
     <div class="modal-actions"><button class="btn btn-text" @click="epEditing = false">取消</button><button class="btn" @click="saveEp">保存</button></div>

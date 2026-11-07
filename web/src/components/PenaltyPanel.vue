@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue';
 import { api } from '@/api';
+import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import LegTag from './LegTag.vue';
 import { legName } from '@/types';
@@ -9,6 +10,7 @@ import { fmtDateTime } from '@/utils/time';
 
 // legId: show and add records for that leg only (station); teamId: show and add records for that team only (follow)
 const props = defineProps<{ legId?: number; teamId?: number }>();
+const auth = useAuth();
 const race = useRace();
 const ui = useUi();
 const ep = computed(() => race.currentEpisode);
@@ -16,7 +18,7 @@ const form = reactive({ teamId: (props.teamId ?? '') as number | '', minutes: ''
 const canAdd = computed(() => (props.teamId ? race.canManagePenaltyFor(props.teamId) : race.canManagePenalty));
 // stations may pick any team; follows only their own
 const teamOptions = computed(() => race.teams.filter((t) => race.canManagePenaltyFor(t.id)));
-// leg options: every leg of the episode, stations only their own legs; a leg is always required
+// leg options: every leg of the episode, stations only their own legs; "other" is hosts only
 const legOptions = computed(() => (ep.value?.legs ?? []).filter((l) => !race.currencyLegIds || race.currencyLegIds.includes(l.id)));
 const totals = computed(() => {
   const m = new Map<number, number>();
@@ -28,8 +30,9 @@ async function apply(sign: 1 | -1) {
   if (!ep.value) return;
   const minutes = Number(form.minutes);
   if (!form.teamId) { ui.toast('请选择队伍', 'error'); return; }
-  const legId = props.legId ?? (form.legId === '' ? null : Number(form.legId));
+  const legId = props.legId ?? (form.legId === '' || Number(form.legId) === 0 ? null : Number(form.legId));
   if (!props.legId && form.legId === '') { ui.toast('请选择环节', 'error'); return; }
+  if (!props.legId && !legId && !auth.isHost) { ui.toast('“其他”只能由主办操作', 'error'); return; }
   if (!Number.isInteger(minutes) || minutes <= 0) { ui.toast('分钟数必须是正整数，补时请用「补充时间」按钮', 'error'); return; }
   const team = race.teamById.get(Number(form.teamId))?.name ?? '';
   const reason = form.reason.trim() || (sign > 0 ? '罚时' : '补充时间');
@@ -64,7 +67,7 @@ const visible = computed(() => race.penalties.filter((p) => !p.reverts_id && (!p
     <div v-if="race.episodePending" class="alert alert-warning">赛段尚未开始，开始赛段后才能操作罚时。</div>
     <div v-else-if="race.episodeFinished" class="alert alert-info">赛段已结束，罚时记录已锁定，只有管理员可以修改。</div>
     <div v-else-if="canAdd" class="flex mb-2 penalty-form">
-      <MSelect v-if="!props.legId" v-model="form.legId" outlined style="width: 160px" placeholder="选择环节" :options="legOptions.map((l) => ({ value: l.id, label: legName(l), tag: l.type }))" />
+      <MSelect v-if="!props.legId" v-model="form.legId" outlined style="width: 160px" placeholder="选择环节" :options="[...legOptions.map((l) => ({ value: l.id, label: legName(l), tag: l.type })), ...(auth.isHost ? [{ value: 0, label: '其他' }] : [])]" />
       <input v-model="form.minutes" type="number" inputmode="numeric" min="1" step="1" class="input-inline pf-min" placeholder="分钟" style="width: 90px" />
       <input v-model="form.reason" class="input-inline pf-reason" placeholder="原因（如：打车超预算 / 站点失误耽误）" style="flex: 1; min-width: 160px" />
       <button class="btn btn-tonal btn-tonal-danger" @click="apply(1)">增加罚时</button>

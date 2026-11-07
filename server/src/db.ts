@@ -448,6 +448,11 @@ ensureColumn('episodes', 'continuous_wait_min', 'INTEGER');
 ensureColumn('teams', 'eliminated_leg_id', 'INTEGER');
 ensureColumn('teams', 'locked_from_leg_id', 'INTEGER');
 ensureColumn('teams', 'short_name', "TEXT NOT NULL DEFAULT ''");
+// Episode elimination: the last N teams by check-in + net penalty; the pit stops' elimination settings move here (a leg's own setting is sudden death)
+if (ensureColumn('episodes', 'eliminate_count', 'INTEGER NOT NULL DEFAULT 0')) {
+  db.exec(`UPDATE episodes SET eliminate_count = COALESCE((SELECT MAX(l.eliminate_count) FROM legs l WHERE l.episode_id = episodes.id AND l.type = 'PS' AND l.can_eliminate = 1), 0);
+    UPDATE legs SET can_eliminate = 0, eliminate_count = 0 WHERE type = 'PS' AND can_eliminate = 1;`);
+}
 
 type Param = string | number | null;
 export type Row = Record<string, any>;

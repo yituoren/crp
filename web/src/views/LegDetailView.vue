@@ -127,8 +127,9 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
             </div>
           </div>
           <div v-if="form.type !== 'SQ'" class="edit-section">
-            <div class="edit-section-title">淘汰</div>
-            <label class="check-row elim-row"><input v-model="form.can_eliminate" type="checkbox" :disabled="!race.structureEditable" /> 本环节可淘汰，淘汰<input v-model.number="form.eliminate_count" type="number" min="1" step="1" inputmode="numeric" class="elim-count" :disabled="!form.can_eliminate || !race.structureEditable" @click.prevent.stop /><span>队</span></label>
+            <div class="edit-section-title">突然死亡</div>
+            <label class="check-row elim-row"><input v-model="form.can_eliminate" type="checkbox" :disabled="!race.structureEditable" /> 本环节突然死亡，淘汰<input v-model.number="form.eliminate_count" type="number" min="1" step="1" inputmode="numeric" class="elim-count" :disabled="!form.can_eliminate || !race.structureEditable" @click.prevent.stop /><span>队</span></label>
+            <div class="text-xs text-gray">所有队伍到达本环节后，按开始时间加本赛段前面环节的净罚时排序，最后到的几队淘汰。赛段末尾按签到的淘汰在「编辑赛段」里设置。</div>
           </div>
           <div class="edit-section">
             <div class="edit-section-head"><span class="edit-section-title">熔断</span><button v-if="race.structureEditable" class="btn btn-text btn-sm" @click="addCutoff"><Icon name="add" size="16" />添加熔断</button></div>
@@ -195,7 +196,7 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
           <div v-if="leg.address" class="mb-2">地址：{{ leg.address }} <a v-if="leg.map_url" :href="leg.map_url" target="_blank">打开地图</a></div>
           <div v-if="leg.open_time || leg.close_time" class="mb-2">开放时间：{{ leg.open_time || '-' }} ~ {{ leg.close_time || '-' }}</div>
           <div v-if="leg.shop.length && moneyMode() === 'coin'" class="mb-2">商店：<span v-for="it in leg.shop" :key="it.id" class="badge" :class="it.remaining === 0 ? 'badge-crew' : 'badge-info'" style="margin-right: 6px">{{ it.name }} · {{ stockText(it) }}</span></div>
-          <div v-if="leg.can_eliminate" class="mb-2"><span class="badge badge-urgent">淘汰 {{ leg.eliminate_count }} 队</span><span class="text-gray text-sm"> 所有队伍到达后，最后到的 {{ leg.eliminate_count }} 队自动淘汰</span></div>
+          <div v-if="leg.can_eliminate" class="mb-2"><span class="badge badge-urgent">淘汰 {{ leg.eliminate_count }} 队</span><span class="text-gray text-sm"> 突然死亡：所有队伍到达后，按开始时间加前面环节净罚时，最后到的 {{ leg.eliminate_count }} 队自动淘汰</span></div>
           <div v-if="leg.cutoffs.length" class="mb-2">熔断：<span v-for="c in leg.cutoffs" :key="c.id" class="badge badge-info" style="margin-right: 6px">{{ c.name }} · {{ fmtDurMs(c.start_min * 60000) }} 起 · 每 {{ fmtDurMs(c.interval_min * 60000) }}{{ moneyMode() === 'coin' && c.cost ? ` · ${c.cost} 币` : '' }}</span></div>
           <div v-if="leg.type === 'DT'" class="mb-2">绕道：A「{{ leg.detour_a || '未填写' }}」 / B「{{ leg.detour_b || '未填写' }}」</div>
           <div class="section-title text-sm">环节说明</div>

@@ -159,13 +159,21 @@ episodeRoutes.put('/episodes/:id', hostOnly, async (c) => {
     start_gap_min: b.startGapMin === undefined ? before.start_gap_min : Math.max(0, int(b.startGapMin, 0)),
     // continuous: wait minutes after the previous check-in; null switches it off
     continuous_wait_min: b.continuousWaitMin === undefined ? before.continuous_wait_min : b.continuousWaitMin === null ? null : Math.max(0, int(b.continuousWaitMin, 0)),
+    // episode elimination: the last N by check-in + net penalty, decided once everyone has checked in
+    eliminate_count: b.eliminateCount === undefined ? before.eliminate_count : Math.max(0, int(b.eliminateCount, 0)),
   };
+  if (next.eliminate_count !== before.eliminate_count) assertStructureEditable(c, id);
   if (next.continuous_wait_min !== null && !previousEpisode(before as EpisodeRow)) throw bad('第一个赛段不能设为连续赛段');
   if (b.startAt && !next.start_at) throw bad('自动开始时间格式不正确');
-  run('UPDATE episodes SET name=?, budget=?, status=?, notes=?, sort=?, start_at=?, inherit_rank=?, start_gap_min=?, continuous_wait_min=? WHERE id=?',
-    next.name, next.budget, next.status, next.notes, next.sort, next.start_at, next.inherit_rank, next.start_gap_min, next.continuous_wait_min, id);
+  // the status goes in after the eliminations are recomputed, so finishing here locks the current result and reopening recomputes it
+  run('UPDATE episodes SET name=?, budget=?, notes=?, sort=?, start_at=?, inherit_rank=?, start_gap_min=?, continuous_wait_min=?, eliminate_count=? WHERE id=?',
+    next.name, next.budget, next.notes, next.sort, next.start_at, next.inherit_rank, next.start_gap_min, next.continuous_wait_min, next.eliminate_count, id);
+  if (next.status === 'finished') recomputeEliminations(before.event_id);
+  run('UPDATE episodes SET status = ? WHERE id = ?', next.status, id);
+  const elimChanged = recomputeEliminations(before.event_id);
   audit(c.get('user'), 'update', 'episode', id, before, next);
   notify('episodes');
+  if (elimChanged || next.eliminate_count !== before.eliminate_count || next.status !== before.status) notify('teams');
   return c.json({ ok: true });
 });
 
@@ -188,6 +196,8 @@ episodeRoutes.post('/episodes/:id/start', hostOnly, (c) => {
   const blocked = startBlockedReason(ep as EpisodeRow);
   if (blocked) throw bad(blocked);
   const issued = startEpisodeNow(ep as EpisodeRow, c.get('user'), now());
+  // a finished episode reopened: its eliminations are live again
+  if (ep.status === 'finished' && recomputeEliminations(ep.event_id)) notify('teams');
   return c.json({ ok: true, issuedBudgetTo: issued, alreadyStarted: !!ep.started_at });
 });
 
@@ -238,9 +248,11 @@ episodeRoutes.post('/episodes/:id/finish', hostOnly, (c) => {
     );
     if (missing.length) throw bad(`还有队伍没有到达中继站：${missing.map((t) => labels.get(t.id) ?? t.name).join('、')}`);
   }
+  // settle the eliminations once more, then finishing locks them
+  recomputeEliminations(ep.event_id);
   run("UPDATE episodes SET status = 'finished', finished_at = COALESCE(finished_at, ?) WHERE id = ?", now(), id);
   audit(c.get('user'), 'finish', 'episode', id, { status: ep.status });
-  notify('episodes');
+  notify('episodes'); notify('teams');
   return c.json({ ok: true });
 });
 
