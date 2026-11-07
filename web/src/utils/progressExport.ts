@@ -35,6 +35,11 @@ function hexToRgb(hex: string) { const h = hex.replace('#', ''); return `rgb(${p
 function tint(argbHex: string, keep: number): string {
   return 'FF' + [2, 4, 6].map((i) => Math.round(255 - (255 - parseInt(argbHex.slice(i, i + 2), 16)) * keep).toString(16).padStart(2, '0')).join('').toUpperCase();
 }
+/** {GUID} for the data-bar extension ids; crypto.randomUUID only exists on HTTPS / localhost, getRandomValues everywhere */
+function guid(): string {
+  const h = [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+  return `{${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-${(8 + (parseInt(h[16]!, 16) % 4)).toString(16).toUpperCase()}${h.slice(17, 20)}-${h.slice(20, 32)}}`;
+}
 /** Spreadsheet column letters for a 1-based index */
 function colName(n: number): string { let s = ''; for (; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + ((n - 1) % 26)) + s; return s; }
 
@@ -144,7 +149,7 @@ async function addDataBars(JSZip: typeof import('jszip'), buf: ArrayBuffer, bars
   const path = 'xl/worksheets/sheet1.xml';
   let xml = await zip.file(path)!.async('string');
   const X14 = 'http://schemas.microsoft.com/office/spreadsheetml/2009/9/main';
-  const rules = bars.map((b, i) => ({ ...b, id: `{${crypto.randomUUID().toUpperCase()}}`, priority: i + 1 }));
+  const rules = bars.map((b, i) => ({ ...b, id: guid(), priority: i + 1 }));
   const main = rules.map((b) =>
     `<conditionalFormatting sqref="${b.ref}"><cfRule type="dataBar" priority="${b.priority}"><dataBar><cfvo type="num" val="0"/><cfvo type="max"/><color rgb="${b.color}"/></dataBar>`
     + `<extLst><ext uri="{B025F937-C7B1-47D3-B67F-A62EFF666E3E}" xmlns:x14="${X14}"><x14:id>${b.id}</x14:id></ext></extLst></cfRule></conditionalFormatting>`).join('');
