@@ -170,12 +170,12 @@ export function listItemLog(eventId: number, episodeId?: number | null, teamId?:
   if (teamId) { conds.push('l.team_id = ?'); params.push(teamId); }
   const labels = teamLabelMap();
   return all<any>(
-    `SELECT l.*, t.name AS team_name, g.name AS leg_name, lt.tip AS tip_text, ef.status AS effect_status, ef.target_team_id AS effect_target
+    `SELECT l.*, t.name AS team_name, g.name AS leg_name, lt.tip AS tip_text, ef.status AS effect_status, ef.kind AS effect_kind, ef.target_team_id AS effect_target
      FROM item_log l JOIN teams t ON t.id = l.team_id LEFT JOIN legs g ON g.id = l.leg_id LEFT JOIN leg_tips lt ON lt.id = l.tip_id LEFT JOIN twist_effects ef ON ef.item_log_id = l.id
      WHERE ${conds.join(' AND ')} ORDER BY l.created_at DESC, l.id DESC LIMIT 500`, ...params,
   ).map((r) => {
-    // a fired twist card shows whom it hit, or that it is still waiting / missed
-    const effectLabel = r.effect_status === 'pending' || r.effect_status === 'queued' ? '待命中' : r.effect_status === 'void' ? '落空' : null;
+    // a fired twist card shows whom it hit, or that it is still waiting / missed (a duel names its target and is settled by hand)
+    const effectLabel = r.effect_kind === 'duel' ? null : r.effect_status === 'pending' || r.effect_status === 'queued' ? '待命中' : r.effect_status === 'void' ? '落空' : null;
     const target = r.target_team_id ?? (r.effect_status && !['void', 'pending', 'queued'].includes(r.effect_status) ? r.effect_target : null);
     return { ...r, team_name: labels.get(r.team_id) ?? r.team_name, target_name: target ? labels.get(target) ?? null : null, target_label: r.target_label ?? effectLabel };
   });

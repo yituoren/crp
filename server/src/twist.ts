@@ -15,8 +15,9 @@ import { recomputeEliminations } from './elimination.js';
  *    other branch: its detour record reopens (choice "回转", the new completion shows in red) and everything after it is cleared;
  *    让路 (yield) makes the target wait 15 minutes when it arrives here; 让行 does that to the next team to arrive here.
  *    A target that has already passed the point makes 回转 / 让路 void.
- *  - 决斗 (duel), played at a task point against a team: once both have finished that task the faster net time (to the millisecond, no
- *    draw) wins 4 coins from the loser; coins the loser lacks become a penalty, 5 minutes per coin.
+ *  - 决斗 (duel), played at a task point against a team. Settled by hand for now (DUEL_AUTO_SETTLE off); when on: once both have
+ *    finished that task the faster net time (to the millisecond, no draw) wins 4 coins from the loser; coins the loser lacks become
+ *    a penalty, 5 minutes per coin.
  *  - 盗窃 (steal): the cards are drawn offline; online the user picks the target and the item drawn, which moves between the bags
  *    (or nothing, when the target had no card or blocked it). Like every directed card, once per target per episode.
  *  - 验牌 / 合流 and everything else are handled by hand.
@@ -56,6 +57,8 @@ const oncePerEpisode = (name: string) => ['yield', 'yield_next'].includes(kindOf
 const SHIELDABLE: Kind[] = ['missile', 'yield', 'yield_next'];
 const DUEL_STAKE = 400; // 4 coins (coin amounts are stored × 100)
 const DUEL_MIN_PER_COIN = 5;
+/** Off: duels are only recorded (target, announcements); the crew settles them by hand */
+const DUEL_AUTO_SETTLE = false;
 
 export type Effect = {
   id: number; episode_id: number; item_name: string; kind: Kind; item_log_id: number | null; source_team_id: number; target_team_id: number | null;
@@ -158,7 +161,7 @@ export function afterUse(episodeId: number | null, teamId: number, itemName: str
   // 决斗 / 盗窃 / 验牌: public announcement; 决斗 also pops up for the target's follow (盗窃 / 验牌 are played face to face)
   if (['决斗', '盗窃', '验牌'].some((k) => itemName.includes(k)) && targetId) {
     announce(episodeId, `${label(teamId)} 对 ${label(targetId)} 使用了「${itemName}」`, 'all');
-    if (itemName.includes('决斗')) announce(episodeId, `${label(teamId)} 对本队使用了「${itemName}」（在「${legLabel(currentLegId)}」）：两队都完成这个任务后比较净用时，败者付给胜者 ${DUEL_STAKE / 100} 币`, toFollow(episodeId, targetId));
+    if (itemName.includes('决斗')) announce(episodeId, `${label(teamId)} 对本队使用了「${itemName}」（在「${legLabel(currentLegId)}」）${DUEL_AUTO_SETTLE ? `：两队都完成这个任务后比较净用时，败者付给胜者 ${DUEL_STAKE / 100} 币` : '：结果由幕后手动结算'}`, toFollow(episodeId, targetId));
   }
   if (itemName.includes('合流')) announce(episodeId, `${label(teamId)} 使用了「${itemName}」`, 'all');
   const kind = kindOf(itemName);
@@ -168,7 +171,7 @@ export function afterUse(episodeId: number | null, teamId: number, itemName: str
     episodeId, itemName, kind, itemLogId, teamId, targetId, point, kind === 'duel' ? point : null, kind === 'duel' ? 'duel' : kind === 'uturn' ? 'uturn' : 'delay_start', 'pending', now());
   const ef = effect(Number(r.lastInsertRowid));
   if ((kind === 'uturn' || kind === 'yield') && targetId && point && progressOf(episodeId, targetId, point)?.arrived_at) voidEffect(ef, `${label(targetId)} 已经通过该点位`);
-  if (kind === 'duel') settleDuel(ef);
+  if (kind === 'duel' && DUEL_AUTO_SETTLE) settleDuel(ef);
   audit(SYSTEM, 'twist_play', 'twist_effect', ef.id, undefined, { itemName, teamId, targetId, point });
   notify('progress', episodeId);
 }
@@ -352,6 +355,7 @@ function settleDuel(ef: Effect) {
 }
 /** Completion hook: a team finished a leg; duels on it involving the team may now be settled */
 export function onLegCompleted(episodeId: number, teamId: number, legId: number) {
+  if (!DUEL_AUTO_SETTLE) return;
   for (const ef of all<Effect>("SELECT * FROM twist_effects WHERE episode_id = ? AND kind = 'duel' AND status = 'pending' AND leg_id = ? AND (source_team_id = ? OR target_team_id = ?)", episodeId, legId, teamId, teamId)) settleDuel(ef);
 }
 
