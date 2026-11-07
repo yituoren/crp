@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { all, get, run, tx, now } from '../db.js';
 import { hostOnly, canRecordProgress, canManagePenalty, getAssignment, isHostRole, type Env, isAdminRole } from '../auth.js';
 import { recomputeEliminations } from '../elimination.js';
-import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forbidden, editLockReason, currencyMode, fmtMoneyServer } from '../util.js';
+import { audit, body, str, int, intParam, isoOrNull, notify, bad, notFound, forbidden, editLockReason, currencyMode } from '../util.js';
 import { teamLabelMap } from './teams.js';
 import { addLedgerEntry, revertLedgerEntry } from './ledger.js';
 import { episodeInEvent } from './episodes.js';
@@ -47,7 +47,7 @@ function cutoffReadyAt(teamId: number, leg: { id: number; episode_id: number }, 
   return ready;
 }
 
-/** Use a cutoff once: hosts any team, follows their own. The team must be on the leg with the countdown elapsed; coin mode charges the configured cost */
+/** Use a cutoff once: hosts any team, follows their own. The team must be on the leg with the countdown elapsed; coin mode charges the configured cost, even into debt */
 progressRoutes.post('/cutoffs/:id/use', async (c) => {
   const cutoffId = intParam(c, 'id');
   const user = c.get('user');
@@ -68,8 +68,8 @@ progressRoutes.post('/cutoffs/:id/use', async (c) => {
   const nowMs = Date.now();
   if (nowMs < ready - 2000) throw bad(`熔断尚未就绪，还需 ${Math.ceil((ready - nowMs) / 1000)} 秒`);
   let ledgerId: number | null = null;
+  // a cutoff may put the team in debt: the balance can go negative
   if (cf.cost > 0 && currencyMode() === 'coin') {
-    if (team.currency < cf.cost) throw bad(`货币不足：需要 ${fmtMoneyServer(cf.cost)}，当前 ${fmtMoneyServer(team.currency)}`);
     ledgerId = addLedgerEntry({ episodeId: episode.id, teamId, delta: -cf.cost, reason: `熔断：${cf.name}`, legId: leg.id, kind: 'cutoff', user });
   }
   const r = run(
