@@ -78,7 +78,8 @@ function checkins(episodeId: number): Map<number, string> {
 /**
  * Continuous episode: every alive team that has checked in at the previous episode's pit stop departs a fixed wait later;
  * teams still racing there have no departure yet. The previous episode's penalties and credits are settled here, per team on its
- * net minutes: a penalty makes the team itself wait longer, a credit makes every other continuing team wait longer
+ * net minutes: a penalty makes the team itself wait longer; credits do not add up: every continuing team waits the largest credit
+ * longer, less its own credit (the team with the largest credit departs on the plain wait)
  */
 function continuousPlan(ep: EpisodeRow): { teamId: number; at: string }[] {
   const prev = previousEpisode(ep);
@@ -89,11 +90,11 @@ function continuousPlan(ep: EpisodeRow): { teamId: number; at: string }[] {
   const net = new Map<number, number>();
   for (const r of all<{ team_id: number; m: number }>('SELECT team_id, SUM(minutes) AS m FROM penalties WHERE episode_id = ? GROUP BY team_id', prev.id)) net.set(r.team_id, r.m ?? 0);
   const credit = (id: number) => Math.max(0, -(net.get(id) ?? 0));
-  const totalCredit = alive.reduce((s, id) => s + credit(id), 0);
+  const maxCredit = alive.reduce((m, id) => Math.max(m, credit(id)), 0);
   return alive
     .filter((id) => inAt.has(id))
     .map((id) => {
-      const extra = Math.max(0, net.get(id) ?? 0) + totalCredit - credit(id);
+      const extra = Math.max(0, net.get(id) ?? 0) + maxCredit - credit(id);
       return { teamId: id, at: new Date(new Date(inAt.get(id)!).getTime() + wait + extra * 60000).toISOString() };
     })
     .sort((a, b) => a.at.localeCompare(b.at));
