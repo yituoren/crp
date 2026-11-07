@@ -5,6 +5,8 @@ import { audit, body, str, int, notify, bad, forbidden, notFound, money, currenc
 import { teamLabelMap, inventoryCount } from './teams.js';
 import { shopStock } from './episodes.js';
 import { checkUse, afterUse, beforeRevertUse, kindOf, isDirected, isSteal } from '../twist.js';
+import { SYSTEM_USER } from '../episodeStart.js';
+import { recomputeEliminations } from '../elimination.js';
 
 export const ledgerRoutes = new Hono<Env>();
 
@@ -40,24 +42,75 @@ export function addLedgerEntry(opts: { episodeId: number | null; teamId: number;
       'INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at, leg_id, kind) VALUES (?,?,?,?,?,?,?,?,?,?)',
       opts.episodeId, opts.teamId, opts.delta, balance, opts.reason, opts.user.id, opts.user.displayName, now(), opts.legId, opts.kind,
     );
-    return Number(r.lastInsertRowid);
+    const id = Number(r.lastInsertRowid);
+    settleDebt(opts.teamId, id);
+    return id;
   });
 }
 /** Internal: revert a ledger row (no permission check); ignored when already reverted */
 export function revertLedgerEntry(id: number, user: { id: number; displayName: string }) {
   const orig = get('SELECT * FROM currency_ledger WHERE id = ?', id);
   if (!orig || orig.reverted || orig.reverts_id) return;
-  const team = get<{ currency: number }>('SELECT currency FROM teams WHERE id = ?', orig.team_id);
-  if (!team) return;
-  const balance = team.currency - orig.delta;
   tx(() => {
-    run('UPDATE teams SET currency = ? WHERE id = ?', balance, orig.team_id);
-    run('UPDATE currency_ledger SET reverted = 1 WHERE id = ?', id);
-    run(
-      'INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at, reverts_id, leg_id, kind, item_id, item_name) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
-      orig.episode_id, orig.team_id, -orig.delta, balance, `撤销：${orig.reason || '手动调整'}`, user.id, user.displayName, now(), id, orig.leg_id ?? null, orig.kind ?? 'other', orig.item_id ?? null, orig.item_name ?? null,
-    );
+    const newId = writeRevert(orig, user);
+    settleDebt(orig.team_id, newId);
   });
+}
+/** Write the reverse row of a ledger change and return its id. The debt settlements that change caused are reverted first (with their penalties), so no penalty stays behind for a charge that is gone */
+function writeRevert(orig: any, user: { id: number; displayName: string }): number {
+  for (const s of all('SELECT * FROM currency_ledger WHERE debt_of = ? AND reverted = 0 AND reverts_id IS NULL', orig.id)) {
+    if (s.penalty_id) revertPenaltyRow(s.penalty_id, user);
+    writeRevert(s, user);
+  }
+  const team = get<{ currency: number }>('SELECT currency FROM teams WHERE id = ?', orig.team_id)!;
+  const balance = team.currency - orig.delta;
+  run('UPDATE teams SET currency = ? WHERE id = ?', balance, orig.team_id);
+  run('UPDATE currency_ledger SET reverted = 1 WHERE id = ?', orig.id);
+  const r = run(
+    'INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at, reverts_id, leg_id, kind, item_id, item_name) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    orig.episode_id, orig.team_id, -orig.delta, balance, `撤销：${orig.reason || '手动调整'}`, user.id, user.displayName, now(), orig.id, orig.leg_id ?? null, orig.kind ?? 'other', orig.item_id ?? null, orig.item_name ?? null,
+  );
+  return Number(r.lastInsertRowid);
+}
+function revertPenaltyRow(id: number, user: { id: number }) {
+  const p = get('SELECT * FROM penalties WHERE id = ?', id);
+  if (!p || p.reverted || p.reverts_id) return;
+  run('UPDATE penalties SET reverted = 1 WHERE id = ?', id);
+  run('INSERT INTO penalties(episode_id, team_id, minutes, reason, applied_by, applied_at, reverts_id, leg_id) VALUES (?,?,?,?,?,?,?,?)',
+    p.episode_id, p.team_id, -p.minutes, `撤销：${p.reason}`, user.id, now(), id, p.leg_id ?? null);
+  notify('progress', p.episode_id);
+}
+
+/** Coins of debt become penalty minutes at this rate */
+const DEBT_MIN_PER_COIN = 5;
+/**
+ * Debt is settled at once (coin mode): when a change leaves the balance below zero, every coin short becomes 5 minutes
+ * of penalty on the episode's pit stop (the last leg when there is none) and the balance goes back to 0. The
+ * settlement row points at the change (debt_of), so reverting that change reverts the settlement and its penalty too.
+ */
+export function settleDebt(teamId: number, causeId: number) {
+  if (currencyMode() !== 'coin') return;
+  const team = get<{ currency: number; event_id: number }>('SELECT currency, event_id FROM teams WHERE id = ?', teamId);
+  if (!team || team.currency >= 0) return;
+  const cause = get('SELECT episode_id FROM currency_ledger WHERE id = ?', causeId);
+  const episodeId: number | null = cause?.episode_id
+    ?? get<{ id: number }>("SELECT id FROM episodes WHERE event_id = ? AND status != 'pending' ORDER BY sort DESC, id DESC LIMIT 1", team.event_id)?.id ?? null;
+  if (!episodeId) return;
+  const leg = get<{ id: number }>("SELECT id FROM legs WHERE episode_id = ? ORDER BY (type = 'PS') DESC, sort DESC, id DESC LIMIT 1", episodeId);
+  const lack = -team.currency;
+  const coins = Math.ceil(lack / 100);
+  const minutes = coins * DEBT_MIN_PER_COIN;
+  tx(() => {
+    const p = run('INSERT INTO penalties(episode_id, team_id, minutes, reason, applied_by, applied_at, leg_id) VALUES (?,?,?,?,?,?,?)',
+      episodeId, teamId, minutes, `欠费 ${coins} 币，罚时`, SYSTEM_USER.id, now(), leg?.id ?? null);
+    const penaltyId = Number(p.lastInsertRowid);
+    run('UPDATE teams SET currency = 0 WHERE id = ?', teamId);
+    run('INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at, leg_id, kind, debt_of, penalty_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+      episodeId, teamId, lack, 0, `欠费 ${coins} 币，换成罚时 ${minutes} 分钟`, SYSTEM_USER.id, SYSTEM_USER.displayName, now(), leg?.id ?? null, 'other', causeId, penaltyId);
+    audit(SYSTEM_USER, 'debt_settle', 'team', teamId, { currency: fromCents(-lack) }, { minutes, causeId, penaltyId });
+  });
+  notify('progress', episodeId);
+  if (recomputeEliminations(team.event_id)) notify('teams');
 }
 
 ledgerRoutes.post('/ledger', async (c) => {
@@ -114,13 +167,15 @@ ledgerRoutes.post('/ledger', async (c) => {
     const newId = Number(r.lastInsertRowid);
     // mirror the purchase as an item "gained" row
     if (kind === 'shop' && item) run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, ledger_id, operator_id, operator_name, created_at) VALUES (?,?,?,?,1,?,?,?,?,?)', episodeId, teamId, legId, item.name, 'buy', newId, user.id, user.displayName, now());
+    settleDebt(teamId, newId);
     return newId;
   });
   audit(user, kind === 'shop' ? 'shop_buy' : 'currency', 'team', teamId, { currency: fromCents(team.currency) }, { delta: fromCents(delta), balance: fromCents(balance), reason, item: item?.name });
   if (kind === 'shop') notify('episodes', episodeId); // remaining stock is part of the leg data
   notify('ledger', episodeId);
   notify('teams');
-  return c.json({ id, balance: fromCents(balance) });
+  // the balance after a possible debt settlement
+  return c.json({ id, balance: fromCents(get<{ currency: number }>('SELECT currency FROM teams WHERE id = ?', teamId)!.currency) });
 });
 
 /** Revert a money change: only its author or a host may do so */
@@ -134,18 +189,15 @@ ledgerRoutes.post('/ledger/:id/revert', (c) => {
   { const r = editLockReason(user, orig.episode_id ? get<{ status: string; code: string }>('SELECT status, code FROM episodes WHERE id = ?', orig.episode_id) : null, get<{ status: string }>('SELECT status FROM teams WHERE id = ?', orig.team_id)); if (r) throw forbidden(r); }
   if (orig.reverted) throw bad('这条变动已经撤销过了');
   if (orig.reverts_id) throw bad('撤销记录本身不能再撤销');
+  if (orig.debt_of) throw bad('欠费结算会随引起欠费的那笔变动一起撤销；要免掉这次罚时，请在罚时记录里撤销');
   const team = get('SELECT * FROM teams WHERE id = ?', orig.team_id);
   if (!team) throw notFound('队伍不存在');
-  const balance = team.currency - orig.delta;
   const newId = tx(() => {
-    run('UPDATE teams SET currency = ? WHERE id = ?', balance, orig.team_id);
-    run('UPDATE currency_ledger SET reverted = 1 WHERE id = ?', id);
-    const r = run(
-      'INSERT INTO currency_ledger(episode_id, team_id, delta, balance_after, reason, operator_id, operator_name, created_at, reverts_id, leg_id, kind, item_id, item_name) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
-      orig.episode_id, orig.team_id, -orig.delta, balance, `撤销：${orig.reason || '手动调整'}`, user.id, user.displayName, now(), id, orig.leg_id ?? null, orig.kind ?? 'other', orig.item_id ?? null, orig.item_name ?? null,
-    );
-    return Number(r.lastInsertRowid);
+    const newId = writeRevert(orig, user);
+    settleDebt(orig.team_id, newId);
+    return newId;
   });
+  const balance = get<{ currency: number }>('SELECT currency FROM teams WHERE id = ?', orig.team_id)!.currency;
   audit(user, 'currency_revert', 'ledger', id, { delta: fromCents(orig.delta) }, { revertId: newId, balance: fromCents(balance) });
   // reverting a purchase voids that item's "gained" row: write the matching reverse row in the item log
   if (orig.kind === 'shop') {
@@ -188,7 +240,7 @@ ledgerRoutes.get('/item-log', (c) => {
   return c.json({ items });
 });
 
-/** The 锦囊 card ("xx的锦囊卡") is recognised by name: using it picks one of the current leg's tips and reveals it */
+/** The 锦囊 card ("xx的锦囊卡") is recognised by name: using it records the 锦囊 id typed by the crew */
 export const isTipItem = (name: string) => name.includes('锦囊');
 
 /** Use one bag item: no balance change, only an item-log row; attributed to the team's current leg. Items marked as needing a target take another team of the event */
@@ -223,30 +275,25 @@ ledgerRoutes.post('/items/use', async (c) => {
   )?.leg_id ?? null : null;
   if (!legId) legId = currentLeg;
   checkUse(episodeId, teamId, itemName, needsTarget ? targetId : null, currentLeg);
-  // 锦囊: the tip must be one of the leg the team is on right now
-  let tip: { id: number; code: string; tip: string } | undefined;
-  if (isTipItem(itemName)) {
-    if (!currentLeg) throw bad('本队当前不在任何环节中，不能使用锦囊');
-    tip = get('SELECT id, code, tip FROM leg_tips WHERE id = ? AND leg_id = ?', int(b.tipId, 0), currentLeg);
-    if (!tip) throw bad('请选择本队当前环节的一个锦囊 id');
-    legId = currentLeg;
-  }
+  // 锦囊: usable at any time, the crew types the id it is used on (no tips set up on legs, nothing checked or revealed)
+  const tipCode = isTipItem(itemName) ? str(b.tipCode, 50) : '';
+  if (isTipItem(itemName) && !tipCode) throw bad(`使用「${itemName}」需要填写锦囊 id`);
   const target = needsTarget || !twist ? targetId : null;
   // 盗窃: the card drawn offline from the target's bag (empty = nothing taken)
   const stolen = isSteal(itemName) && target ? str(b.stealItem, 100) : '';
   if (stolen && inventoryCount(target!, stolen) < 1) throw bad(`${teamLabelMap().get(target!) ?? ''} 的背包里没有「${stolen}」`);
   const r = run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, target_team_id, tip_id, target_label) VALUES (?,?,?,?,-1,?,?,?,?,?,?,?)',
-    episodeId, teamId, legId, itemName, 'use', user.id, user.displayName, now(), target, tip?.id ?? null, tip?.code ?? null);
+    episodeId, teamId, legId, itemName, 'use', user.id, user.displayName, now(), target, null, tipCode || null);
   if (stolen) {
     // the stolen card moves between the bags: out of the target's, into the user's (both linked to this use)
     const useId = Number(r.lastInsertRowid);
     run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, target_team_id, link_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)', episodeId, target, legId, stolen, -1, 'stolen', user.id, user.displayName, now(), teamId, useId);
     run('INSERT INTO item_log(episode_id, team_id, leg_id, item_name, delta, kind, operator_id, operator_name, created_at, target_team_id, link_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)', episodeId, teamId, legId, stolen, 1, 'steal', user.id, user.displayName, now(), target, useId);
   }
-  audit(user, 'item_use', 'team', teamId, undefined, { item: itemName, legId, targetTeamId: targetId, tip: tip?.code, stolen });
+  audit(user, 'item_use', 'team', teamId, undefined, { item: itemName, legId, targetTeamId: targetId, tip: tipCode || undefined, stolen });
   afterUse(episodeId, teamId, itemName, Number(r.lastInsertRowid), target, currentLeg);
   notify('ledger', episodeId); notify('teams');
-  return c.json({ id: Number(r.lastInsertRowid), tip: tip ? { code: tip.code, tip: tip.tip } : null });
+  return c.json({ id: Number(r.lastInsertRowid) });
 });
 
 /** Revert an item use: the item returns to the bag. Purchases are reverted through the ledger (which syncs here) */

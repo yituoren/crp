@@ -328,6 +328,9 @@ ensureColumn('currency_ledger', 'leg_id', 'INTEGER');
 ensureColumn('currency_ledger', 'kind', "TEXT NOT NULL DEFAULT 'other'");
 ensureColumn('currency_ledger', 'item_id', 'INTEGER');
 ensureColumn('currency_ledger', 'item_name', 'TEXT');
+// Debt settlement: the row that cleared a negative balance points at the change that caused it and at the penalty it became
+ensureColumn('currency_ledger', 'debt_of', 'INTEGER');
+ensureColumn('currency_ledger', 'penalty_id', 'INTEGER');
 ensureColumn('legs', 'shop_open', 'INTEGER NOT NULL DEFAULT 0');
 // Optional team short name: shown instead of the member list wherever the team is named (the standings table keeps the full label)
 ensureColumn('teams', 'short_name', "TEXT NOT NULL DEFAULT ''");

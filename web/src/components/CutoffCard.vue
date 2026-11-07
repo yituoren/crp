@@ -33,9 +33,10 @@ function rows(leg: Leg) {
 }
 async function use(leg: Leg, cf: Leg['cutoffs'][number], cost: number) {
   const team = race.teamById.get(props.teamId)?.label ?? '';
-  // a cutoff may be used in debt: show the balance going negative
+  // a cutoff may be used in debt: the coins short become penalty at once (5 minutes each, on the pit stop)
   const bal = race.teamById.get(props.teamId)?.currency ?? 0;
-  const money = cost ? `，消耗 ${fmtMoney(cost)} ${moneyUnit()}\n当前余额 ${fmtMoney(bal)} → ${fmtMoney(bal - cost)}${bal < cost ? '（欠费）' : ''}\n` : '。';
+  const lack = Math.max(0, cost - bal);
+  const money = cost ? `，消耗 ${fmtMoney(cost)} ${moneyUnit()}\n当前余额 ${fmtMoney(bal)} → ${fmtMoney(lack ? 0 : bal - cost)}${lack ? `（欠 ${fmtMoney(lack)} ${moneyUnit()}，换成中继站罚时 ${Math.ceil(lack) * 5} 分钟）` : ''}\n` : '。';
   if (!(await ui.confirm('使用熔断', `「${team}」在「${legName(leg)}」使用熔断「${cf.name}」${money}使用后立即开始下一次倒计时。`))) return;
   try {
     await api(`/cutoffs/${cf.id}/use`, { method: 'POST', body: { teamId: props.teamId } });

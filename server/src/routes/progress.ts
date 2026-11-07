@@ -104,7 +104,7 @@ export function listProgress(episodeId: number) {
 export function listPenalties(episodeId: number) {
   const labels = teamLabelMap();
   return all(
-    `SELECT p.*, t.name AS team_name, u.display_name AS applied_by_name, l.name AS leg_name
+    `SELECT p.*, t.name AS team_name, COALESCE(u.display_name, CASE WHEN p.applied_by = 0 THEN '系统' END) AS applied_by_name, l.name AS leg_name
      FROM penalties p JOIN teams t ON t.id = p.team_id LEFT JOIN users u ON u.id = p.applied_by LEFT JOIN legs l ON l.id = p.leg_id
      WHERE p.episode_id = ? ORDER BY p.id DESC`,
     episodeId,
@@ -398,7 +398,7 @@ progressRoutes.post('/episodes/:id/penalties', async (c) => {
   { const r = editLockReason(user, epRow, teamRow); if (r) throw forbidden(r); }
   const legId = int(b.legId, 0) || null;
   if (legId && !get('SELECT 1 FROM legs WHERE id = ? AND episode_id = ?', legId, episodeId)) throw notFound('环节不存在');
-  if (!legId && !isHostRole(user.role)) throw forbidden('“其他”环节的罚时/补时只能由主办操作，请选择具体环节');
+  if (!legId) throw bad('请选择罚时/补时所在的环节');
   const r = run(
     'INSERT INTO penalties(episode_id, team_id, minutes, reason, applied_by, applied_at, leg_id) VALUES (?,?,?,?,?,?,?)',
     episodeId, teamId, minutes, str(b.reason, 200), user.id, now(), legId,
