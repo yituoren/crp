@@ -500,7 +500,7 @@ html, body { overscroll-behavior: none; }
 .mx2 .mx2-first { border-left: 2px solid var(--gray-300); }
 .mx2 .mx2-branch { color: var(--gray-600); font-size: 12px; }
 .mx2 .mx-done { color: #137333; }
-/* Cell backgrounds by column kind (the progress export reads the same variables): times, durations / penalties, task details,
+/* Cell backgrounds by column kind: times, durations / penalties, task details,
    ranks, blanks, team names. Light green, except blanks (nothing recorded yet), which stay white; running cells keep the amber */
 :root { --mx-time: #e6f4ea; --mx-dur: #e6f4ea; --mx-extra: #e6f4ea; --mx-rank: #e6f4ea; --mx-blank: #ffffff; --mx-team: #e6f4ea; --mx-arrived: #fef7e0; }
 .mx2 tbody .mx2-c-time { background: var(--mx-time); }

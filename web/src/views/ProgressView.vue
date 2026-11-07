@@ -157,7 +157,7 @@ const orderedTeams = computed(() => {
   });
 });
 const rankOf = computed(() => { const m = new Map<number, number>(); let n = 0; for (const t of orderedTeams.value) if (t.status === 'alive') m.set(t.id, ++n); return m; });
-/** Cell background by column kind (shared with the export): times, durations / penalties, task details, blanks */
+/** Cell background by column kind: times, durations / penalties, task details, blanks */
 type CellKind = 'time' | 'dur' | 'extra';
 const kindCls = (text: string, kind: CellKind) => (text === '-' ? 'mx2-c-blank' : `mx2-c-${kind}`);
 /** Extra columns: pit stop penalty counts as a duration, the settled time as a time, the rest are task details */
@@ -180,8 +180,7 @@ function legRanks(l: { id: number; type: string }): Map<number, number> {
 const exporting = ref(false);
 async function exportXlsx() {
   const e = ep.value; if (!e) return;
-  const state = (cls: string) => (cls === 'mx-done' ? 'done' as const : cls === 'mx-arrived' ? 'arrived' as const : undefined);
-  const cellOf = (text: string, kind: CellKind | 'rank', cls = '', hit = false, ms?: number): ExportCell => ({ text, kind: text === '-' ? 'blank' : kind, state: state(cls), hit, ms: text === '-' ? undefined : ms });
+  const cellOf = (text: string, hit = false, ms?: number): ExportCell => ({ text, hit, ms: text === '-' ? undefined : ms });
   const groups: ExportGroup[] = legs.value.map((l) => {
     const br = branchOf(l);
     const subs = isSingleCol(l)
@@ -197,14 +196,14 @@ async function exportXlsx() {
     groups: legs.value.map((l, li) => {
       const isPs = l.type === 'PS';
       const r = ranks[li]!.get(t.id);
-      const tail = [...extraCols(l).map((_, i) => cellOf(extraVal(t.id, l, i), extraKind(l, i))), cellOf(r ? String(r) : '-', 'rank')];
+      const tail = [...extraCols(l).map((_, i) => cellOf(extraVal(t.id, l, i))), cellOf(r ? String(r) : '-')];
       const hit = race.startDelayed(t.id, l.id);
-      if (isSingleCol(l)) { const c = cell(t.id, l.id, true, isPs); return [cellOf(c.start, 'time', c.cls, hit), ...tail]; }
+      if (isSingleCol(l)) { const c = cell(t.id, l.id, true, isPs); return [cellOf(c.start, hit), ...tail]; }
       const c = cell(t.id, l.id, false, isPs); const b = branchCell(t.id, l.id);
       return [
-        cellOf(c.start, 'time', c.cls, hit),
-        ...(branchOf(l) ? [cellOf(b.start, 'time', b.cls), cellOf(b.end, 'time', b.cls), cellOf(b.dur, 'dur', b.cls, false, b.ms)] : []),
-        cellOf(c.end, 'time', c.cls, !!race.uturnOn(t.id, l.id)), cellOf(c.dur, 'dur', c.cls, false, c.ms),
+        cellOf(c.start, hit),
+        ...(branchOf(l) ? [cellOf(b.start), cellOf(b.end), cellOf(b.dur, false, b.ms)] : []),
+        cellOf(c.end, !!race.uturnOn(t.id, l.id)), cellOf(c.dur, false, c.ms),
         ...tail,
       ];
     }),
