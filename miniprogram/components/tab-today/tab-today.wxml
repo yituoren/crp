@@ -1,0 +1,42 @@
+<ep-selector />
+
+<view wx:if="{{pending}}" class="alert alert-warning">{{epCode}} 尚未开始。主办点「开始赛段」后才能记录时间、操作经费和罚时。</view>
+<view wx:elif="{{finished}}" class="alert">{{epCode}} 已结束，所有记录已锁定，只有管理员可以修改。</view>
+<view wx:if="{{hint}}" class="alert flex-between">{{hint.text}}<text class="link" bindtap="switchEp">切换到 {{hint.code}}</text></view>
+
+<block wx:if="{{role === 'follow' && team}}">
+  <view class="my-head"><text class="badge badge-follow">跟队</text> 你本赛段跟随 <text class="strong">{{team.label}}</text>，当前余额 <text class="strong money">{{team.balance}}</text></view>
+  <current-leg team-id="{{team.id}}" bind:shop="openShop" />
+  <view class="card"><view class="card-header">本队记录</view><record-list team-id="{{team.id}}" /></view>
+  <penalty-panel team-id="{{team.id}}" />
+  <shop-sheet id="shop" />
+</block>
+
+<block wx:elif="{{role === 'station' && legs.length}}">
+  <view class="my-head"><text class="badge badge-station">站点</text> 你本赛段驻守 {{legs.length}} 个环节：{{legNames}}</view>
+  <block wx:for="{{legs}}" wx:key="id">
+    <view class="card">
+      <view class="card-header"><view class="flex"><leg-tag type="{{item.type}}" full /><text>{{item.name}}</text></view></view>
+      <view wx:if="{{item.address}}" class="text-sm text-gray">地址：{{item.address}} <text wx:if="{{item.mapUrl}}" class="link" data-url="{{item.mapUrl}}" bindtap="openMap">复制地图链接</text></view>
+      <view wx:if="{{item.open}}" class="text-sm text-gray">开放时间：{{item.open}}</view>
+      <view wx:if="{{item.shop}}" class="text-sm text-gray">商店：{{item.shop}}</view>
+      <view wx:if="{{item.judge}}" class="alert pre mt-1">判定标准：{{item.judge}}</view>
+      <record-list leg-id="{{item.id}}" />
+    </view>
+    <penalty-panel leg-id="{{item.id}}" />
+  </block>
+</block>
+
+<block wx:elif="{{role === 'live'}}">
+  <view class="my-head"><text class="badge badge-live">直播员</text> 本赛段只读</view>
+  <view class="flex">
+    <button class="btn" data-name="progress" bindtap="go">查看进度</button>
+    <button class="btn btn-tonal" data-name="episodes" bindtap="go">赛段与环节</button>
+    <button class="btn btn-tonal" data-name="announcements" bindtap="go">公告</button>
+  </view>
+</block>
+
+<view wx:else class="empty-state">
+  <block wx:if="{{isHost}}">本赛段没有给你排跟队或站点任务。</block>
+  <block wx:else>本赛段你没有跟队或站点任务（机动幕后）。\n<text class="text-sm">可以在「赛段」查看环节安排，排班有变动会实时更新。</text></block>
+</view>

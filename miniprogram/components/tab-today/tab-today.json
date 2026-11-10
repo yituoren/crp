@@ -1,0 +1,11 @@
+{
+  "component": true,
+  "usingComponents": {
+    "ep-selector": "/components/ep-selector/ep-selector",
+    "leg-tag": "/components/leg-tag/leg-tag",
+    "current-leg": "/components/current-leg/current-leg",
+    "record-list": "/components/record-list/record-list",
+    "penalty-panel": "/components/penalty-panel/penalty-panel",
+    "shop-sheet": "/components/shop-sheet/shop-sheet"
+  }
+}

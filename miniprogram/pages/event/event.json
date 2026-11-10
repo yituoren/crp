@@ -2,6 +2,9 @@
   "usingComponents": {
     "ep-selector": "/components/ep-selector/ep-selector",
     "tab-announcements": "/components/tab-announcements/tab-announcements",
-    "tab-progress": "/components/tab-progress/tab-progress"
+    "tab-progress": "/components/tab-progress/tab-progress",
+    "tab-today": "/components/tab-today/tab-today",
+    "time-sheet": "/components/time-sheet/time-sheet",
+    "edit-sheet": "/components/edit-sheet/edit-sheet"
   }
 }

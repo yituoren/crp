@@ -1,0 +1,26 @@
+<view class="rl">
+  <view wx:for="{{rows}}" wx:key="key" class="rl-row {{item.dim ? 'dim' : ''}}">
+    <view class="rl-head">
+      <view class="rl-title"><leg-tag wx:if="{{item.legType}}" type="{{item.legType}}" /><text class="rl-name">{{item.title}}</text></view>
+      <text class="rl-state">{{item.state}}</text>
+    </view>
+    <view class="rl-body">
+      <view class="rl-times">
+        <view class="rl-time"><text class="rl-k">{{item.startLabel}}</text><text class="rl-v {{item.startHit ? 'hit' : ''}}">{{item.start}}</text></view>
+        <view class="rl-time"><text class="rl-k">{{item.endLabel}}</text><text class="rl-v {{item.endHit ? 'hit' : ''}}">{{item.end}}</text></view>
+      </view>
+      <view wx:if="{{item.action}}" class="rl-action">
+        <text wx:if="{{item.action.type === 'locked'}}" class="text-gray text-sm" data-key="{{item.key}}" bindtap="act">已锁定</text>
+        <button wx:else class="btn btn-sm {{item.action.text ? 'btn-text' : ''}} {{item.action.success ? 'btn-success' : ''}} {{item.action.disabled ? 'btn-off' : ''}}" data-key="{{item.key}}" bindtap="act">{{item.action.label}}</button>
+      </view>
+    </view>
+    <view wx:if="{{item.extra}}" class="rl-extra">
+      <text class="rl-k">{{item.extra.label}}</text>
+      <picker wx:if="{{item.extra.inline}}" range="{{item.extra.labels}}" value="{{item.extra.index}}" data-key="{{item.key}}" bindchange="pickExtra">
+        <view class="rl-select">{{item.extra.labels[item.extra.index]}}<icon-m name="expand_more" size="16" color="#444746" /></view>
+      </picker>
+      <text wx:else class="rl-v">{{item.extra.text}}</text>
+    </view>
+    <view wx:if="{{item.action && item.action.disabled && item.action.reason}}" class="rl-reason">{{item.action.reason}}</view>
+  </view>
+</view>

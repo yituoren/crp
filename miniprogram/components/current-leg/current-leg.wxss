@@ -1,0 +1,20 @@
+.cl-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.cl-leg { display: flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 400; color: var(--gray-600); min-width: 0; overflow: hidden; white-space: nowrap; }
+.empty-rows { text-align: center; color: var(--gray-500); font-size: 13px; padding: 8px 0; }
+.cl-answer { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.cl-section { padding: 14px 0; border-top: 1px solid var(--gray-200); }
+.cl-section:first-child, .card-header + .cl-section, .alert + .cl-section { border-top: none; padding-top: 0; }
+.cl-section:last-child { padding-bottom: 0; }
+.cl-label { font-size: 15px; font-weight: 500; color: var(--gray-900); margin-bottom: 10px; }
+.cl-tiles { display: flex; gap: 6px; margin-bottom: 8px; }
+.cl-tile { flex: 1; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 22px; background: var(--field); font-size: 14px; color: var(--gray-900); border: 1px solid transparent; }
+.cl-tile.on { background: var(--primary-light); color: var(--primary-on-light); }
+.cl-tile.off { color: var(--gray-400); }
+.cl-row { display: flex; gap: 8px; }
+.cl-amount { flex: 1; height: 44px; padding: 0 16px; border-radius: 22px; background: var(--field); font-size: 15px; }
+.cl-confirm { min-width: 72px; min-height: 44px; }
+.cutoff-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; }
+.cutoff-info { display: flex; flex-direction: column; min-width: 0; }
+.cutoff-name { font-weight: 600; color: var(--gray-900); }
+.cutoff-btn { min-width: 96px; }
+.cutoff-wait { font-variant-numeric: tabular-nums; }

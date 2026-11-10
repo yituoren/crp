@@ -1,0 +1,13 @@
+<block wx:if="{{show}}">
+  <view class="sheet-scrim" bindtap="cancel" catchtouchmove="noop"></view>
+  <view class="sheet" catchtouchmove="noop">
+    <view class="sheet-title">{{title}}</view>
+    <view class="text-gray pre ts-msg">{{message}}</view>
+    <view class="ts-label">记录时间（默认为服务器当前时间，可修改）</view>
+    <dt-field value="{{value}}" bind:change="onChange" />
+    <view class="sheet-actions">
+      <button class="btn btn-text" bindtap="cancel">取消</button>
+      <button class="btn" bindtap="ok">确认记录</button>
+    </view>
+  </view>
+</block>

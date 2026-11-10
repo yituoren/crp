@@ -15,6 +15,7 @@
 </view>
 
 <view wx:else class="m-body">
+  <tab-today wx:if="{{current === 'today'}}" bind:go="go" />
   <tab-announcements wx:if="{{current === 'announcements'}}" />
   <tab-progress wx:if="{{current === 'progress'}}" />
   <view wx:if="{{!ported}}" class="card">
@@ -43,6 +44,10 @@
   <view class="m-sep"></view>
   <view class="m-item" bindtap="home"><icon-m name="home" size="22" color="#1f1f1f" />回到主页</view>
 </view>
+
+<!-- Dialogs any section can open (utils/dialogs.js) -->
+<time-sheet id="timeSheet" />
+<edit-sheet id="editSheet" />
 
 <!-- System notices for the team this account follows (departure, twist cards): pop up until acknowledged -->
 <block wx:if="{{popups.length}}">

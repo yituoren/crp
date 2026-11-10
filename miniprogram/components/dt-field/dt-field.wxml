@@ -1,0 +1,5 @@
+<view class="dt">
+  <picker mode="date" value="{{date}}" bindchange="onDate"><view class="dt-part {{empty ? 'ph' : ''}}">{{empty ? '日期' : date}}</view></picker>
+  <picker mode="multiSelector" range="{{columns}}" value="{{hms}}" bindchange="onTime"><view class="dt-part dt-time {{empty ? 'ph' : ''}}">{{empty ? '时:分:秒' : text}}</view></picker>
+  <view wx:if="{{clearable && !empty}}" class="dt-clear" bindtap="clear"><icon-m name="close" size="18" color="#444746" /></view>
+</view>

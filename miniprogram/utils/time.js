@@ -29,4 +29,13 @@ function fmtPenMin(min) { return `${min > 0 ? '+' : min < 0 ? '-' : ''}${fmtDurM
 /** YYYY-MM-DD HH:MM */
 function fmtDateTime(iso) { const p = parts(iso); return p ? `${p.y}-${pad(p.mo)}-${pad(p.d)} ${pad(p.h)}:${pad(p.mi)}` : '-'; }
 
-module.exports = { fmtTime, fmtTimeSec, fmtDate, fmtDateMinute, fmtDateTime, fmtDurMs, fmtPenMin };
+/** Shanghai date ('YYYY-MM-DD') and h / m / s of an ISO time, for the time pickers */
+function toDateParts(iso) { const p = parts(iso); return p ? { date: `${p.y}-${pad(p.mo)}-${pad(p.d)}`, h: p.h, mi: p.mi, s: p.s } : null; }
+/** Shanghai date + h / m / s back to an ISO time */
+function fromDateParts(date, h, mi, s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || '');
+  if (!m) return null;
+  return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], h, mi, s) - TZ_MS).toISOString();
+}
+
+module.exports = { fmtTime, fmtTimeSec, fmtDate, fmtDateMinute, fmtDateTime, fmtDurMs, fmtPenMin, toDateParts, fromDateParts };

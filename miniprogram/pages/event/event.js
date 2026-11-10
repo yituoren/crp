@@ -17,7 +17,7 @@ const NAV = [
   { name: 'progress', label: '进度', icon: 'leaderboard' },
 ];
 const BOTTOM = ['today', 'announcements', 'episodes', 'currency', 'progress'];
-const PORTED = ['announcements', 'progress'];
+const PORTED = ['today', 'announcements', 'progress'];
 
 Page({
   data: {
@@ -84,7 +84,7 @@ Page({
     this.setData({ current: name, currentLabel: item.label, ported: PORTED.includes(name), drawer: false, live: false });
     wx.pageScrollTo({ scrollTop: 0, duration: 0 });
   },
-  go(e) { this.setTab(e.currentTarget.dataset.name); },
+  go(e) { this.setTab(e.currentTarget.dataset.name || (e.detail && e.detail.name)); },
   openDrawer() { this.setData({ drawer: true }); },
   closeDrawer() { this.setData({ drawer: false }); },
   /** Swallows touch moves on the drawer and its scrim so the page behind does not scroll */

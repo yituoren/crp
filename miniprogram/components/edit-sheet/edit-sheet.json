@@ -1,0 +1,4 @@
+{
+  "component": true,
+  "usingComponents": { "dt-field": "/components/dt-field/dt-field" }
+}

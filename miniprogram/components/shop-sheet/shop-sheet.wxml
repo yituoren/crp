@@ -1,0 +1,22 @@
+<block wx:if="{{show}}">
+  <view class="sheet-scrim" bindtap="close" catchtouchmove="noop"></view>
+  <view class="sheet">
+    <view class="sheet-title">商店</view>
+    <view class="text-sm text-gray mb-2">{{head}}</view>
+    <view wx:if="{{!items.length}}" class="text-sm text-gray">本环节没有商品</view>
+    <view wx:for="{{items}}" wx:key="id" class="bag-tile {{item.qty ? 'on' : ''}} {{item.soldOut ? 'off' : ''}}" data-id="{{item.id}}" bindtap="toggle">
+      <view class="bag-check">{{item.qty ? '✓' : ''}}</view>
+      <view class="bag-main"><text class="bag-name">{{item.name}}</text><text class="bag-info">{{item.info}}</text></view>
+      <view class="shop-qty {{item.qty ? 'show' : ''}}" catchtap="noop">
+        <view class="shop-step" data-id="{{item.id}}" data-d="-1" catchtap="step"><icon-m name="remove" size="16" color="#041e49" /></view>
+        <text class="shop-num">{{item.qty || ''}}</text>
+        <view class="shop-step {{item.atMax ? 'dis' : ''}}" data-id="{{item.id}}" data-d="1" catchtap="step"><icon-m name="add" size="16" color="#041e49" /></view>
+      </view>
+    </view>
+    <view class="sheet-actions shop-actions">
+      <text class="text-sm text-gray shop-total">{{totalText}}</text>
+      <button class="btn btn-text" bindtap="close">取消</button>
+      <button class="btn" disabled="{{!canBuy || busy}}" bindtap="buy">购买</button>
+    </view>
+  </view>
+</block>

@@ -1,0 +1,42 @@
+<view class="card">
+  <view class="card-header">
+    <view class="cl-title">当前环节<view wx:if="{{leg}}" class="cl-leg"><leg-tag type="{{leg.type}}" /><text>{{leg.name}}</text></view></view>
+    <button wx:if="{{showShop}}" class="btn btn-tonal btn-sm" disabled="{{!canUse}}" bindtap="openShop"><icon-m name="storefront" size="18" color="#041e49" />商店</button>
+  </view>
+  <view wx:if="{{nothing}}" class="empty-rows">暂无操作</view>
+  <block wx:else>
+    <view wx:if="{{uturn}}" class="alert alert-warning">{{uturn}}</view>
+    <view wx:if="{{wait}}" class="alert alert-warning">
+      {{wait.text}}
+      <view wx:if="{{wait.shield || wait.reflect}}" class="cl-answer">
+        <text class="text-sm">背包里有可用的卡，是否使用？</text>
+        <view class="flex">
+          <button wx:if="{{wait.shield}}" class="btn btn-tonal btn-sm" data-id="{{wait.id}}" data-answer="shield" bindtap="answer">使用护盾</button>
+          <button wx:if="{{wait.reflect}}" class="btn btn-tonal btn-sm" data-id="{{wait.id}}" data-answer="reflect" bindtap="answer">使用反弹</button>
+          <button class="btn btn-text btn-sm" data-id="{{wait.id}}" data-answer="accept" bindtap="answer">不使用</button>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{transport}}" class="cl-section">
+      <view class="cl-label">交通</view>
+      <view class="cl-tiles">
+        <view wx:for="{{transport.tiles}}" wx:key="name" class="cl-tile {{item.on ? 'on' : ''}} {{item.off ? 'off' : ''}}" data-name="{{item.name}}" bindtap="pickTransport">{{item.name}}</view>
+      </view>
+      <view class="cl-row">
+        <input class="cl-amount" type="digit" value="{{transport.fare}}" disabled="{{transport.fareOff}}" placeholder="{{transport.placeholder}}" bindinput="onFare" />
+        <button class="btn btn-sm cl-confirm" disabled="{{!transport.canConfirm}}" bindtap="confirmTransport">确认</button>
+      </view>
+    </view>
+    <view wx:if="{{cutoffs.length}}" class="cl-section">
+      <view class="cl-label">熔断</view>
+      <view wx:for="{{cutoffs}}" wx:key="id" class="cutoff-row">
+        <view class="cutoff-info">
+          <text class="cutoff-name">{{item.name}}</text>
+          <text class="text-xs text-gray">已用 {{item.used}} 次 · 间隔 {{item.interval}} 分钟</text>
+        </view>
+        <button wx:if="{{item.ready}}" class="btn btn-tonal btn-sm cutoff-btn" disabled="{{!item.usable}}" data-id="{{item.id}}" bindtap="useCutoff">使用{{item.costText}}</button>
+        <button wx:else class="btn btn-tonal btn-sm cutoff-btn cutoff-wait" disabled>{{item.countdown}}</button>
+      </view>
+    </view>
+  </block>
+</view>
