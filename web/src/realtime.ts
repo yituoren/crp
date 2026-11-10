@@ -16,6 +16,10 @@ export function connectRealtime() {
   socket = io({ path: '/socket.io', withCredentials: true, reconnectionDelayMax: 5000 });
   socket.on('connect', () => { ui.online = true; if (race.loaded) race.loadAll().catch(() => {}); });
   socket.on('disconnect', () => { ui.online = false; });
+  // Re-sync with the server clock on every (re)connect, e.g. after the phone wakes up: the offset from login can go stale
+  socket.on('hello', (msg: { serverTime?: string }) => {
+    if (msg.serverTime) useAuth().serverOffsetMs = new Date(msg.serverTime).getTime() - Date.now();
+  });
   socket.on('invalidate', (msg: { scope: string; episodeId: number | null }) => {
     race.invalidate(msg.scope, msg.episodeId).catch(() => {});
   });
