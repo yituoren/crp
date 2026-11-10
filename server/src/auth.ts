@@ -99,6 +99,15 @@ export async function readBindTicket(ticket: string): Promise<string | null> {
     return p.purpose === 'wx-bind' && typeof p.wx === 'string' ? p.wx : null;
   } catch { return null; }
 }
+/** Short-lived public link to one attachment, for WeChat's content security service to download the image */
+const MEDIA_TTL_SEC = 60 * 60;
+export const signMediaTicket = (attachmentId: number) => sign({ att: attachmentId, purpose: 'wx-media', exp: Math.floor(Date.now() / 1000) + MEDIA_TTL_SEC }, SECRET);
+export async function readMediaTicket(ticket: string): Promise<number | null> {
+  try {
+    const p = await verify(ticket, SECRET, 'HS256');
+    return p.purpose === 'wx-media' && typeof p.att === 'number' ? p.att : null;
+  } catch { return null; }
+}
 export function clearToken(c: Context) {
   deleteCookie(c, COOKIE, { path: '/' });
 }

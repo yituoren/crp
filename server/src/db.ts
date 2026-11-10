@@ -458,6 +458,8 @@ ensureColumn('progress', 'settle_min', 'INTEGER NOT NULL DEFAULT 0');
 // WeChat mini program sign-in: the user's openid in the mini program, bound once with ID + password
 ensureColumn('users', 'wx_openid', 'TEXT');
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_wx_openid ON users(wx_openid) WHERE wx_openid IS NOT NULL');
+// WeChat content security: the trace id of an image's asynchronous check, matched when WeChat pushes the result
+ensureColumn('attachments', 'wx_trace', 'TEXT');
 
 type Param = string | number | null;
 export type Row = Record<string, any>;

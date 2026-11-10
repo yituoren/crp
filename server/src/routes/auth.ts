@@ -4,6 +4,7 @@ import { get, run, now } from '../db.js';
 import type { Context } from 'hono';
 import { authRequired, issueToken, clearToken, hostAnywhere, signBindTicket, readBindTicket, type AuthUser, type Env } from '../auth.js';
 import { audit, body, str, bad } from '../util.js';
+import { assertTextOk, fromMiniProgram, SCENE_PROFILE } from '../wxsec.js';
 
 export const authRoutes = new Hono<Env>();
 
@@ -81,6 +82,8 @@ authRoutes.post('/wx-bind', async (c) => {
   if (!openid) return c.json({ error: '微信登录已过期，请重新进入小程序' }, 401);
   let user: AuthUser;
   if (b.register) {
+    // a new account's ID and name are profile content
+    await assertTextOk([str(b.username, 50), str(b.displayName, 50)], openid, SCENE_PROFILE);
     const created = await createAccount(c, b);
     if (created instanceof Response) return created;
     user = created;
@@ -125,6 +128,7 @@ authRoutes.put('/profile', authRequired, async (c) => {
   const u = str(username, 50);
   if (!u) return c.json({ error: '请填写新的ID' }, 400);
   if (u === user.username) return c.json({ user });
+  if (fromMiniProgram(c)) await assertTextOk([u], get<{ wx_openid: string | null }>('SELECT wx_openid FROM users WHERE id = ?', user.id)?.wx_openid ?? null, SCENE_PROFILE);
   if (get('SELECT 1 FROM users WHERE username = ? AND id != ?', u, user.id)) return c.json({ error: '该ID已被使用' }, 409);
   run('UPDATE users SET username = ?, display_name = ? WHERE id = ?', u, u, user.id);
   audit(user, 'rename', 'user', user.id, { username: user.username }, { username: u });

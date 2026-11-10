@@ -2,6 +2,7 @@ import { Hono, type Context } from 'hono';
 import fs from 'node:fs';
 import path from 'node:path';
 import { all, get, run, tx, now, UPLOAD_DIR, fromCents } from '../db.js';
+import { fromMiniProgram, checkImageLater } from '../wxsec.js';
 import { hostOnly, canUploadToLeg, isAdminRole, isHostRole, parseLegIds, type Env, type EventRow } from '../auth.js';
 import { audit, body, str, int, intParam, notify, bad, notFound, forbidden, money, isoOrNull } from '../util.js';
 import { startEpisodeNow, departurePlan, previousEpisode, startBlockedReason, type EpisodeRow } from '../episodeStart.js';
@@ -492,6 +493,7 @@ episodeRoutes.post('/legs/:id/attachments', async (c) => {
     legId, file.name.slice(0, 200), file.type || 'application/octet-stream', stored, file.size, user.id, now(),
   );
   audit(user, 'upload', 'attachment', Number(r.lastInsertRowid), undefined, { legId, filename: file.name });
+  if (fromMiniProgram(c) && (file.type || '').startsWith('image/')) checkImageLater(c, Number(r.lastInsertRowid), user.id);
   notify('episodes', leg.episode_id);
   return c.json({ id: Number(r.lastInsertRowid), url: `/api/files/${Number(r.lastInsertRowid)}` });
 });

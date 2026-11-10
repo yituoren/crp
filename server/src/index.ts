@@ -23,6 +23,7 @@ import { dashboardRoutes } from './routes/dashboard.js';
 import { eventListRoutes, eventInfoRoutes } from './routes/events.js';
 import { userRoutes, systemRoutes } from './routes/admin.js';
 import { fileRoutes } from './routes/episodes.js';
+import { wxRoutes, contentCheck } from './wxsec.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3000);
@@ -48,11 +49,13 @@ app.onError((err, c) => {
 
 const api = new Hono<Env>();
 api.route('/auth', authRoutes);
+api.route('/wx', wxRoutes); // WeChat content security: image links for the checker and its verdict push
 api.get('/health', (c) => c.json({ ok: true, time: new Date().toISOString() }));
 
 // Before entering an event: event list / join, account management, system backups
 const secured = new Hono<Env>();
 secured.use('*', authRequired);
+secured.use('*', contentCheck); // mini program writes: WeChat checks the text first
 secured.route('/', eventListRoutes);
 secured.route('/', userRoutes);
 secured.route('/', systemRoutes);

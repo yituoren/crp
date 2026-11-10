@@ -30,11 +30,17 @@ function apiPath(path) {
 let onUnauthorized = null;
 function setUnauthorizedHandler(fn) { onUnauthorized = fn; }
 
+/**
+ * Headers for every request (also wx.uploadFile / wx.downloadFile, which do not go through api()): the Bearer token, and
+ * X-Client so the server runs WeChat's content security check on what the mini program submits
+ */
+const authHeader = () => Object.assign({ 'X-Client': 'mp' }, token ? { Authorization: `Bearer ${token}` } : {});
+
 function send(method, url, data) {
   return new Promise((resolve, reject) => {
     wx.request({
       url, method, data,
-      header: Object.assign({ 'content-type': 'application/json' }, token ? { Authorization: `Bearer ${token}` } : {}),
+      header: Object.assign({ 'content-type': 'application/json' }, authHeader()),
       success: resolve,
       fail: reject,
     });
@@ -70,7 +76,5 @@ async function api(path, opts = {}) {
 const apiUrl = (path) => BASE + apiPath(path);
 /** Full URL of a server path that is already absolute (e.g. an attachment's /api/files/<id>) */
 const serverUrl = (path) => BASE + path;
-/** The Authorization header for wx.uploadFile / wx.downloadFile, which do not go through api() */
-const authHeader = () => (token ? { Authorization: `Bearer ${token}` } : {});
 
 module.exports = { api, ApiError, setToken, hasToken, setEventHash, getEventHash, setUnauthorizedHandler, apiUrl, serverUrl, authHeader };
