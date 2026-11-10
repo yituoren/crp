@@ -1,4 +1,6 @@
 {
   "component": true,
-  "usingComponents": {}
+  "usingComponents": {
+    "icon-m": "/components/icon/icon"
+  }
 }

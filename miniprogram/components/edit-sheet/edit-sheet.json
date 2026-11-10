@@ -1,4 +1,7 @@
 {
   "component": true,
-  "usingComponents": { "dt-field": "/components/dt-field/dt-field" }
+  "usingComponents": {
+    "dt-field": "/components/dt-field/dt-field",
+    "icon-m": "/components/icon/icon"
+  }
 }

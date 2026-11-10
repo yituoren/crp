@@ -11,10 +11,6 @@
     "backgroundColorTop": "#f8f9fa",
     "backgroundColorBottom": "#f8f9fa"
   },
-  "usingComponents": {
-    "icon-m": "/components/icon/icon",
-    "m-bar": "/components/m-bar/m-bar"
-  },
   "style": "v2",
   "sitemapLocation": "sitemap.json",
   "lazyCodeLoading": "requiredComponents"

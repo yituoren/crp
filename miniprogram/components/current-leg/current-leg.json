@@ -1,4 +1,7 @@
 {
   "component": true,
-  "usingComponents": { "leg-tag": "/components/leg-tag/leg-tag" }
+  "usingComponents": {
+    "leg-tag": "/components/leg-tag/leg-tag",
+    "icon-m": "/components/icon/icon"
+  }
 }
