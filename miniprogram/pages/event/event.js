@@ -18,7 +18,7 @@ Page({
   data: {
     loading: true, event: null, isHost: false, online: true,
     nav: NAV, bottom: NAV.filter((n) => BOTTOM.includes(n.name)), current: 'today', currentLabel: '我的',
-    drawer: false, live: false, barTop: 20, barRow: 44, drawerWidth: 256,
+    drawer: false, live: false, barTop: 20, barRow: 44, drawerWidth: 224,
   },
 
   onLoad(q) {
@@ -45,7 +45,7 @@ Page({
   /** The drawer lines up with the top bar: below the status bar, its title in the bar's row */
   onBarMeasure(e) {
     const { top, row, left } = e.detail;
-    this.setData({ barTop: top, barRow: row, drawerWidth: Math.min(256, left - 8) });
+    this.setData({ barTop: top, barRow: row, drawerWidth: Math.min(224, left - 8) });
   },
   go(e) {
     const name = e.currentTarget.dataset.name;
