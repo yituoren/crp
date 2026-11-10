@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { api, setEventHash } from '@/api';
+import { api, setEventHash, setServerDateHandler } from '@/api';
 import type { EventInfo, User } from '@/types';
 import { setMoneyMode } from '@/utils/money';
 
@@ -13,8 +13,13 @@ export const useAuth = defineStore('auth', () => {
   /** Info of the current event; empty outside an event */
   const event = ref<EventInfo>({ ...EMPTY_EVENT });
   const ready = ref(false);
-  /** Server time minus local time (ms), used to prefill record forms */
+  /** Server time minus local time (ms): record forms, running durations and waits use it, so it is measured at login and then kept corrected */
   const serverOffsetMs = ref(0);
+  // the Date header only has whole seconds (on average half a second behind): correct only a real drift, e.g. after the device clock changed
+  setServerDateHandler((serverMs) => {
+    const offset = serverMs + 500 - Date.now();
+    if (Math.abs(offset - serverOffsetMs.value) > 2000) serverOffsetMs.value = offset;
+  });
   const serverNow = () => new Date(Date.now() + serverOffsetMs.value);
   const isAdmin = computed(() => user.value?.role === 'admin');
   /** Host rights in the current event; admin is global and includes host */

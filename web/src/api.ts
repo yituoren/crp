@@ -25,6 +25,11 @@ export function apiPath(path: string): string {
 export function setUnauthorizedHandler(fn: () => void) {
   onUnauthorized = fn;
 }
+/** Every response's Date header (server time, whole seconds) goes here, so the client clock offset stays corrected */
+let onServerDate: ((serverMs: number) => void) | null = null;
+export function setServerDateHandler(fn: (serverMs: number) => void) {
+  onServerDate = fn;
+}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -40,6 +45,8 @@ export async function api<T = any>(path: string, opts: Options = {}): Promise<T>
         headers: body !== undefined ? { 'content-type': 'application/json' } : undefined,
         body: form ?? (body !== undefined ? JSON.stringify(body) : undefined),
       });
+      const date = Date.parse(res.headers.get('date') ?? '');
+      if (!Number.isNaN(date)) onServerDate?.(date);
       const isJson = res.headers.get('content-type')?.includes('application/json');
       const data = isJson ? await res.json().catch(() => ({})) : await res.text();
       if (!res.ok) {
