@@ -55,7 +55,7 @@ function detourOptions(): string[] {
       <tbody>
         <tr v-for="{ team, p, can, edit, block, locked } in rows" :key="team.id" :style="team.status !== 'alive' ? 'opacity:.55' : ''">
           <td><strong>{{ team.label }}</strong> <TeamStatus v-if="team.status !== 'alive'" :status="team.status" /></td>
-          <td>{{ locked ? '-' : race.waitingUntil(team.id, leg.id) ? '等待中' : stateOf(p) }}</td>
+          <td>{{ locked ? '-' : !p?.completed_at && race.stoppedLabel(team.id) ? race.stoppedLabel(team.id) : race.waitingUntil(team.id, leg.id) ? '等待中' : stateOf(p) }}</td>
           <td v-if="withStart"><span class="record-time" :class="{ 'record-hit': race.startDelayed(team.id, leg.id) }">{{ fmtTime(race.taskStart(team.id, leg.id)) }}</span></td>
           <td><span class="record-time" :class="{ 'record-hit': !!race.uturnOn(team.id, leg.id) }">{{ leg.type === 'PS' ? fmtTimeSec(p?.completed_at) : fmtTime(p?.completed_at) }}</span></td>
           <td v-if="showTarget" class="c">

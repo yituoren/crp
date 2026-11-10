@@ -62,8 +62,11 @@ function cell(teamId: number, legId: number, single: boolean, isPs = false): MxC
   const startMs = new Date(start).getTime();
   const pen = race.legPenalty(teamId, legId) * 60000;
   if (p.completed_at) { const endMs = new Date(p.completed_at).getTime(); const ms = endMs - startMs - branchElapsed(teamId, legId, endMs) + pen; return { start: fmtTime(start), end: (isPs ? fmtTimeSec : fmtTime)(p.completed_at), dur: fmtDurMs(ms), ms, cls: 'mx-done' }; }
-  if (startMs > now.value) return { start: fmtTime(start), end: '等待中', dur: '-', cls: 'mx-arrived' }; // still waiting on the spot
-  const ms = now.value - startMs - branchElapsed(teamId, legId, null) + pen;
+  const stop = race.stoppedLabel(teamId);
+  if (stop) return { start: fmtTime(start), end: stop, dur: '-', cls: '' }; // out of the race before finishing: no running time
+  // waiting only for a real reason (twist card, settlement); a start a few seconds ahead of this device's clock is just running
+  if (race.waitingUntil(teamId, legId)) return { start: fmtTime(start), end: '等待中', dur: '-', cls: 'mx-arrived' };
+  const ms = Math.max(0, now.value - startMs - branchElapsed(teamId, legId, null)) + pen;
   return { start: fmtTime(start), end: '进行中', dur: fmtDurMs(ms), ms, cls: 'mx-arrived' };
 }
 /** Side quest columns: start / end / duration */
@@ -72,6 +75,8 @@ function branchCell(teamId: number, legId: number): MxCell {
   if (!bp?.arrived_at) return { start: '-', end: '-', dur: '-', cls: '' };
   const s = new Date(bp.arrived_at).getTime();
   const pen = race.legPenalty(teamId, br!.id) * 60000;
+  const stop = bp.completed_at ? null : race.stoppedLabel(teamId);
+  if (stop) return { start: fmtTime(bp.arrived_at), end: stop, dur: '-', cls: '' };
   const ms = (bp.completed_at ? new Date(bp.completed_at).getTime() : now.value) - s + pen;
   return { start: fmtTime(bp.arrived_at), end: bp.completed_at ? fmtTime(bp.completed_at) : '进行中', dur: fmtDurMs(ms), ms, cls: bp.completed_at ? 'mx-done' : 'mx-arrived' };
 }
