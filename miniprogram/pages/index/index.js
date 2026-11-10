@@ -1,3 +1,2 @@
-Page({
-  data: {},
-});
+// index.js
+Page({})

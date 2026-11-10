@@ -1,23 +1,24 @@
 {
-  "description": "城市飞奔 · 幕后管理系统 微信小程序",
-  "projectname": "crp-miniprogram",
-  "appid": "touristappid",
-  "compileType": "miniprogram",
-  "miniprogramRoot": "./",
-  "srcMiniprogramRoot": "./",
   "setting": {
     "es6": true,
-    "enhance": true,
     "postcss": true,
     "minified": true,
-    "urlCheck": true
+    "uglifyFileName": false,
+    "enhance": true,
+    "packNpmRelationList": [],
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    },
+    "useCompilerPlugins": false
   },
+  "compileType": "miniprogram",
+  "simulatorPluginLibVersion": {},
   "packOptions": {
-    "ignore": [{ "type": "file", "value": "README.md" }],
+    "ignore": [],
     "include": []
   },
-  "editorSetting": {
-    "tabIndent": "insertSpaces",
-    "tabSize": 2
-  }
+  "appid": "wxdce21010fa73feb5",
+  "editorSetting": {}
 }

@@ -1,15 +1,10 @@
-.home {
-  min-height: 100vh;
+/**index.wxss**/
+page {
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
 }
-.logo {
-  width: 360rpx;
-}
-.sub {
-  margin-top: 16rpx;
-  color: #5f6368;
-  font-size: 30rpx;
+.scrollarea {
+  flex: 1;
+  overflow-y: hidden;
 }

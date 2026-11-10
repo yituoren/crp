@@ -1,6 +1,10 @@
-page {
-  background: #f8f9fa;
-  color: #3c4043;
-  font-size: 28rpx;
-  line-height: 1.5;
-}
+/**app.wxss**/
+.container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 200rpx 0;
+  box-sizing: border-box;
+} 
