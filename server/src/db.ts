@@ -455,6 +455,9 @@ if (ensureColumn('episodes', 'eliminate_count', 'INTEGER NOT NULL DEFAULT 0')) {
 }
 // Minutes of earlier penalties waited out before the task of a sudden-death leg (part of its start time)
 ensureColumn('progress', 'settle_min', 'INTEGER NOT NULL DEFAULT 0');
+// WeChat mini program sign-in: the user's openid in the mini program, bound once with ID + password
+ensureColumn('users', 'wx_openid', 'TEXT');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_wx_openid ON users(wx_openid) WHERE wx_openid IS NOT NULL');
 
 type Param = string | number | null;
 export type Row = Record<string, any>;

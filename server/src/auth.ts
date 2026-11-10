@@ -78,11 +78,26 @@ function loadSecret(): string {
 }
 const SECRET = loadSecret();
 
-export async function issueToken(c: Context, user: AuthUser) {
+/** Sign in: the website keeps the token in an httpOnly cookie; the mini program has no cookies and sends it back as a Bearer header */
+export async function issueToken(c: Context, user: AuthUser): Promise<string> {
   const token = await sign({ sub: user.id, exp: Math.floor(Date.now() / 1000) + TTL_SEC }, SECRET);
   // Mark the cookie Secure when Nginx reports the request came in over HTTPS; plain-HTTP access by IP keeps working
   const secure = c.req.header('x-forwarded-proto') === 'https';
   setCookie(c, COOKIE, token, { httpOnly: true, sameSite: 'Lax', path: '/', maxAge: TTL_SEC, secure });
+  return token;
+}
+/** The session token of a request: the cookie, else an Authorization: Bearer header */
+function tokenOf(c: Context): string | undefined {
+  return getCookie(c, COOKIE) ?? c.req.header('authorization')?.match(/^Bearer\s+(\S+)$/i)?.[1];
+}
+/** Short-lived proof that a mini program user owns an openid, until they bind it to an account */
+const BIND_TTL_SEC = 10 * 60;
+export const signBindTicket = (openid: string) => sign({ wx: openid, purpose: 'wx-bind', exp: Math.floor(Date.now() / 1000) + BIND_TTL_SEC }, SECRET);
+export async function readBindTicket(ticket: string): Promise<string | null> {
+  try {
+    const p = await verify(ticket, SECRET, 'HS256');
+    return p.purpose === 'wx-bind' && typeof p.wx === 'string' ? p.wx : null;
+  } catch { return null; }
 }
 export function clearToken(c: Context) {
   deleteCookie(c, COOKIE, { path: '/' });
@@ -101,7 +116,7 @@ export function loadUser(id: number): AuthUser | null {
 }
 
 export const authRequired: MiddlewareHandler<Env> = async (c, next) => {
-  const token = getCookie(c, COOKIE);
+  const token = tokenOf(c);
   if (!token) return c.json({ error: '未登录' }, 401);
   try {
     const payload = await verify(token, SECRET, "HS256");
