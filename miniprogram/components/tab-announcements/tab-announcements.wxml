@@ -1,0 +1,29 @@
+<view class="card">
+  <view class="card-header">公告（{{list.length}}）</view>
+  <view class="ann-compose">
+    <textarea class="ann-text" value="{{content}}" placeholder="{{placeholder}}" maxlength="2000" auto-height="{{false}}" bindinput="onInput" />
+    <view class="ann-side">
+      <picker wx:if="{{isHost}}" range="{{audiences}}" range-key="label" value="{{audienceIndex}}" bindchange="onAudience">
+        <view class="ann-select">{{audiences[audienceIndex].label}}<icon-m name="expand_more" size="18" color="#444746" /></view>
+      </picker>
+      <view wx:else class="ann-select ann-select-disabled">主办</view>
+      <button class="btn ann-send" hover-class="btn-hover" bindtap="post"><icon-m name="send" size="18" color="#ffffff" />发送</button>
+    </view>
+  </view>
+
+  <view wx:if="{{!list.length}}" class="empty-state">暂无公告</view>
+  <view wx:for="{{list}}" wx:key="id" class="alert {{item.pinned ? 'alert-warning' : ''}}">
+    <view class="pre">{{item.content}}</view>
+    <view class="ann-foot">
+      <view class="flex ann-meta">
+        <text wx:if="{{item.pinned}}" class="badge badge-warning">置顶</text>
+        <text wx:if="{{item.audience}}" class="badge badge-info">{{item.audience}}</text>
+        <text class="text-xs text-gray">{{item.meta}}</text>
+      </view>
+      <view wx:if="{{item.canDelete}}" class="ann-actions">
+        <view wx:if="{{isHost}}" class="ann-act" data-id="{{item.id}}" data-pinned="{{item.pinned}}" bindtap="pin"><icon-m name="push_pin" size="16" color="#0b57d0" />{{item.pinned ? '取消置顶' : '置顶'}}</view>
+        <view class="ann-act ann-act-danger" data-id="{{item.id}}" bindtap="remove"><icon-m name="delete" size="16" color="#b3261e" />删除</view>
+      </view>
+    </view>
+  </view>
+</view>

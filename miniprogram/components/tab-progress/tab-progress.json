@@ -1,0 +1,8 @@
+{
+  "component": true,
+  "usingComponents": {
+    "ep-selector": "/components/ep-selector/ep-selector",
+    "leg-tag": "/components/leg-tag/leg-tag",
+    "penalty-panel": "/components/penalty-panel/penalty-panel"
+  }
+}

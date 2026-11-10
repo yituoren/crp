@@ -1,0 +1,20 @@
+.pf { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.pf-select { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px 0 16px; border-radius: 22px; background: var(--field); font-size: 15px; color: var(--gray-900); }
+.pf-select.placeholder { color: var(--gray-500); }
+.pf-row { display: flex; gap: 8px; }
+.pf-input { height: 44px; padding: 0 16px; border-radius: 22px; background: var(--field); font-size: 15px; }
+.pf-min { width: 90px; flex: none; }
+.pf-reason { flex: 1; min-width: 0; }
+.pf-btn { flex: 1; }
+.btn-danger-tonal { background: var(--danger-light); color: var(--danger-on-light); }
+.empty-rows { text-align: center; color: var(--gray-500); font-size: 13px; padding: 12px 0; }
+/* Records as cards (the phone website's tables) */
+.pr { border-top: 1px solid var(--gray-200); padding: 10px 0; display: flex; flex-direction: column; gap: 4px; }
+.pr.reverted .pr-amount, .pr.reverted .pr-team { text-decoration: line-through; color: var(--gray-400); }
+.pr-head { gap: 8px; }
+.pr-amount { font-weight: 600; font-variant-numeric: tabular-nums; }
+.pr-amount.neg { color: var(--danger); }
+.pr-amount.pos { color: var(--success); }
+.pr-team { font-weight: 500; color: var(--gray-900); }
+.pr-line { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.pr-revert { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--primary); font-weight: 500; }

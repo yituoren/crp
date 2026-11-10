@@ -1,3 +1,7 @@
 {
-  "usingComponents": {}
+  "usingComponents": {
+    "ep-selector": "/components/ep-selector/ep-selector",
+    "tab-announcements": "/components/tab-announcements/tab-announcements",
+    "tab-progress": "/components/tab-progress/tab-progress"
+  }
 }

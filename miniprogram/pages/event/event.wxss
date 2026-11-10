@@ -23,3 +23,11 @@
 .m-item { height: 48px; display: flex; align-items: center; gap: 14px; padding: 0 16px; border-radius: 24px; color: var(--gray-800); font-size: 15px; }
 .m-item.on { background: var(--primary-light); color: var(--primary-on-light); font-weight: 600; }
 .m-sep { height: 1px; background: var(--gray-200); margin: 6px 12px; }
+
+.m-nav-item { position: relative; }
+.nav-dot { position: absolute; top: 10px; right: calc(50% - 22px); width: 8px; height: 8px; border-radius: 4px; background: var(--danger); }
+
+/* System notice dialog (a centred dialog, as on the website) */
+.popup { position: fixed; left: 16px; right: 16px; top: 50%; transform: translateY(-50%); z-index: 510; background: var(--surface); border-radius: 28px; padding: 22px 20px 16px; }
+.popup-list { max-height: 60vh; }
+.popup-answer { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }

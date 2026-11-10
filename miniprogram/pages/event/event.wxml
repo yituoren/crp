@@ -15,7 +15,9 @@
 </view>
 
 <view wx:else class="m-body">
-  <view class="card">
+  <tab-announcements wx:if="{{current === 'announcements'}}" />
+  <tab-progress wx:if="{{current === 'progress'}}" />
+  <view wx:if="{{!ported}}" class="card">
     <view class="card-header">{{currentLabel}}</view>
     <view class="empty-state">「{{currentLabel}}」页面将在后续版本移植</view>
   </view>
@@ -25,6 +27,7 @@
   <view wx:for="{{bottom}}" wx:key="name" class="m-nav-item {{current === item.name ? 'on' : ''}}" data-name="{{item.name}}" bindtap="go">
     <view class="m-nav-ic"><icon-m name="{{item.icon}}" size="22" color="{{current === item.name ? '#041e49' : '#444746'}}" /></view>
     <text>{{item.label}}</text>
+    <view wx:if="{{item.name === 'announcements' && unread}}" class="nav-dot"></view>
   </view>
 </view>
 
@@ -40,3 +43,28 @@
   <view class="m-sep"></view>
   <view class="m-item" bindtap="home"><icon-m name="home" size="22" color="#1f1f1f" />回到主页</view>
 </view>
+
+<!-- System notices for the team this account follows (departure, twist cards): pop up until acknowledged -->
+<block wx:if="{{popups.length}}">
+  <view class="sheet-scrim" catchtouchmove="noop"></view>
+  <view class="popup" catchtouchmove="noop">
+    <view class="sheet-title">系统提醒</view>
+    <scroll-view scroll-y class="popup-list">
+      <view wx:for="{{popups}}" wx:key="id" class="alert {{item.warning ? 'alert-warning' : ''}}">
+        <view class="pre">{{item.content}}</view>
+        <view class="text-xs text-gray mt-1">{{item.time}}</view>
+        <view wx:if="{{item.shield || item.reflect}}" class="popup-answer">
+          <text class="text-sm">背包里有可用的卡，是否使用？</text>
+          <view class="flex">
+            <button wx:if="{{item.shield}}" class="btn btn-tonal btn-sm" disabled="{{answering}}" data-id="{{item.effectId}}" data-answer="shield" bindtap="answer">使用护盾</button>
+            <button wx:if="{{item.reflect}}" class="btn btn-tonal btn-sm" disabled="{{answering}}" data-id="{{item.effectId}}" data-answer="reflect" bindtap="answer">使用反弹</button>
+            <button class="btn btn-text btn-sm" disabled="{{answering}}" data-id="{{item.effectId}}" data-answer="accept" bindtap="answer">不使用</button>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+    <view class="sheet-actions">
+      <button class="btn" disabled="{{undecided}}" bindtap="dismiss">{{undecided ? '先选择是否使用护盾 / 反弹' : '知道了'}}</button>
+    </view>
+  </view>
+</block>

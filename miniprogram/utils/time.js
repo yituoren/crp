@@ -24,4 +24,9 @@ function fmtDurMs(ms) {
   return h ? `${h} h ${m % 60} m` : `${m} m`;
 }
 
-module.exports = { fmtTime, fmtTimeSec, fmtDate, fmtDateMinute, fmtDurMs };
+/** Penalty minutes with a sign, in the duration format: "+5 m", "-1 h 10 m" ("0 m" for none) */
+function fmtPenMin(min) { return `${min > 0 ? '+' : min < 0 ? '-' : ''}${fmtDurMs(Math.abs(min) * 60000)}`; }
+/** YYYY-MM-DD HH:MM */
+function fmtDateTime(iso) { const p = parts(iso); return p ? `${p.y}-${pad(p.mo)}-${pad(p.d)} ${pad(p.h)}:${pad(p.mi)}` : '-'; }
+
+module.exports = { fmtTime, fmtTimeSec, fmtDate, fmtDateMinute, fmtDateTime, fmtDurMs, fmtPenMin };

@@ -1,0 +1,7 @@
+<scroll-view class="ep-selector" scroll-x enhanced show-scrollbar="{{false}}">
+  <view class="ep-row">
+    <view wx:for="{{episodes}}" wx:key="id" class="ep-btn {{item.id === current ? 'active' : ''}} {{item.status === 'finished' ? 'done' : ''}}" data-id="{{item.id}}" bindtap="select">
+      {{item.code}}<view wx:if="{{item.status === 'running'}}" class="ep-dot"></view>
+    </view>
+  </view>
+</scroll-view>
