@@ -1,0 +1,7 @@
+{
+  "component": true,
+  "usingComponents": {
+    "icon-m": "/components/icon/icon",
+    "check-box": "/components/check-box/check-box"
+  }
+}

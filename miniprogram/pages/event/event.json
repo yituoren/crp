@@ -8,6 +8,8 @@
     "tab-teams": "/components/tab-teams/tab-teams",
     "tab-episodes": "/components/tab-episodes/tab-episodes",
     "tab-schedule": "/components/tab-schedule/tab-schedule",
+    "tab-admin": "/components/tab-admin/tab-admin",
+    "live-board": "/components/live-board/live-board",
     "time-sheet": "/components/time-sheet/time-sheet",
     "edit-sheet": "/components/edit-sheet/edit-sheet",
     "icon-m": "/components/icon/icon",

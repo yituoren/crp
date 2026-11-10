@@ -1,0 +1,19 @@
+.ad-sec { padding: 12px 0; border-top: 1px solid var(--gray-200); }
+.ad-sec:first-child { border-top: none; padding-top: 0; }
+.ad-title { font-size: 15px; font-weight: 600; color: var(--gray-900); margin-bottom: 8px; }
+.ad-sub { font-size: 14px; font-weight: 600; color: var(--gray-900); }
+.ad-label { font-size: 13px; color: var(--gray-700); margin: 0 4px 6px; }
+.ad-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ad-two .form-group { margin-bottom: 0; }
+.ad-shop-head { margin: 14px 0 4px; }
+.ad-link { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 500; color: var(--primary); padding: 4px; }
+.ad-item { padding: 8px 0; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--gray-100); }
+.ad-row { display: flex; align-items: center; gap: 8px; }
+.ad-grow { flex: 1; min-width: 0; }
+.ad-price { width: 120px; flex: none; }
+.ad-del { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; flex: none; }
+.ad-foot { display: flex; justify-content: flex-end; padding-top: 12px; }
+.ad-strong { font-weight: 600; }
+.ad-normal { font-weight: 400; }
+.ad-mono { font-family: Menlo, monospace; font-size: 11px; text-align: left; }
+.lc-btn.danger { color: var(--danger); }

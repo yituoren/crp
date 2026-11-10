@@ -1,0 +1,17 @@
+.lv-card { padding: 14px 12px 10px; }
+.lv-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+.lv-title { font-size: 16px; font-weight: 600; color: var(--gray-900); }
+/* all columns proportional, adapting to any width */
+.lv-row { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, .9fr); gap: 6px; align-items: center; min-height: 44px; padding: 4px 2px; border-bottom: 1px solid var(--gray-100); font-size: 12px; line-height: 1.3; color: var(--gray-800); }
+.lv-row:last-child { border-bottom: none; }
+.lv-row-head { min-height: 34px; padding: 0 6px; font-weight: 500; color: var(--gray-500); background: var(--gray-100); border-radius: 8px; }
+.lv-team { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font-size: 13px; min-width: 0; }
+.lv-leg { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
+.lv-strong { font-weight: 500; color: var(--gray-900); overflow-wrap: break-word; min-width: 0; }
+.lv-st { font-size: 11px; font-weight: 500; }
+.lv-st.eliminated { color: var(--danger); }
+.lv-st.withdrawn { color: var(--gray-400); }
+.lv-ep { font-variant-numeric: tabular-nums; }
+.lv-ok { color: var(--success); font-weight: 500; }
+.lv-time { font-size: 11px; font-weight: 600; color: var(--gray-700); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lv-money { font-weight: 600; color: var(--warning); font-variant-numeric: tabular-nums; white-space: nowrap; }

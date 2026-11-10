@@ -1,0 +1,104 @@
+<scroll-view class="tabs" scroll-x enhanced show-scrollbar="{{false}}">
+  <view class="tabs-row">
+    <view class="tab {{tab === 'settings' ? 'on' : ''}}" data-tab="settings" bindtap="setTab">赛事设置</view>
+    <view class="tab {{tab === 'members' ? 'on' : ''}}" data-tab="members" bindtap="setTab">成员与主办</view>
+    <view wx:if="{{isHost}}" class="tab {{tab === 'data' ? 'on' : ''}}" data-tab="data" bindtap="setTab">数据管理</view>
+  </view>
+</scroll-view>
+
+<!-- Settings: one card, sections divided by lines; saved at once -->
+<view wx:if="{{tab === 'settings'}}" class="card">
+  <view class="ad-sec">
+    <view class="ad-title">基本信息</view>
+    <view class="form-group"><view class="label">赛事名称</view><input value="{{settings.name}}" data-field="name" bindinput="onField" /></view>
+    <view class="form-group"><view class="label">邀请码</view><input value="{{settings.inviteCode}}" data-field="inviteCode" bindinput="onField" placeholder="如 bj20" /></view>
+  </view>
+  <view class="ad-sec">
+    <view class="ad-title">队伍与规则</view>
+    <view class="ad-two">
+      <view class="form-group"><view class="label">每队人数</view><input type="number" value="{{settings.teamSize}}" data-field="teamSize" bindinput="onField" /></view>
+      <view class="form-group"><view class="label">路障次数差上限</view><input type="number" value="{{settings.rbGap}}" data-field="rbGap" bindinput="onField" /></view>
+    </view>
+  </view>
+  <view class="ad-sec">
+    <view class="ad-title">经费与商店</view>
+    <view class="ad-label">经费类型</view>
+    <picker range="{{modeLabels}}" value="{{modeIndex}}" bindchange="pickMode"><view class="field">{{modeLabels[modeIndex]}}<icon-m name="expand_more" size="18" color="#444746" /></view></picker>
+    <block wx:if="{{settings.currencyMode === 'coin'}}">
+      <view class="flex-between ad-shop-head"><text class="ad-sub">商店商品</text><view class="ad-link" bindtap="addItem"><icon-m name="add" size="16" color="#0b57d0" />添加商品</view></view>
+      <!-- two rows per item: name + delete, then price + "needs a target" -->
+      <view wx:for="{{items}}" wx:key="index" class="ad-item">
+        <view class="ad-row">
+          <input class="field ad-grow" value="{{item.name}}" data-i="{{index}}" data-field="name" bindinput="onItem" placeholder="商品名称" />
+          <view class="ad-del" data-i="{{index}}" bindtap="removeItem"><icon-m name="delete" size="18" color="#b3261e" /></view>
+        </view>
+        <view class="ad-row">
+          <input class="field ad-price" type="number" value="{{item.price}}" data-i="{{index}}" data-field="price" bindinput="onItem" placeholder="价格（币）" />
+          <check-box checked="{{item.needsTarget}}" label="需选对象" data-i="{{index}}" bind:change="onTarget" />
+        </view>
+      </view>
+      <view wx:if="{{!items.length}}" class="text-sm text-gray">还没有商品，点「添加商品」开始。</view>
+      <view wx:else class="text-xs text-gray mt-1">「需选对象」：使用时要选一支对象队伍（如让路、决斗、盗窃）。</view>
+    </block>
+    <view wx:else class="text-sm text-gray mt-1">选择「货币」后可以在这里配置商店商品。</view>
+  </view>
+  <view class="ad-foot"><button class="btn" bindtap="save">保存设置</button></view>
+</view>
+
+<!-- Members and hosts -->
+<view wx:if="{{tab === 'members'}}" class="card">
+  <view class="card-header">成员与主办</view>
+  <view class="lc-list">
+    <view wx:for="{{members}}" wx:key="id" class="lc">
+      <view class="lc-f"><text class="lc-k">幕后ID</text><text class="lc-v ad-strong">{{item.username}}{{item.self ? '（我）' : ''}}</text></view>
+      <view class="lc-f"><text class="lc-k">本比赛身份</text><text class="badge {{item.badge}}">{{item.roleText}}</text></view>
+      <view wx:if="{{!item.fixed}}" class="lc-f actions">
+        <view class="lc-btn {{item.role === 'crew' ? '' : 'danger'}}" data-id="{{item.id}}" bindtap="setRole">{{item.role === 'crew' ? '设为主办' : '取消主办'}}</view>
+      </view>
+      <view wx:elif="{{item.note}}" class="lc-f actions"><text class="text-xs text-gray">{{item.note}}，不可更改</text></view>
+    </view>
+  </view>
+</view>
+
+<view wx:if="{{tab === 'members'}}" class="card">
+  <view class="card-header"><text>申请名单</text><text class="text-sm text-gray ad-normal">{{requests.length ? requests.length + ' 条待审核' : ''}}</text></view>
+  <view wx:if="{{!requests.length}}" class="empty-state">暂无申请</view>
+  <view wx:else class="lc-list">
+    <view wx:for="{{requests}}" wx:key="id" class="lc">
+      <view class="lc-f"><text class="lc-k">幕后ID</text><text class="lc-v ad-strong">{{item.username}}</text></view>
+      <view class="lc-f"><text class="lc-k">申请时间</text><text class="lc-v">{{item.time}}</text></view>
+      <view class="lc-f full"><text class="lc-k">说明</text><text class="lc-v">{{item.note}}</text></view>
+      <view class="lc-f actions">
+        <view class="lc-btn" data-id="{{item.id}}" data-action="approve" bindtap="decide"><icon-m name="check" size="16" color="#0b57d0" />通过</view>
+        <view class="lc-btn danger" data-id="{{item.id}}" data-action="reject" bindtap="decide"><icon-m name="close" size="16" color="#b3261e" />拒绝</view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- Data management -->
+<block wx:if="{{tab === 'data'}}">
+  <view class="card">
+    <view class="ad-title">导出比赛</view>
+    <view class="text-sm text-gray">把本比赛的全部数据和附件打包成一个 .crp 文件，可以在任意服务器的「创建比赛」里导入成一场新比赛。不包含账号和密码。</view>
+    <view class="alert mt-2">导出的是文件，请在网站「后台 → 数据管理」中导出。</view>
+  </view>
+  <view class="card">
+    <view class="ad-title">删除比赛</view>
+    <view class="text-sm text-gray">永久删除本比赛的赛段、环节、附件、队伍、进度、经费、背包、公告和成员关系，无法恢复。账号不受影响。</view>
+    <view class="ad-foot"><button class="btn btn-danger" bindtap="deleteEvent"><icon-m name="delete" size="18" color="#ffffff" />删除比赛</button></view>
+  </view>
+  <view wx:if="{{isAdmin}}" class="card">
+    <view class="card-header"><text>本比赛操作日志（最近 200 条 / 共 {{auditTotal}}）</text><view class="ad-link" bindtap="loadAudit"><icon-m name="refresh" size="16" color="#0b57d0" />刷新</view></view>
+    <view class="lc-list">
+      <view wx:for="{{audit}}" wx:key="id" class="lc">
+        <view class="lc-f"><text class="lc-k">时间</text><text class="lc-v">{{item.time}}</text></view>
+        <view class="lc-f"><text class="lc-k">操作人</text><text class="lc-v">{{item.user}}</text></view>
+        <view class="lc-f"><text class="lc-k">动作</text><text class="lc-v">{{item.action}}</text></view>
+        <view class="lc-f"><text class="lc-k">对象</text><text class="lc-v">{{item.target}}</text></view>
+        <view wx:if="{{item.before}}" class="lc-f full"><text class="lc-k">变更前</text><text class="lc-v ad-mono">{{item.before}}</text></view>
+        <view wx:if="{{item.after}}" class="lc-f full"><text class="lc-k">变更后</text><text class="lc-v ad-mono">{{item.after}}</text></view>
+      </view>
+    </view>
+  </view>
+</block>

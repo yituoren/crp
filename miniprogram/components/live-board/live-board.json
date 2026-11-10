@@ -1,0 +1,4 @@
+{
+  "component": true,
+  "usingComponents": { "leg-tag": "/components/leg-tag/leg-tag" }
+}

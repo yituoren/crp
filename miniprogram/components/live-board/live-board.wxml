@@ -1,0 +1,19 @@
+<view class="card lv-card">
+  <view class="lv-head"><text class="lv-title">{{title}} 队伍当前位置</text><text class="text-xs text-gray">{{statusText}}</text></view>
+  <view wx:if="{{loading}}" class="loading"><view class="spinner"></view></view>
+  <view wx:elif="{{empty}}" class="empty-state">{{empty}}</view>
+  <block wx:else>
+    <view class="lv-row lv-row-head"><view>队伍</view><view>当前环节</view><view>最近记录</view><view>余额（{{unit}}）</view></view>
+    <view wx:for="{{teams}}" wx:key="id" class="lv-row">
+      <view class="lv-team"><text class="lv-strong">{{item.label}}</text><text wx:if="{{item.statusText}}" class="lv-st {{item.status}}">{{item.statusText}}</text></view>
+      <view class="lv-leg">
+        <text wx:if="{{item.epCode}}" class="text-xs text-gray lv-ep">{{item.epCode}}</text>
+        <text wx:if="{{item.finished}}" class="lv-ok">已到中继站</text>
+        <block wx:elif="{{item.leg}}"><leg-tag type="{{item.leg.type}}" /><text class="lv-strong">{{item.leg.name}}</text></block>
+        <text wx:else class="text-gray">未出发</text>
+      </view>
+      <view class="lv-time">{{item.time}}</view>
+      <view class="lv-money">{{item.money}}</view>
+    </view>
+  </block>
+</view>

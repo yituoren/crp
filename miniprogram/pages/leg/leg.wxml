@@ -57,7 +57,7 @@
           </view>
           <text wx:if="{{item.sold}}" class="text-xs text-gray">已售 {{item.sold}}</text>
         </view>
-        <view wx:if="{{!shopLabels.length}}" class="text-sm text-gray">赛事设置里还没有商品，先到网站「后台 → 赛事设置」添加</view>
+        <view wx:if="{{!shopLabels.length}}" class="text-sm text-gray">赛事设置里还没有商品，先到「后台 → 赛事设置」添加</view>
         <view wx:elif="{{!shop.length}}" class="text-sm text-gray">本环节不开放商店</view>
       </view>
 

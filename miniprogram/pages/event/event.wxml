@@ -11,7 +11,7 @@
 <view wx:if="{{loading}}" class="loading"><view class="spinner"></view></view>
 
 <view wx:elif="{{live}}" class="m-body">
-  <view class="card"><view class="empty-state">实时大屏将在后续版本移植</view></view>
+  <live-board />
 </view>
 
 <view wx:else class="m-body">
@@ -22,10 +22,7 @@
   <tab-teams wx:if="{{current === 'teams'}}" />
   <tab-episodes wx:if="{{current === 'episodes'}}" />
   <tab-schedule wx:if="{{current === 'schedule'}}" />
-  <view wx:if="{{!ported}}" class="card">
-    <view class="card-header">{{currentLabel}}</view>
-    <view class="empty-state">「{{currentLabel}}」页面将在后续版本移植</view>
-  </view>
+  <tab-admin wx:if="{{current === 'admin'}}" bind:event="onEventSaved" bind:deleting="onDeleting" />
 </view>
 
 <view wx:if="{{!live}}" class="m-nav">

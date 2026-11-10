@@ -17,12 +17,11 @@ const NAV = [
   { name: 'progress', label: '进度', icon: 'leaderboard' },
 ];
 const BOTTOM = ['today', 'announcements', 'episodes', 'currency', 'progress'];
-const PORTED = ['today', 'announcements', 'progress', 'currency', 'teams', 'schedule', 'episodes'];
 
 Page({
   data: {
     loading: true, event: null, isHost: false, online: true, unread: 0,
-    nav: NAV, bottom: NAV.filter((n) => BOTTOM.includes(n.name)), current: 'today', currentLabel: '我的', ported: true,
+    nav: NAV, bottom: NAV.filter((n) => BOTTOM.includes(n.name)), current: 'today',
     drawer: false, live: false, barTop: 20, barRow: 44, drawerWidth: 224,
     popups: [], undecided: false, answering: false,
   },
@@ -36,6 +35,13 @@ Page({
     this.onReconnect = () => { if (race.loaded) race.loadAll().catch(() => {}); };
     realtime.on('invalidate', this.onInvalidate);
     realtime.on('connect', this.onReconnect);
+    // the event was deleted by a host: leave it (unless this page is deleting it itself)
+    this.onDeleted = (m) => {
+      if (!m || m.hash !== this.hash || this.selfDeleting) return;
+      wx.showToast({ title: '本比赛已被主办删除', icon: 'none' });
+      setTimeout(() => wx.reLaunch({ url: '/pages/home/home' }), 1200);
+    };
+    realtime.on('event-deleted', this.onDeleted);
     realtime.onOnline((online) => this.setData({ online }));
     realtime.connect();
     if (q.tab) this.setTab(q.tab);
@@ -45,6 +51,7 @@ Page({
     this.off && this.off();
     realtime.off('invalidate', this.onInvalidate);
     realtime.off('connect', this.onReconnect);
+    realtime.off('event-deleted', this.onDeleted);
     realtime.disconnect();
     setEventHash('');
   },
@@ -80,8 +87,7 @@ Page({
     this.setData({ barTop: top, barRow: row, drawerWidth: Math.min(224, left - 8) });
   },
   setTab(name) {
-    const item = NAV.find((n) => n.name === name) || { label: '后台' };
-    this.setData({ current: name, currentLabel: item.label, ported: PORTED.includes(name), drawer: false, live: false });
+    this.setData({ current: name, drawer: false, live: false });
     wx.pageScrollTo({ scrollTop: 0, duration: 0 });
   },
   go(e) { this.setTab(e.currentTarget.dataset.name || (e.detail && e.detail.name)); },
@@ -90,6 +96,14 @@ Page({
   /** Swallows touch moves on the drawer and its scrim so the page behind does not scroll */
   noop() {},
   toggleLive() { this.setData({ live: !this.data.live, drawer: false }); },
+  /** Settings saved in the backstage: the bar's name, the money mode and the role follow */
+  onEventSaved(e) {
+    const ev = e.detail.event;
+    getApp().globalData.event = ev;
+    setMoneyMode(ev.currencyMode);
+    this.setData({ event: ev, isHost: auth.isHost });
+  },
+  onDeleting() { this.selfDeleting = true; },
   account() { this.setData({ drawer: false }); wx.navigateTo({ url: '/pages/account/account' }); },
   home() { wx.navigateBack({ fail: () => wx.reLaunch({ url: '/pages/home/home' }) }); },
 

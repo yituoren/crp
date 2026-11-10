@@ -95,6 +95,7 @@ view, text, input, textarea, button { box-sizing: border-box; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .pre { white-space: pre-wrap; word-break: break-word; }
 .mt-1 { margin-top: 6px; }
+.mt-2 { margin-top: 12px; }
 .mb-2 { margin-bottom: 12px; }
 
 /* Section title placed straight on the page (schedule / progress tables have no outer card on phones) */
@@ -126,4 +127,10 @@ view, text, input, textarea, button { box-sizing: border-box; }
 input.field { padding: 0 16px; }
 .form-grid .btn { width: 100% !important; }
 .btn-danger-tonal { background: var(--danger-light); color: var(--danger-on-light); }
+.btn-danger { background: var(--danger); color: #fff; }
 .btn-success { background: var(--success); color: #fff; }
+/* Material tabs with an underline indicator (the website's .nav) */
+.tabs { white-space: nowrap; margin-bottom: 12px; border-bottom: 1px solid var(--gray-200); }
+.tabs-row { display: inline-flex; }
+.tab { padding: 10px 14px; font-size: 14px; font-weight: 500; color: var(--gray-600); border-bottom: 3px solid transparent; }
+.tab.on { color: var(--primary); border-bottom-color: var(--primary); }

@@ -25,10 +25,13 @@ function connect() {
   task.onError(() => {});
 }
 
+/** A socket that is closing rejects sends; reconnecting takes care of it */
+const send = (data) => { if (task) task.send({ data, fail: () => {} }); };
+
 function handle(msg) {
   const type = msg[0];
-  if (type === '0') { task && task.send({ data: '40' }); return; } // Engine.IO open → Socket.IO connect
-  if (type === '2') { task && task.send({ data: '3' }); return; } // ping → pong
+  if (type === '0') { send('40'); return; } // Engine.IO open → Socket.IO connect
+  if (type === '2') { send('3'); return; } // ping → pong
   if (msg.startsWith('40')) { retry = 0; if (onlineCb) onlineCb(true); emit('connect'); return; }
   if (msg.startsWith('42')) {
     try {
