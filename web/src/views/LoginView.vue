@@ -55,6 +55,6 @@ async function submit() {
       </div>
     </div>
     <!-- same text as the static copy in index.html -->
-    <footer class="beian"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">京ICP备2026077255号</a></footer>
+    <footer class="beian"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">京ICP备2026077255号-1</a></footer>
   </div>
 </template>
