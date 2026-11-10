@@ -2,7 +2,7 @@
 .ann-compose { background: var(--gray-100); border-radius: 16px; padding: 10px 12px 12px; margin-bottom: 12px; }
 .ann-text { width: 100%; height: 86px; font-size: 15px; line-height: 1.5; color: var(--gray-900); padding: 6px 0; }
 .ann-side { display: flex; gap: 8px; align-items: center; }
-.ann-side picker { flex: 1; }
+.ann-pick { flex: 1; }
 .ann-select { height: 40px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px 0 14px; border-radius: 20px; background: var(--surface); font-size: 14px; color: var(--gray-800); }
 .ann-select-disabled { flex: 1; color: var(--gray-500); }
 .ann-send { height: 40px; min-height: 40px; padding: 0 18px; }

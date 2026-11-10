@@ -1,40 +1,37 @@
 <ep-selector />
 
-<view class="card card-table">
-  <view class="card-header">进度结算</view>
-  <view wx:if="{{empty}}" class="empty-state">本赛段没有需要记录的环节</view>
-  <view wx:else class="mx">
-    <!-- the team column stays put -->
-    <view class="mx-left">
-      <view class="mx-team-head">队伍</view>
-      <view wx:for="{{rows}}" wx:key="id" class="mx-team">
-        <view class="mx-team-line">
-          <text wx:if="{{item.rank}}" class="mx-rank {{item.rankCls}}">#{{item.rank}}</text>
-          <text class="mx-team-name">{{item.name}}</text>
+<!-- phones: no outer card, the title and the matrix sit on the page -->
+<view class="page-title">进度结算</view>
+<view wx:if="{{empty}}" class="empty-state">本赛段没有需要记录的环节</view>
+<view wx:else class="mx">
+  <!-- the team column stays put -->
+  <view class="mx-left">
+    <view class="mx-team-head">队伍</view>
+    <view wx:for="{{rows}}" wx:key="id" class="mx-team {{item.dim ? 'dim' : ''}}">
+      <text wx:if="{{item.rank}}" class="mx-rank {{item.rankCls}}">#{{item.rank}}</text>
+      <text class="mx-team-name">{{item.name}}</text>
+    </view>
+  </view>
+  <!-- the legs scroll sideways -->
+  <scroll-view class="mx-right" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="mx-grid" style="width: {{gridWidth}}px">
+      <view class="mx-hrow">
+        <view wx:for="{{groups}}" wx:key="id" class="mx-leg mx-first" style="width: {{item.width}}px">
+          <leg-tag type="{{item.type}}" /><text class="mx-leg-name">{{item.name}}</text>
+          <block wx:if="{{item.branchName}}"><text class="mx-leg-sep">/</text><leg-tag type="SQ" /><text class="mx-leg-name">{{item.branchName}}</text></block>
         </view>
-        <view class="mx-team-sub">{{item.stopped || item.ago}}</view>
+      </view>
+      <view class="mx-hrow mx-hrow-sub">
+        <block wx:for="{{groups}}" wx:for-item="g" wx:key="id">
+          <view wx:for="{{g.cols}}" wx:for-item="c" wx:for-index="ci" wx:key="label" class="mx-sub {{ci === 0 ? 'mx-first' : ''}} {{c.branch ? 'branch' : ''}}" style="width: {{c.w}}px">{{c.label}}</view>
+        </block>
+      </view>
+      <view wx:for="{{rows}}" wx:for-item="row" wx:key="id" class="mx-row">
+        <view wx:for="{{row.cells}}" wx:for-item="c" wx:for-index="ci" wx:key="ci" class="mx-cell {{c.cls}} {{colFirst[ci] ? 'mx-first' : ''}}" style="width: {{colW[ci]}}px">{{c.text}}</view>
       </view>
     </view>
-    <!-- the legs scroll sideways -->
-    <scroll-view class="mx-right" scroll-x enhanced show-scrollbar="{{false}}">
-      <view class="mx-grid" style="width: {{gridWidth}}px">
-        <view class="mx-hrow">
-          <view wx:for="{{groups}}" wx:key="id" class="mx-leg mx-first" style="width: {{item.width}}px">
-            <leg-tag type="{{item.type}}" /><text class="mx-leg-name">{{item.name}}</text>
-            <block wx:if="{{item.branchName}}"><text class="mx-leg-sep">/</text><leg-tag type="SQ" /><text class="mx-leg-name">{{item.branchName}}</text></block>
-          </view>
-        </view>
-        <view class="mx-hrow mx-hrow-sub">
-          <block wx:for="{{groups}}" wx:for-item="g" wx:key="id">
-            <view wx:for="{{g.cols}}" wx:for-item="c" wx:for-index="ci" wx:key="label" class="mx-sub {{ci === 0 ? 'mx-first' : ''}} {{c.branch ? 'branch' : ''}}" style="width: {{c.w}}px">{{c.label}}</view>
-          </block>
-        </view>
-        <view wx:for="{{rows}}" wx:for-item="row" wx:key="id" class="mx-row">
-          <view wx:for="{{row.cells}}" wx:for-item="c" wx:for-index="ci" wx:key="ci" class="mx-cell {{c.cls}} {{colFirst[ci] ? 'mx-first' : ''}}" style="width: {{colW[ci]}}px">{{c.text}}</view>
-        </view>
-      </view>
-    </scroll-view>
-  </view>
+  </scroll-view>
 </view>
 
+<view class="gap"></view>
 <penalty-panel />

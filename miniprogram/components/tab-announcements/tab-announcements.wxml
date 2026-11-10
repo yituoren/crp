@@ -3,7 +3,7 @@
   <view class="ann-compose">
     <textarea class="ann-text" value="{{content}}" placeholder="{{placeholder}}" maxlength="2000" auto-height="{{false}}" bindinput="onInput" />
     <view class="ann-side">
-      <picker wx:if="{{isHost}}" range="{{audiences}}" range-key="label" value="{{audienceIndex}}" bindchange="onAudience">
+      <picker wx:if="{{isHost}}" class="ann-pick" range="{{audiences}}" range-key="label" value="{{audienceIndex}}" bindchange="onAudience">
         <view class="ann-select">{{audiences[audienceIndex].label}}<icon-m name="expand_more" size="18" color="#444746" /></view>
       </picker>
       <view wx:else class="ann-select ann-select-disabled">主办</view>

@@ -8,7 +8,8 @@ const { fmtDateTime, fmtPenMin } = require('../../utils/time');
 
 Component({
   options: { styleIsolation: 'apply-shared' },
-  properties: { legId: { type: Number, value: 0 }, teamId: { type: Number, value: 0 } },
+  // flat: no bottom margin (inside a stack that spaces its own items)
+  properties: { legId: { type: Number, value: 0 }, teamId: { type: Number, value: 0 }, flat: { type: Boolean, value: false } },
   data: {
     title: '', canAdd: false, pending: false, finished: false, showTeamPick: false,
     teamOptions: [], teamIndex: -1, legOptions: [], legIndex: -1, minutes: '', reason: '', rows: [],

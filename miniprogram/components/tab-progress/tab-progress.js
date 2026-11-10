@@ -92,14 +92,6 @@ Component({
       extraCols(g.leg.type).forEach((_, i) => out.push({ text: this.extraVal(teamId, g.leg, i), cls: '', kind: g.leg.type === 'PS' ? (i === 0 ? 'dur' : 'time') : 'extra' }));
       return out.map((x) => ({ text: x.text, cls: `${x.cls} ${x.text === '-' ? 'blank' : 'k-' + x.kind}${x.hit ? ' hit' : ''}${x.branch ? ' branch' : ''}` }));
     },
-    lastAgo(teamId, legs) {
-      let last = 0;
-      for (const l of legs) { const p = race.progressOf(teamId, l.id); if (p) [p.arrived_at, p.completed_at].forEach((t) => { if (t) last = Math.max(last, new Date(t).getTime()); }); }
-      if (!last) return '尚无记录';
-      if (this.finished) return `最后记录 ${fmtTime(new Date(last).toISOString())}`;
-      return `${Math.max(0, Math.floor((auth.nowMs - last) / 60000))} 分钟前`;
-    },
-
     render() {
       const ep = race.currentEpisode();
       if (!race.loaded || !ep) return;
@@ -155,8 +147,8 @@ Component({
         const st = status(t);
         const rank = st === 'alive' ? ++n : 0;
         return {
-          id: t.id, rank, rankCls: rank && rank <= 3 ? `rank-${rank}` : '', name: t.name, stopped: st === 'eliminated' ? '已淘汰' : st === 'withdrawn' ? '已退赛' : '',
-          ago: this.lastAgo(t.id, legs), cells: groups.reduce((a, g) => a.concat(this.groupCells(t.id, g)), []),
+          // phones show the rank and the full team label only (status and "last record" are left out, as on the website)
+          id: t.id, rank, rankCls: rank && rank <= 3 ? `rank-${rank}` : '', name: t.full_label, dim: st !== 'alive', cells: groups.reduce((a, g) => a.concat(this.groupCells(t.id, g)), []),
         };
       });
       this.rowsCache = rows;
@@ -169,13 +161,11 @@ Component({
       });
     },
 
-    /** Each second: re-send only the texts that changed (running durations, waits ending, "x minutes ago") */
+    /** Each second: re-send only the cells that changed (running durations, waits ending) */
     tick() {
       if (!this.rowsCache || !this.groups) return;
       const patch = {};
       this.rowsCache.forEach((row, r) => {
-        const ago = this.lastAgo(row.id, this.legs);
-        if (ago !== row.ago) { row.ago = ago; patch[`rows[${r}].ago`] = ago; }
         let c = 0;
         for (const g of this.groups) {
           const p = race.progressOf(row.id, g.leg.id);

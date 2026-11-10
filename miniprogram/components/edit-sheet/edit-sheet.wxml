@@ -3,11 +3,11 @@
   <view class="sheet" catchtouchmove="noop">
     <view class="sheet-title es-title">{{title}}</view>
     <view class="es-field">
-      <view class="es-label">开始时间<text class="text-gray">（默认 = 上一环节的结束时间，留空 = 未开始）</text></view>
+      <view class="es-label">开始时间<text class="text-gray es-hint">（默认 = 上一环节的结束时间，留空 = 未开始）</text></view>
       <dt-field value="{{form.arrivedAt}}" clearable data-field="arrivedAt" bind:change="setTime" />
     </view>
     <view class="es-field">
-      <view class="es-label">{{label}}时间<text class="text-gray">（留空 = 未{{label}}；改动会同步为下一环节的开始时间）</text></view>
+      <view class="es-label">{{label}}时间<text class="text-gray es-hint">（留空 = 未{{label}}；改动会同步为下一环节的开始时间）</text></view>
       <dt-field value="{{form.completedAt}}" clearable data-field="completedAt" bind:change="setTime" />
     </view>
     <view wx:if="{{type === 'UT' || type === 'YD' || type === 'Union'}}" class="es-field">

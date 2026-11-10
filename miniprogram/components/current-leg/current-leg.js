@@ -19,7 +19,8 @@ const countdown = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); const h
 
 Component({
   options: { styleIsolation: 'apply-shared' },
-  properties: { teamId: { type: Number, value: 0 } },
+  // flat: no bottom margin (inside a stack that spaces its own items)
+  properties: { teamId: { type: Number, value: 0 }, flat: { type: Boolean, value: false } },
   data: { leg: null, canUse: false, showShop: false, nothing: true, uturn: null, wait: null, transport: null, cutoffs: [], unit: '元' },
   lifetimes: {
     attached() {

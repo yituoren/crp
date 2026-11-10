@@ -1,4 +1,4 @@
-<view class="card">
+<view class="card {{flat ? 'flat' : ''}}">
   <view class="card-header">
     <view class="cl-title">当前环节<view wx:if="{{leg}}" class="cl-leg"><leg-tag type="{{leg.type}}" /><text>{{leg.name}}</text></view></view>
     <button wx:if="{{showShop}}" class="btn btn-tonal btn-sm" disabled="{{!canUse}}" bindtap="openShop"><icon-m name="storefront" size="18" color="#041e49" />商店</button>
