@@ -54,5 +54,7 @@ async function submit() {
         <a v-else href="#" @click.prevent="mode = 'login'; msg = ''">已有账号？去登录</a>
       </div>
     </div>
+    <!-- same text as the static copy in index.html -->
+    <footer class="beian"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">京ICP备2026077255号</a></footer>
   </div>
 </template>
