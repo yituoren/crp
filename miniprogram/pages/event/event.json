@@ -6,6 +6,7 @@
     "tab-today": "/components/tab-today/tab-today",
     "tab-currency": "/components/tab-currency/tab-currency",
     "tab-teams": "/components/tab-teams/tab-teams",
+    "tab-episodes": "/components/tab-episodes/tab-episodes",
     "tab-schedule": "/components/tab-schedule/tab-schedule",
     "time-sheet": "/components/time-sheet/time-sheet",
     "edit-sheet": "/components/edit-sheet/edit-sheet",

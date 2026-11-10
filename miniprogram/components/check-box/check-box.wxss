@@ -1,0 +1,5 @@
+.cb { display: flex; align-items: center; gap: 10px; min-height: 40px; font-size: 14px; color: var(--gray-800); }
+.cb.dis { opacity: .5; }
+.cb-box { width: 20px; height: 20px; border-radius: 4px; border: 2px solid var(--gray-500); display: flex; align-items: center; justify-content: center; flex: none; }
+.cb-box.on { background: var(--primary); border-color: var(--primary); }
+.cb-label { line-height: 1.4; }

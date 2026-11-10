@@ -1,0 +1,69 @@
+<ep-selector />
+<view wx:if="{{isHost}}" class="te-add-ep"><view class="te-link" bindtap="addEpisode"><icon-m name="add" size="16" color="#0b57d0" />新增赛段</view></view>
+
+<view wx:if="{{!ep}}" class="empty-state">暂无赛段</view>
+<block wx:else>
+  <view class="card">
+    <view class="card-header"><view class="flex"><text>{{ep.name}}</text><text class="badge {{ep.status === 'running' ? 'badge-success' : ep.status === 'finished' ? '' : 'badge-info'}}">{{ep.statusText}}</text></view></view>
+    <!-- episode actions: two equal columns on phones -->
+    <view wx:if="{{isHost}}" class="ep-actions">
+      <button wx:if="{{ep.status !== 'running'}}" class="btn btn-sm" bindtap="startEpisode"><icon-m name="play_arrow" size="18" color="#ffffff" />开始赛段</button>
+      <button wx:else class="btn btn-tonal btn-sm" bindtap="finishEpisode"><icon-m name="flag" size="16" color="#041e49" />结束赛段</button>
+      <button class="btn btn-text btn-sm" bindtap="openEdit"><icon-m name="edit" size="16" color="#0b57d0" />编辑赛段</button>
+      <button class="btn btn-text btn-sm te-danger" bindtap="resetEpisode"><icon-m name="restart_alt" size="16" color="#b3261e" />重置赛段</button>
+      <button class="btn btn-text btn-sm te-danger" bindtap="deleteEpisode"><icon-m name="delete" size="16" color="#b3261e" />删除赛段</button>
+    </view>
+    <view class="text-sm text-gray">{{ep.summary}}</view>
+    <view wx:if="{{ep.notes}}" class="pre mt-1">{{ep.notes}}</view>
+  </view>
+
+  <view class="flex-between te-head">
+    <text class="section-title">环节列表（{{ep.legCount}}）</text>
+    <button wx:if="{{editable}}" class="btn btn-sm" bindtap="addLeg"><icon-m name="add" size="16" color="#ffffff" />添加环节</button>
+  </view>
+  <view wx:if="{{editable}}" class="text-xs text-gray te-tip">长按环节卡片调整顺序，起跑线和中继站固定</view>
+  <view wx:if="{{!legs.length}}" class="empty-state">暂无环节，{{isHost ? '请点击右上角添加' : '请等待主办添加'}}</view>
+  <view class="te-legs">
+    <view wx:for="{{legs}}" wx:key="id" class="leg-item" hover-class="leg-item-hover" data-id="{{item.id}}" bindtap="openLeg" bindlongpress="moveLeg">
+      <view class="flex-between te-leg-head">
+        <leg-tag type="{{item.type}}" episode-id="{{ep.id}}" full />
+        <view wx:if="{{editable && !item.fixed}}" class="te-del" data-id="{{item.id}}" catchtap="deleteLeg"><icon-m name="delete" size="18" color="#b3261e" /></view>
+      </view>
+      <view class="te-leg-name">{{item.name}}</view>
+      <view class="text-sm text-gray">站点：{{item.staff}}</view>
+      <view class="text-sm text-gray">地址：{{item.address}}</view>
+      <view class="text-xs text-gray mt-1">{{item.extras}}</view>
+    </view>
+  </view>
+</block>
+
+<block wx:if="{{editing}}">
+  <view class="sheet-scrim" bindtap="closeEdit" catchtouchmove="noop"></view>
+  <view class="sheet">
+    <view class="sheet-title">编辑赛段</view>
+    <view class="form-group"><view class="label">名称</view><input value="{{form.name}}" data-field="name" bindinput="onField" /></view>
+    <view class="form-group"><view class="label">本赛段补充{{label}}（{{unit}}/队）</view><input type="digit" value="{{form.budget}}" data-field="budget" bindinput="onField" /></view>
+    <block wx:if="{{!form.first}}">
+      <check-box checked="{{form.continuous}}" label="连续赛段：上一赛段签到后等待固定时间发车" data-field="continuous" bind:change="onCheck" />
+      <view wx:if="{{form.continuous}}" class="form-group te-short"><view class="label">签到后等待（m）</view><input type="number" value="{{form.waitMin}}" data-field="waitMin" bindinput="onField" /></view>
+    </block>
+    <block wx:if="{{form.first || !form.continuous}}">
+      <view class="te-label">自动开始时间（留空则不自动开始）</view>
+      <dt-field value="{{form.startAt}}" clearable bind:change="onStartAt" />
+      <block wx:if="{{!form.first}}">
+        <check-box checked="{{form.inheritRank}}" label="按上一赛段名次先后发车" data-field="inheritRank" bind:change="onCheck" />
+        <view wx:if="{{form.inheritRank}}" class="form-group te-short"><view class="label">发车间隔（m）</view><input type="number" value="{{form.startGapMin}}" data-field="startGapMin" bindinput="onField" /></view>
+      </block>
+    </block>
+    <view class="te-elim">
+      <check-box checked="{{form.eliminate}}" disabled="{{!form.elimEditable}}" label="赛段淘汰：所有队伍签到后淘汰最后" data-field="eliminate" bind:change="onCheck" />
+      <input class="te-count" type="number" value="{{form.eliminateCount}}" disabled="{{!form.eliminate || !form.elimEditable}}" data-field="eliminateCount" bindinput="onField" /><text>队</text>
+    </view>
+    <view class="text-xs text-gray mb-2">按签到时间加本赛段净罚时排序，签到或罚时变动后实时重算，结束赛段后锁定。{{form.elimEditable ? '' : '赛段已开始，只有管理员可以修改。'}}</view>
+    <view class="te-label">状态（一般用「开始赛段 / 结束赛段」按钮切换，这里可手工修正）</view>
+    <picker range="{{statusLabels}}" value="{{form.statusIndex}}" bindchange="pickStatus"><view class="field">{{statusLabels[form.statusIndex]}}<icon-m name="expand_more" size="18" color="#444746" /></view></picker>
+    <view class="te-label">赛段说明（所有幕后可见）</view>
+    <textarea class="te-notes" value="{{form.notes}}" maxlength="2000" data-field="notes" bindinput="onField" />
+    <view class="sheet-actions"><button class="btn btn-text" bindtap="closeEdit">取消</button><button class="btn" bindtap="saveEp">保存</button></view>
+  </view>
+</block>

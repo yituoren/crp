@@ -1,0 +1,2 @@
+.cu-team { font-weight: 600; color: var(--gray-900); text-align: left; }
+.cu-danger { color: var(--danger); }

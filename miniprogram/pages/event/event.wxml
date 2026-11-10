@@ -20,6 +20,7 @@
   <tab-progress wx:if="{{current === 'progress'}}" />
   <tab-currency wx:if="{{current === 'currency'}}" />
   <tab-teams wx:if="{{current === 'teams'}}" />
+  <tab-episodes wx:if="{{current === 'episodes'}}" />
   <tab-schedule wx:if="{{current === 'schedule'}}" />
   <view wx:if="{{!ported}}" class="card">
     <view class="card-header">{{currentLabel}}</view>

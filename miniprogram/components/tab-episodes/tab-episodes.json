@@ -1,0 +1,10 @@
+{
+  "component": true,
+  "usingComponents": {
+    "icon-m": "/components/icon/icon",
+    "ep-selector": "/components/ep-selector/ep-selector",
+    "leg-tag": "/components/leg-tag/leg-tag",
+    "check-box": "/components/check-box/check-box",
+    "dt-field": "/components/dt-field/dt-field"
+  }
+}

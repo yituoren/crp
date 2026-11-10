@@ -3,7 +3,8 @@
     "pages/login/login",
     "pages/home/home",
     "pages/event/event",
-    "pages/account/account"
+    "pages/account/account",
+    "pages/leg/leg"
   ],
   "window": {
     "navigationStyle": "custom",

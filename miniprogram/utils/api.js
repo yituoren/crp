@@ -66,4 +66,11 @@ async function api(path, opts = {}) {
   throw new ApiError('网络连接失败，请检查网络后重试', 0);
 }
 
-module.exports = { api, ApiError, setToken, hasToken, setEventHash, getEventHash, setUnauthorizedHandler };
+/** Full URL of an API path (event prefix applied), for wx.uploadFile */
+const apiUrl = (path) => BASE + apiPath(path);
+/** Full URL of a server path that is already absolute (e.g. an attachment's /api/files/<id>) */
+const serverUrl = (path) => BASE + path;
+/** The Authorization header for wx.uploadFile / wx.downloadFile, which do not go through api() */
+const authHeader = () => (token ? { Authorization: `Bearer ${token}` } : {});
+
+module.exports = { api, ApiError, setToken, hasToken, setEventHash, getEventHash, setUnauthorizedHandler, apiUrl, serverUrl, authHeader };

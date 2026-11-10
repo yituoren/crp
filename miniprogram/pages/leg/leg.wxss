@@ -1,0 +1,29 @@
+.bar-title { flex: 1; min-width: 0; font-size: 18px; font-weight: 500; color: var(--gray-900); padding-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.leg-body { padding: 4px 12px calc(20px + env(safe-area-inset-bottom)); }
+.lg-staff { font-weight: 400; }
+.lg-dirty { color: var(--warning); }
+.lg-sec { padding: 12px 0; border-top: 1px solid var(--gray-200); }
+.lg-sec:first-of-type { border-top: none; padding-top: 0; }
+.lg-sec-title { font-size: 15px; font-weight: 600; color: var(--gray-900); margin-bottom: 8px; display: block; }
+.lg-label { font-size: 13px; color: var(--gray-700); margin: 6px 4px; }
+.lg-gap { margin-top: 10px; }
+.lg-elim { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.lg-count { width: 52px; height: 32px; text-align: center; border-radius: 8px; background: var(--field); }
+.lg-link { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 500; color: var(--primary); padding: 4px; }
+.lg-row { padding: 8px 0; display: flex; flex-direction: column; gap: 6px; }
+.lg-row-top { display: flex; align-items: center; gap: 6px; }
+.lg-grow { flex: 1; min-width: 0; }
+.lg-cost { width: 104px; flex: none; }
+.lg-qty { width: 72px; flex: none; }
+.lg-ell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.lg-del { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; flex: none; }
+.lg-hm { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--gray-700); }
+.lg-num { width: 64px; height: 36px; text-align: center; border-radius: 18px; background: var(--field); }
+.lg-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lg-ta { width: 100%; height: 96px; padding: 10px 16px; border-radius: 16px; background: var(--field); font-size: 15px; margin-bottom: 4px; }
+.lg-line { margin-bottom: 8px; font-size: 14px; }
+.lg-link-inline { color: var(--primary); font-weight: 500; margin-left: 6px; }
+.lg-sub { font-size: 14px; font-weight: 600; color: var(--gray-900); margin: 10px 0 6px; }
+.lg-att-name { text-align: left; font-weight: 500; color: var(--gray-900); }
+.lg-danger { color: var(--danger); }
+.lg-upload { margin-top: 10px; padding: 18px; text-align: center; border: 1.5px dashed var(--gray-300); border-radius: 12px; color: var(--gray-600); font-size: 14px; }

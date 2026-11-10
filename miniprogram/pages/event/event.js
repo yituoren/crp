@@ -17,7 +17,7 @@ const NAV = [
   { name: 'progress', label: '进度', icon: 'leaderboard' },
 ];
 const BOTTOM = ['today', 'announcements', 'episodes', 'currency', 'progress'];
-const PORTED = ['today', 'announcements', 'progress', 'currency', 'teams', 'schedule'];
+const PORTED = ['today', 'announcements', 'progress', 'currency', 'teams', 'schedule', 'episodes'];
 
 Page({
   data: {

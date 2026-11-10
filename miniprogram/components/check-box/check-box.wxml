@@ -1,0 +1,4 @@
+<view class="cb {{disabled ? 'dis' : ''}}" bindtap="toggle">
+  <view class="cb-box {{checked ? 'on' : ''}}"><icon-m wx:if="{{checked}}" name="check" size="14" color="#ffffff" /></view>
+  <text class="cb-label">{{label}}</text><slot />
+</view>

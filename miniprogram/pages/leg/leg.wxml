@@ -1,0 +1,135 @@
+<m-bar>
+  <view class="icon-btn" hover-class="icon-btn-hover" bindtap="onBack"><icon-m name="arrow_back" size="22" color="#444746" /></view>
+  <view class="bar-title">{{leg ? leg.name : '环节'}}</view>
+</m-bar>
+
+<view class="leg-body">
+  <view wx:if="{{!ready}}" class="loading"><view class="spinner"></view></view>
+  <view wx:elif="{{missing}}" class="empty-state">环节不存在</view>
+  <block wx:else>
+    <!-- Hosts: inline editing -->
+    <view wx:if="{{isHost}}" class="card">
+      <view class="card-header">
+        <view class="flex"><leg-tag type="{{leg.type}}" /><text class="text-sm text-gray lg-staff">站点：{{staff}}</text></view>
+        <view class="flex"><text wx:if="{{dirty}}" class="text-xs lg-dirty">有未保存的修改</text><button class="btn btn-sm" disabled="{{!dirty}}" bindtap="save">保存修改</button></view>
+      </view>
+
+      <view class="lg-sec">
+        <view class="lg-sec-title">基本信息</view>
+        <view class="lg-label">类型</view>
+        <view wx:if="{{fixed}}" class="field ph">{{fixedLabel}}</view>
+        <picker wx:else range="{{typeLabels}}" value="{{typeIndex}}" disabled="{{!editable}}" bindchange="pickType"><view class="field {{editable ? '' : 'ph'}}">{{typeLabels[typeIndex]}}<icon-m name="expand_more" size="18" color="#444746" /></view></picker>
+        <view class="form-group lg-gap"><view class="label">{{form.type === 'RI' || form.type === 'PS' ? '目的地' : '名称'}}</view><input value="{{form.name}}" data-field="name" bindinput="onField" placeholder="{{form.type === 'RI' ? '目的地名称，显示时自动加箭头' : form.type === 'PS' ? '中继站所在地' : ''}}" /></view>
+      </view>
+
+      <view wx:if="{{form.type !== 'SQ'}}" class="lg-sec">
+        <view class="lg-sec-title">突然死亡</view>
+        <view class="lg-elim">
+          <check-box checked="{{form.can_eliminate}}" disabled="{{!editable}}" label="本环节突然死亡，淘汰" bind:change="onElim" />
+          <input class="lg-count" type="number" value="{{form.eliminate_count}}" disabled="{{!form.can_eliminate || !editable}}" data-field="eliminate_count" bindinput="onField" /><text>队</text>
+        </view>
+        <view class="text-xs text-gray">所有队伍到达本环节后，按开始时间加本赛段前面环节的净罚时排序，最后到的几队淘汰。赛段末尾按签到的淘汰在「编辑赛段」里设置。</view>
+      </view>
+
+      <view class="lg-sec">
+        <view class="flex-between"><text class="lg-sec-title">熔断</text><view wx:if="{{editable}}" class="lg-link" bindtap="addCutoff"><icon-m name="add" size="16" color="#0b57d0" />添加熔断</view></view>
+        <view wx:for="{{cutoffs}}" wx:key="index" class="lg-row">
+          <view class="lg-row-top">
+            <input class="field lg-grow" value="{{item.name}}" disabled="{{!editable}}" data-i="{{index}}" data-field="name" bindinput="onCutoff" placeholder="种类名称" />
+            <input wx:if="{{isCoin}}" class="field lg-cost" type="number" value="{{item.cost}}" disabled="{{!editable}}" data-i="{{index}}" data-field="cost" bindinput="onCutoff" placeholder="消耗（币）" />
+            <view wx:if="{{editable}}" class="lg-del" data-i="{{index}}" bindtap="removeCutoff"><icon-m name="delete" size="18" color="#b3261e" /></view>
+          </view>
+          <view class="lg-hm">
+            <input class="lg-num" type="number" value="{{item.start}}" disabled="{{!editable}}" data-i="{{index}}" data-field="start" bindinput="onCutoff" /><text>m 开始，间隔</text>
+            <input class="lg-num" type="number" value="{{item.interval}}" disabled="{{!editable}}" data-i="{{index}}" data-field="interval" bindinput="onCutoff" /><text>m</text>
+          </view>
+        </view>
+        <view wx:if="{{!cutoffs.length}}" class="text-sm text-gray">没有熔断</view>
+      </view>
+
+      <view wx:if="{{isCoin}}" class="lg-sec">
+        <view class="flex-between"><text class="lg-sec-title">商店</text><view wx:if="{{editable && shop.length < shopLabels.length}}" class="lg-link" bindtap="addShopItem"><icon-m name="add" size="16" color="#0b57d0" />添加商品</view></view>
+        <view wx:for="{{shop}}" wx:key="index" class="lg-row">
+          <view class="lg-row-top">
+            <picker class="lg-grow" range="{{shopLabels}}" value="{{item.index}}" disabled="{{!editable}}" data-i="{{index}}" bindchange="pickShopItem"><view class="field {{item.index >= 0 ? '' : 'ph'}}"><text class="lg-ell">{{item.index >= 0 ? shopLabels[item.index] : '选择商品'}}</text><icon-m name="expand_more" size="18" color="#444746" /></view></picker>
+            <input class="field lg-qty" type="number" value="{{item.quantity}}" disabled="{{!editable}}" data-i="{{index}}" bindinput="onShopQty" placeholder="不限" /><text>件</text>
+            <view wx:if="{{editable}}" class="lg-del" data-i="{{index}}" bindtap="removeShopItem"><icon-m name="delete" size="18" color="#b3261e" /></view>
+          </view>
+          <text wx:if="{{item.sold}}" class="text-xs text-gray">已售 {{item.sold}}</text>
+        </view>
+        <view wx:if="{{!shopLabels.length}}" class="text-sm text-gray">赛事设置里还没有商品，先到网站「后台 → 赛事设置」添加</view>
+        <view wx:elif="{{!shop.length}}" class="text-sm text-gray">本环节不开放商店</view>
+      </view>
+
+      <view class="lg-sec">
+        <view class="lg-sec-title">地点与时间</view>
+        <view class="form-group"><view class="label">地址</view><input value="{{form.address}}" data-field="address" bindinput="onField" placeholder="到站点后能直接找到的描述" /></view>
+        <view class="form-group"><view class="label">地图链接</view><input value="{{form.map_url}}" data-field="map_url" bindinput="onField" placeholder="高德 / 百度地图分享链接" /></view>
+        <view class="lg-two">
+          <view class="form-group"><view class="label">开放时间</view><input value="{{form.open_time}}" data-field="open_time" bindinput="onField" placeholder="如 09:00" /></view>
+          <view class="form-group"><view class="label">关闭时间</view><input value="{{form.close_time}}" data-field="close_time" bindinput="onField" placeholder="如 17:30" /></view>
+        </view>
+      </view>
+
+      <view wx:if="{{form.type === 'DT'}}" class="lg-sec">
+        <view class="lg-sec-title">绕道选项</view>
+        <view class="lg-two">
+          <view class="form-group"><view class="label">选项 A</view><input value="{{form.detour_a}}" data-field="detour_a" bindinput="onField" /></view>
+          <view class="form-group"><view class="label">选项 B</view><input value="{{form.detour_b}}" data-field="detour_b" bindinput="onField" /></view>
+        </view>
+      </view>
+
+      <view class="lg-sec">
+        <view class="lg-sec-title">文字内容</view>
+        <view class="lg-label">环节说明（任务内容、流程，所有幕后可见）</view>
+        <textarea class="lg-ta" value="{{form.description}}" maxlength="-1" data-field="description" bindinput="onField" />
+        <view class="lg-label">线索原文（发给选手的内容）</view>
+        <textarea class="lg-ta" value="{{form.clue_text}}" maxlength="-1" data-field="clue_text" bindinput="onField" />
+        <view class="lg-label">判定标准（站点人员看）</view>
+        <textarea class="lg-ta" value="{{form.judge_criteria}}" maxlength="-1" data-field="judge_criteria" bindinput="onField" />
+      </view>
+    </view>
+
+    <!-- Everyone else: read-only -->
+    <view wx:else class="card">
+      <view class="card-header"><view class="flex"><leg-tag type="{{leg.type}}" /><text class="text-sm text-gray">{{leg.typeLabel}}</text></view><text class="text-sm text-gray">站点：{{staff}}</text></view>
+      <view wx:if="{{info.address}}" class="lg-line">地址：{{info.address}} <text wx:if="{{info.mapUrl}}" class="lg-link-inline" bindtap="copyMap">复制地图链接</text></view>
+      <view wx:if="{{info.open}}" class="lg-line">开放时间：{{info.open}}</view>
+      <view wx:if="{{info.shop.length}}" class="lg-line flex">商店：<text wx:for="{{info.shop}}" wx:key="id" class="badge {{item.out ? '' : 'badge-info'}}">{{item.text}}</text></view>
+      <view wx:if="{{info.elim}}" class="lg-line"><text class="badge badge-danger">淘汰 {{info.elim}} 队</text><text class="text-gray text-sm"> 突然死亡：所有队伍到达后，按开始时间加前面环节净罚时，最后到的 {{info.elim}} 队自动淘汰</text></view>
+      <view wx:if="{{info.cutoffs.length}}" class="lg-line flex">熔断：<text wx:for="{{info.cutoffs}}" wx:key="index" class="badge badge-info">{{item}}</text></view>
+      <view wx:if="{{info.detour}}" class="lg-line">绕道：{{info.detour}}</view>
+      <view class="lg-sub">环节说明</view>
+      <view class="pre {{info.description ? '' : 'text-gray'}}">{{info.description || '暂无说明'}}</view>
+      <block wx:if="{{info.clue}}"><view class="lg-sub">线索原文</view><view class="alert pre">{{info.clue}}</view></block>
+      <block wx:if="{{info.judge}}"><view class="lg-sub">判定标准</view><view class="alert alert-warning pre">{{info.judge}}</view></block>
+    </view>
+
+    <view class="card">
+      <view class="card-header">附件 / 线索图片（{{attachments.length}}）</view>
+      <view wx:if="{{!attachments.length}}" class="text-gray text-sm">暂无附件</view>
+      <view wx:else class="lc-list">
+        <view wx:for="{{attachments}}" wx:key="id" class="lc lg-att">
+          <view class="lc-f full"><text class="lc-v lg-att-name">{{item.name}}</text></view>
+          <view class="lc-f full"><text class="text-xs text-gray">{{item.meta}}</text></view>
+          <view class="lc-f actions">
+            <view class="lc-btn" data-id="{{item.id}}" bindtap="openAttachment"><icon-m name="open_in_new" size="16" color="#0b57d0" />打开</view>
+            <view wx:if="{{canUpload}}" class="lc-btn lg-danger" data-id="{{item.id}}" bindtap="removeAttachment"><icon-m name="delete" size="16" color="#b3261e" />删除</view>
+          </view>
+        </view>
+      </view>
+      <view wx:if="{{canUpload}}" class="lg-upload" bindtap="upload">{{uploading ? '上传中…' : '点击上传图片 / PDF（10MB 以内）'}}</view>
+    </view>
+
+    <view class="card">
+      <view class="card-header">队伍完成情况</view>
+      <record-list leg-id="{{leg.id}}" />
+    </view>
+
+    <cutoff-usage leg-id="{{leg.id}}" />
+  </block>
+</view>
+
+<!-- the record dialogs the record table opens (utils/dialogs.js looks them up on the current page) -->
+<time-sheet id="timeSheet" />
+<edit-sheet id="editSheet" />

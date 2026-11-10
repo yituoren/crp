@@ -1,0 +1,12 @@
+{
+  "usingComponents": {
+    "icon-m": "/components/icon/icon",
+    "m-bar": "/components/m-bar/m-bar",
+    "leg-tag": "/components/leg-tag/leg-tag",
+    "check-box": "/components/check-box/check-box",
+    "record-list": "/components/record-list/record-list",
+    "cutoff-usage": "/components/cutoff-usage/cutoff-usage",
+    "time-sheet": "/components/time-sheet/time-sheet",
+    "edit-sheet": "/components/edit-sheet/edit-sheet"
+  }
+}
