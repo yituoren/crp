@@ -19,10 +19,10 @@ view, text, input, textarea, button { box-sizing: border-box; }
 .card { background: var(--surface); border-radius: 14px; padding: 14px 14px 12px; margin-bottom: 10px; }
 .card-header { display: flex; align-items: center; justify-content: space-between; font-size: 15px; font-weight: 500; color: var(--gray-900); margin-bottom: 10px; min-height: 28px; }
 
-/* Buttons: filled / tonal / text pills */
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 22px; margin: 0; border-radius: 22px; background: var(--primary); color: #fff; font-size: 15px; font-weight: 500; line-height: 1; border: none; }
+/* Buttons: filled / tonal / text pills. WeChat's button has a fixed 184px width and auto side margins: undo them */
+.btn { width: auto !important; margin: 0 !important; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 22px; border-radius: 22px; background: var(--primary); color: #fff; font-size: 15px; font-weight: 500; line-height: 1; border: none; }
 .btn::after { border: none; }
-.btn-block { display: flex; width: 100%; }
+.btn-block { display: flex; width: 100% !important; }
 .btn-tonal { background: var(--primary-light); color: var(--primary-on-light); }
 .btn-text { background: transparent; color: var(--primary); padding: 0 12px; }
 .btn-sm { min-height: 36px; padding: 0 16px; font-size: 14px; border-radius: 18px; }
