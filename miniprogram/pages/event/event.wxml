@@ -1,5 +1,6 @@
 <m-bar bind:measure="onBarMeasure">
-  <view class="icon-btn" hover-class="icon-btn-hover" bindtap="openDrawer"><icon-m name="menu" size="24" color="#444746" /></view>
+  <!-- no lingering press state: it would flash under the scrim fading in -->
+  <view class="icon-btn" hover-class="icon-btn-hover" hover-stay-time="0" bindtap="openDrawer"><icon-m name="menu" size="24" color="#444746" /></view>
   <view class="m-title">{{event ? event.name : ''}}{{live ? '：实时大屏' : ''}}</view>
   <view class="m-toggle {{live ? 'on' : ''}}" bindtap="toggleLive">
     <icon-m name="{{live ? 'dashboard' : 'tv'}}" size="18" color="{{live ? '#041e49' : '#1f1f1f'}}" />{{live ? '工作区' : '大屏'}}
