@@ -461,7 +461,7 @@ html, body { overscroll-behavior: none; }
 .scroll-table, .matrix-scroll { overscroll-behavior-x: contain; }
 @media (max-width: 1000px) {
   .pager { width: 100%; height: 100vh; height: 100dvh; overflow: hidden; }
-  .pager-track { width: 200%; will-change: transform; transform: translateX(calc(var(--page, 1) * -50% + var(--drag, 0px))) !important; }
+  .pager-track { width: 200%; will-change: transform; transition: transform .25s ease; transform: translateX(calc(var(--page, 1) * -50%)) !important; }
   .pane { flex: none; width: 50%; height: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
   .pane-live { position: static; padding: 16px 16px 40px; }
   /* Narrow live board: same columns as desktop, generous fixed widths, team and leg cells may wrap */

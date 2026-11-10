@@ -28,12 +28,9 @@ async function enterEvent() {
   }
 }
 
-// Narrow screens: two pages (left: live board, right: regular pages) switched like an iPhone home screen.
-// Does not rely on browser horizontal scrolling: JS detects swipes / trackpad gestures and translates the whole page.
+// Narrow screens: two pages (left: live board, right: regular pages), switched with the buttons at the bottom
 const narrowQuery = window.matchMedia('(max-width: 1000px)');
 const narrow = ref(narrowQuery.matches);
-// Swipe / trackpad paging is disabled for now, only the bottom buttons switch; set to true to re-enable
-const SWIPE_ENABLED = false;
 // Phones (≤760px): separate shell (top bar + bottom navigation + drawer + full-screen live board), no two-page paging
 const mobileQuery = window.matchMedia('(max-width: 760px)');
 const mobile = ref(mobileQuery.matches);
@@ -54,71 +51,17 @@ const BOTTOM = ['today', 'announcements', 'episodes', 'currency', 'progress'];
 const bottomNav = computed(() => NAV.filter((n) => BOTTOM.includes(n.name)));
 const navActive = (name: string) => route.name === name || (name === 'episodes' && route.name === 'leg');
 const page = ref(1); // 0 = live board, 1 = regular pages
-const dragX = ref(0); // temporary offset while the finger drags
-const dragging = ref(false);
-// Position via CSS variables: narrow screens translate by --page / --drag, wide screens are pinned by a media query
-const trackStyle = computed(() => ({ '--page': String(page.value), '--drag': `${dragX.value}px`, transition: dragging.value ? 'none' : 'transform .25s ease' }));
-const isNarrow = () => window.innerWidth <= 1000;
-function goPage(i: number) { page.value = Math.max(0, Math.min(1, i)); dragX.value = 0; }
+// Position via a CSS variable: narrow screens translate by --page, wide screens are pinned by a media query
+const trackStyle = computed(() => ({ '--page': String(page.value) }));
+function goPage(i: number) { page.value = Math.max(0, Math.min(1, i)); }
 function onLayoutChange() {
-  const n = isNarrow();
-  if (n !== narrow.value) { narrow.value = n; page.value = 1; dragX.value = 0; }
-}
-
-let sx = 0, sy = 0, horizontal: boolean | null = null;
-/** When a gesture starts inside a horizontally scrollable element (matrix, wide table, episode bar…) let it scroll instead of paging */
-function insideHScroll(target: EventTarget | null): boolean {
-  const el = (target as HTMLElement | null)?.closest?.('.matrix-scroll, .scroll-table, .live-grid, .ep-selector, .nav, textarea');
-  if (!el) return false;
-  if (el.tagName === 'TEXTAREA') return true;
-  return el.scrollWidth > el.clientWidth + 2;
-}
-function onTouchStart(e: TouchEvent) {
-  if (!isNarrow()) return;
-  if (insideHScroll(e.target)) { dragging.value = false; return; }
-  const t = e.touches[0]; if (!t) return;
-  sx = t.clientX; sy = t.clientY; horizontal = null; dragging.value = true; dragX.value = 0;
-}
-function onTouchMove(e: TouchEvent) {
-  if (!isNarrow() || !dragging.value) return;
-  const t = e.touches[0]; if (!t) return;
-  const dx = t.clientX - sx, dy = t.clientY - sy;
-  if (horizontal === null && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) horizontal = Math.abs(dx) > Math.abs(dy);
-  if (horizontal) {
-    // at the edge only follow a little, for a damped feel
-    const atEdge = (page.value === 0 && dx > 0) || (page.value === 1 && dx < 0);
-    dragX.value = atEdge ? dx / 4 : dx;
-  }
-}
-function onTouchEnd() {
-  if (!isNarrow() || !dragging.value) return;
-  dragging.value = false;
-  const dx = dragX.value;
-  if (horizontal && Math.abs(dx) > 60) goPage(page.value + (dx < 0 ? 1 : -1));
-  else dragX.value = 0;
-  horizontal = null;
-}
-let wheelAcc = 0, wheelLock = 0;
-function onWheel(e: WheelEvent) {
-  if (!isNarrow()) return;
-  if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return; // vertical scrolling stays with the page
-  if (insideHScroll(e.target)) return;
-  const now = Date.now();
-  if (now < wheelLock) return;
-  wheelAcc += e.deltaX;
-  if (Math.abs(wheelAcc) > 80) { goPage(page.value + (wheelAcc > 0 ? 1 : -1)); wheelAcc = 0; wheelLock = now + 600; }
+  if (narrowQuery.matches !== narrow.value) { narrow.value = narrowQuery.matches; page.value = 1; }
 }
 
 onMounted(async () => {
   setUnauthorizedHandler(() => { auth.user = null; router.replace('/login'); });
   narrowQuery.addEventListener('change', onLayoutChange);
   window.addEventListener('resize', onLayoutChange);
-  if (SWIPE_ENABLED) {
-    window.addEventListener('touchstart', onTouchStart, { passive: true });
-    window.addEventListener('touchmove', onTouchMove, { passive: true });
-    window.addEventListener('touchend', onTouchEnd, { passive: true });
-    window.addEventListener('wheel', onWheel, { passive: true });
-  }
   await enterEvent();
   connectRealtime();
 });
@@ -127,12 +70,6 @@ onUnmounted(() => {
   disconnectRealtime();
   narrowQuery.removeEventListener('change', onLayoutChange);
   window.removeEventListener('resize', onLayoutChange);
-  if (SWIPE_ENABLED) {
-    window.removeEventListener('touchstart', onTouchStart);
-    window.removeEventListener('touchmove', onTouchMove);
-    window.removeEventListener('touchend', onTouchEnd);
-    window.removeEventListener('wheel', onWheel);
-  }
 });
 
 </script>
