@@ -9,9 +9,11 @@ Component({
       const menu = wx.getMenuButtonBoundingClientRect();
       const top = win.statusBarHeight || 20;
       const height = menu && menu.height ? (menu.top - top) * 2 + menu.height : 44;
-      const right = menu && menu.left ? win.windowWidth - menu.left + 4 : 96;
+      const right = menu && menu.left ? win.windowWidth - menu.left + 8 : 100;
       this.setData({ top, height, right });
-      this.triggerEvent('measure', { height: top + height });
+      // top: status bar; row: the bar's own row (title, buttons); height: everything the bar covers
+      // left: where the capsule menu starts (overlays should stay left of it)
+      this.triggerEvent('measure', { top, row: height, height: top + height, left: menu && menu.left ? menu.left : win.windowWidth - 96 });
     },
   },
 });

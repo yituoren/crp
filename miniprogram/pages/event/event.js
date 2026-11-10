@@ -18,7 +18,7 @@ Page({
   data: {
     loading: true, event: null, isHost: false, online: true,
     nav: NAV, bottom: NAV.filter((n) => BOTTOM.includes(n.name)), current: 'today', currentLabel: '我的',
-    drawer: false, live: false, bodyTop: 64,
+    drawer: false, live: false, barTop: 20, barRow: 44, drawerWidth: 290,
   },
 
   onLoad(q) {
@@ -42,7 +42,11 @@ Page({
     }
   },
 
-  onBarMeasure(e) { this.setData({ bodyTop: e.detail.height }); },
+  /** The drawer lines up with the top bar: below the status bar, its title in the bar's row */
+  onBarMeasure(e) {
+    const { top, row, left } = e.detail;
+    this.setData({ barTop: top, barRow: row, drawerWidth: Math.min(290, left - 8) });
+  },
   go(e) {
     const name = e.currentTarget.dataset.name;
     const item = NAV.find((n) => n.name === name) || { label: '后台' };
