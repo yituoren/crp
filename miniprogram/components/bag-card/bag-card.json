@@ -1,0 +1,4 @@
+{
+  "component": true,
+  "usingComponents": { "icon-m": "/components/icon/icon", "item-log": "/components/item-log/item-log" }
+}

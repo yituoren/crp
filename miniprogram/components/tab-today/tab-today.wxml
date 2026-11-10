@@ -10,6 +10,8 @@
     <view class="my-head"><text class="badge badge-follow">跟队</text> 你本赛段跟随 <text class="strong">{{team.label}}</text>，当前余额 <text class="strong money">{{team.balance}}</text></view>
     <current-leg team-id="{{team.id}}" flat bind:shop="openShop" />
     <record-list team-id="{{team.id}}" />
+    <bag-card wx:if="{{isCoin}}" team-id="{{team.id}}" flat />
+    <currency-ops team-id="{{team.id}}" flat><ledger-list team-id="{{team.id}}" limit="{{20}}" /></currency-ops>
     <penalty-panel team-id="{{team.id}}" flat />
     <shop-sheet id="shop" />
   </block>
@@ -24,6 +26,7 @@
       <view wx:if="{{item.judge}}" class="alert pre">判定标准：{{item.judge}}</view>
       <record-list leg-id="{{item.id}}" />
       <penalty-panel leg-id="{{item.id}}" flat />
+      <currency-ops leg-id="{{item.id}}" flat />
     </view>
   </block>
 

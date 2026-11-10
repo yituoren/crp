@@ -1,0 +1,3 @@
+.ll-leg { display: flex; align-items: center; gap: 4px; justify-content: flex-end; }
+.neg { color: var(--danger); font-weight: 500; }
+.pos { color: var(--success); font-weight: 500; }

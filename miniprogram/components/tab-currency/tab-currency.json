@@ -1,0 +1,11 @@
+{
+  "component": true,
+  "usingComponents": {
+    "icon-m": "/components/icon/icon",
+    "ep-selector": "/components/ep-selector/ep-selector",
+    "currency-ops": "/components/currency-ops/currency-ops",
+    "ledger-list": "/components/ledger-list/ledger-list",
+    "item-log": "/components/item-log/item-log",
+    "bag-card": "/components/bag-card/bag-card"
+  }
+}

@@ -6,6 +6,9 @@
     "current-leg": "/components/current-leg/current-leg",
     "record-list": "/components/record-list/record-list",
     "penalty-panel": "/components/penalty-panel/penalty-panel",
-    "shop-sheet": "/components/shop-sheet/shop-sheet"
+    "shop-sheet": "/components/shop-sheet/shop-sheet",
+    "bag-card": "/components/bag-card/bag-card",
+    "currency-ops": "/components/currency-ops/currency-ops",
+    "ledger-list": "/components/ledger-list/ledger-list"
   }
 }

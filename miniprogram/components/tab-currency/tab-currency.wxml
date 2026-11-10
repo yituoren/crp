@@ -1,0 +1,44 @@
+<ep-selector />
+
+<!-- Bags: cash mode shows balances only; coin mode shows balances + items (tap to use them) -->
+<view class="card">
+  <view class="card-header">{{isCoin ? '背包' : label + '余额'}}</view>
+  <view class="tc-grid">
+    <view wx:for="{{teams}}" wx:key="id" class="team-card team-{{item.status}}" hover-class="{{isCoin ? 'team-card-hover' : ''}}" data-id="{{item.id}}" bindtap="openBag">
+      <view class="flex-between"><text class="tc-name">{{item.label}}</text><text wx:if="{{item.statusText}}" class="tc-status">{{item.statusText}}</text></view>
+      <view class="currency-box">{{item.balance}} <text class="text-sm text-gray">{{unit}}</text></view>
+      <view wx:if="{{isCoin}}" class="bag-items">
+        <text wx:for="{{item.items}}" wx:for-item="it" wx:key="name" class="bag-item">{{it.name}}<text wx:if="{{it.count > 1}}" class="bag-item-n">×{{it.count}}</text></text>
+        <text wx:if="{{!item.items.length}}" class="bag-empty">暂无物品</text>
+      </view>
+    </view>
+  </view>
+</view>
+
+<view wx:if="{{isCoin}}" class="card">
+  <view class="card-header">
+    <text>道具日志</text>
+    <picker range="{{filterLabels}}" value="{{filterIndex}}" bindchange="pickFilter"><view class="tc-filter">{{filterLabels[filterIndex]}}<icon-m name="expand_more" size="18" color="#444746" /></view></picker>
+  </view>
+  <item-log team-id="{{filterTeam}}" />
+</view>
+
+<!-- Operations: the same form as the follow's "Mine" page, hosts get a team select -->
+<currency-ops team-id="{{fixedTeam}}" />
+
+<view class="card">
+  <view class="card-header">
+    <text>{{label}}变动日志</text>
+    <picker range="{{filterLabels}}" value="{{filterIndex}}" bindchange="pickFilter"><view class="tc-filter">{{filterLabels[filterIndex]}}<icon-m name="expand_more" size="18" color="#444746" /></view></picker>
+  </view>
+  <ledger-list team-id="{{filterTeam}}" />
+</view>
+
+<block wx:if="{{bagTeam}}">
+  <view class="sheet-scrim" bindtap="closeBag" catchtouchmove="noop"></view>
+  <view class="sheet">
+    <view class="sheet-title">{{bagTitle}}</view>
+    <bag-card team-id="{{bagTeam}}" plain />
+    <view class="sheet-actions"><button class="btn btn-text" bindtap="closeBag">关闭</button></view>
+  </view>
+</block>

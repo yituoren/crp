@@ -1,0 +1,33 @@
+<view class="card {{flat ? 'flat' : ''}}">
+  <view class="card-header">
+    <view class="co-title"><text>{{heading}}</text><text wx:if="{{subtitle}}" class="text-sm text-gray co-sub">{{subtitle}}</text></view>
+    <picker wx:if="{{showTeamPick}}" range="{{teamLabels}}" value="{{teamIndex}}" bindchange="pickTeam">
+      <view class="co-team {{teamIndex >= 0 ? '' : 'ph'}}">{{teamIndex >= 0 ? teamLabels[teamIndex] : '选择队伍'}}<icon-m name="expand_more" size="18" color="#444746" /></view>
+    </picker>
+  </view>
+  <view wx:if="{{state === 'pending'}}" class="alert alert-warning">赛段尚未开始，开始赛段后才能操作{{label}}。</view>
+  <view wx:elif="{{state === 'finished'}}" class="alert">赛段已结束，{{label}}记录已锁定，只有管理员可以修改。</view>
+  <view wx:elif="{{state === 'locked'}}" class="alert">{{lockText}}</view>
+  <view wx:elif="{{state === 'none'}}" class="text-sm text-gray mb-2">主办可操作所有队伍，跟队只能操作所跟队伍，站点只能记在自己驻守的环节上</view>
+  <view wx:else class="form-grid mb-2">
+    <picker wx:if="{{showKind}}" class="{{showLeg ? '' : 'full'}}" range="{{kindLabels}}" value="{{kindIndex}}" bindchange="pickKind">
+      <view class="field">{{kindLabels[kindIndex]}}<icon-m name="expand_more" size="18" color="#444746" /></view>
+    </picker>
+    <picker wx:if="{{showLeg}}" class="{{showKind ? '' : 'full'}}" range="{{legLabels}}" value="{{legIndex}}" bindchange="pickLeg">
+      <view class="field {{legIndex >= 0 ? '' : 'ph'}}"><text class="co-ell">{{legIndex >= 0 ? legLabels[legIndex] : legPlaceholder}}</text><icon-m name="expand_more" size="18" color="#444746" /></view>
+    </picker>
+    <block wx:if="{{kind === 'shop'}}">
+      <input class="field" value="{{price}}" disabled placeholder="{{unit === '币' ? '数量' : '金额'}}" />
+      <picker class="full" range="{{itemLabels}}" value="{{itemIndex}}" bindchange="pickItem">
+        <view class="field {{itemIndex >= 0 ? '' : 'ph'}}"><text class="co-ell">{{itemIndex >= 0 ? itemLabels[itemIndex] : (itemLabels.length ? '选择商品' : '先选择环节')}}</text><icon-m name="expand_more" size="18" color="#444746" /></view>
+      </picker>
+    </block>
+    <block wx:else>
+      <input class="field" type="digit" value="{{amount}}" data-field="amount" bindinput="onInput" placeholder="{{unit === '币' ? '数量' : '金额'}}" />
+      <input class="field full" value="{{reason}}" data-field="reason" bindinput="onInput" placeholder="原因（如：任务奖励、买线索）" />
+    </block>
+    <button class="btn btn-tonal" disabled="{{!canAdd}}" bindtap="add"><icon-m name="add" size="18" color="{{canAdd ? '#041e49' : '#9aa0a6'}}" />增加</button>
+    <button class="btn btn-danger-tonal" disabled="{{!canDeduct}}" bindtap="deduct">扣除</button>
+  </view>
+  <slot />
+</view>

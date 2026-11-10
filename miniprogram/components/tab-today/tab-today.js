@@ -27,7 +27,7 @@ Component({
         judge: l.judge_criteria || '',
       })) : [];
       this.setData({
-        role: my ? my.role : '', team, legs, epCode: ep.code, isHost: auth.isHost,
+        role: my ? my.role : '', team, legs, epCode: ep.code, isHost: auth.isHost, isCoin: moneyMode() === 'coin',
         legNames: legs.map((l) => l.name).join('、'),
         pending: race.episodePending(), finished: race.episodeFinished(), hint: this.hint(ep, t),
       });

@@ -155,6 +155,11 @@ race.canRevert = (authorId, teamId) => {
   if (auth.isHost) return true;
   return !!authorId && authorId === (auth.user && auth.user.id);
 };
+/** Money: host any; follow only its team; stations on their own legs (nobody but admins after the episode ends) */
+race.canAdjustCurrency = () => {
+  const a = race.myAssignment();
+  return auth.isAdmin || (!race.episodeFinished() && (auth.isHost || (a && (a.role === 'follow' || (a.role === 'station' && (a.leg_ids || []).length > 0)))));
+};
 race.canAdjustCurrencyFor = (teamId) => {
   if (auth.isAdmin) return true;
   if (race.episodeFinished() || race.teamLocked(teamId)) return false;

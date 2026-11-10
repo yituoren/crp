@@ -4,6 +4,7 @@
     "tab-announcements": "/components/tab-announcements/tab-announcements",
     "tab-progress": "/components/tab-progress/tab-progress",
     "tab-today": "/components/tab-today/tab-today",
+    "tab-currency": "/components/tab-currency/tab-currency",
     "time-sheet": "/components/time-sheet/time-sheet",
     "edit-sheet": "/components/edit-sheet/edit-sheet",
     "icon-m": "/components/icon/icon",

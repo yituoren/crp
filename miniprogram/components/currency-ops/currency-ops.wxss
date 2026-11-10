@@ -1,0 +1,5 @@
+.co-title { display: flex; align-items: baseline; gap: 10px; min-width: 0; flex-wrap: wrap; }
+.co-sub { font-weight: 400; }
+.co-team { height: 36px; display: flex; align-items: center; gap: 4px; padding: 0 10px 0 14px; border-radius: 18px; background: var(--field); font-size: 14px; font-weight: 400; color: var(--gray-900); }
+.co-team.ph { color: var(--gray-500); }
+.co-ell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }

@@ -1,0 +1,49 @@
+<view class="{{plain ? '' : 'card'}} {{flat ? 'flat' : ''}}">
+  <view wx:if="{{!plain}}" class="card-header">{{title}}</view>
+  <view wx:if="{{!items.length}}" class="empty-rows">暂无物品</view>
+  <block wx:else>
+    <view class="bag-grid">
+      <view wx:for="{{items}}" wx:key="name" class="bag-tile {{item.on ? 'on' : ''}} {{canUse ? '' : 'off'}}" data-name="{{item.name}}" bindtap="toggle">
+        <view class="bag-check"><icon-m wx:if="{{item.on}}" name="check" size="14" color="#ffffff" /></view>
+        <text class="bag-name">{{item.name}}</text>
+        <text class="bag-count">×{{item.count}}</text>
+      </view>
+    </view>
+    <view class="bag-actions">
+      <text class="text-sm text-gray">{{status}}</text>
+      <button class="btn btn-tonal btn-sm" disabled="{{!hasPicked || busy}}" bindtap="useSelected">使用</button>
+    </view>
+  </block>
+  <!-- Item log: gains and uses, separate from the money ledger -->
+  <view class="bag-log"><item-log team-id="{{teamId}}" limit="{{plain ? 10 : 0}}" /></view>
+</view>
+
+<block wx:if="{{picking}}">
+  <view class="sheet-scrim" bindtap="closePick" catchtouchmove="noop"></view>
+  <view class="sheet">
+    <view class="sheet-title">使用物品</view>
+    <view class="text-sm text-gray mb-2">{{pickHead}}</view>
+    <view wx:for="{{fields}}" wx:for-index="f" wx:key="name" class="bag-field">
+      <block wx:if="{{item.type === 'team'}}">
+        <view class="bag-label">{{item.name}} 的对象</view>
+        <picker range="{{item.labels}}" value="{{item.index}}" data-f="{{f}}" bindchange="pickTarget">
+          <view class="field {{item.index >= 0 ? '' : 'ph'}}">{{item.index >= 0 ? item.labels[item.index] : '选择队伍'}}<icon-m name="expand_more" size="18" color="#444746" /></view>
+        </picker>
+        <block wx:if="{{item.steal && item.index >= 0}}">
+          <view class="bag-label">{{item.name}}：拿到的卡（线下抽到的）</view>
+          <picker range="{{item.stealLabels}}" value="{{item.stealIndex}}" data-f="{{f}}" bindchange="pickSteal">
+            <view class="field {{item.stealIndex >= 0 ? '' : 'ph'}}">{{item.stealIndex >= 0 ? item.stealLabels[item.stealIndex] : '选择卡片'}}<icon-m name="expand_more" size="18" color="#444746" /></view>
+          </picker>
+        </block>
+      </block>
+      <block wx:else>
+        <view class="bag-label">{{item.name}} 的对象</view>
+        <input class="field" value="{{item.value}}" data-f="{{f}}" bindinput="onTip" placeholder="填写锦囊 id" />
+      </block>
+    </view>
+    <view class="sheet-actions">
+      <button class="btn btn-text" bindtap="closePick">取消</button>
+      <button class="btn" disabled="{{busy}}" bindtap="confirmPick">使用</button>
+    </view>
+  </view>
+</block>

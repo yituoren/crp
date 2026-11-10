@@ -18,6 +18,7 @@
   <tab-today wx:if="{{current === 'today'}}" bind:go="go" />
   <tab-announcements wx:if="{{current === 'announcements'}}" />
   <tab-progress wx:if="{{current === 'progress'}}" />
+  <tab-currency wx:if="{{current === 'currency'}}" />
   <view wx:if="{{!ported}}" class="card">
     <view class="card-header">{{currentLabel}}</view>
     <view class="empty-state">「{{currentLabel}}」页面将在后续版本移植</view>
