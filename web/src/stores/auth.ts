@@ -21,6 +21,10 @@ export const useAuth = defineStore('auth', () => {
     if (Math.abs(offset - serverOffsetMs.value) > 2000) serverOffsetMs.value = offset;
   });
   const serverNow = () => new Date(Date.now() + serverOffsetMs.value);
+  /** The one clock of the app: server time (corrected local time), ticking every second. Everything time-based on screen reads it */
+  const tick = ref(Date.now());
+  setInterval(() => { tick.value = Date.now(); }, 1000);
+  const nowMs = computed(() => tick.value + serverOffsetMs.value);
   const isAdmin = computed(() => user.value?.role === 'admin');
   /** Host rights in the current event; admin is global and includes host */
   const isHost = computed(() => isAdmin.value || event.value.myRole === 'host');
@@ -63,5 +67,5 @@ export const useAuth = defineStore('auth', () => {
     user.value = null;
     leaveEvent();
   }
-  return { user, hostAnywhere, event, ready, isHost, isAdmin, serverOffsetMs, serverNow, fetchMe, loadEvent, leaveEvent, login, register, logout };
+  return { user, hostAnywhere, event, ready, isHost, isAdmin, serverOffsetMs, serverNow, nowMs, fetchMe, loadEvent, leaveEvent, login, register, logout };
 });

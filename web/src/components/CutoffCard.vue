@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed } from 'vue';
 import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
@@ -12,10 +12,7 @@ const props = withDefaults(defineProps<{ teamId: number; plain?: boolean }>(), {
 const auth = useAuth();
 const race = useRace();
 const ui = useUi();
-const now = ref(Date.now() + auth.serverOffsetMs);
-let timer: number | undefined;
-onMounted(() => { timer = window.setInterval(() => { now.value = Date.now() + auth.serverOffsetMs; }, 1000); });
-onUnmounted(() => clearInterval(timer));
+const now = computed(() => auth.nowMs); // the app clock (server time, every second)
 
 /** Legs in progress (including side quests): started but not ended, furthest first */
 const currentLegs = computed<Leg[]>(() => {

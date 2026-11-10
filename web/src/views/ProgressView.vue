@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { fmtTime, fmtTimeSec, fmtDurMs, fmtPenMin } from '@/utils/time';
@@ -19,11 +19,8 @@ const allLegs = computed(() => ep.value?.legs ?? []);
 const legs = computed(() => allLegs.value.filter((l) => l.type !== 'SQ'));
 const branchOf = (l: { id: number }) => { const i = allLegs.value.findIndex((x) => x.id === l.id); const n = allLegs.value[i + 1]; return n && n.type === 'SQ' ? n : null; };
 
-// durations of running legs use the current time, refreshed every 15 s
-const now = ref(Date.now() + auth.serverOffsetMs);
-let timer: number | undefined;
-onMounted(() => { timer = window.setInterval(() => { now.value = Date.now() + auth.serverOffsetMs; }, 15000); });
-onUnmounted(() => clearInterval(timer));
+// durations of running legs use the app clock (server time, every second)
+const now = computed(() => auth.nowMs);
 
 /** Time spent on the side quest (subtracted from the main leg): actual when ended, otherwise until now (or the main leg's end) */
 function branchElapsed(teamId: number, legId: number, mainEndMs: number | null): number {

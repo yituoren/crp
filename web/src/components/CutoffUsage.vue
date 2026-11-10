@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { api } from '@/api';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
@@ -13,10 +13,7 @@ const props = defineProps<{ leg: Leg }>();
 const auth = useAuth();
 const race = useRace();
 const ui = useUi();
-const now = ref(Date.now() + auth.serverOffsetMs);
-let timer: number | undefined;
-onMounted(() => { timer = window.setInterval(() => { now.value = Date.now() + auth.serverOffsetMs; }, 1000); });
-onUnmounted(() => clearInterval(timer));
+const now = computed(() => auth.nowMs); // the app clock (server time, every second)
 const editing = ref<Team | null>(null);
 
 const fmtCountdown = (ms: number) => { const s = Math.max(0, Math.ceil(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? `${h}:` : '') + `${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}`; };
