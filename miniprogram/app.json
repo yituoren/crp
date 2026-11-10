@@ -2,7 +2,8 @@
   "pages": [
     "pages/login/login",
     "pages/home/home",
-    "pages/event/event"
+    "pages/event/event",
+    "pages/account/account"
   ],
   "window": {
     "navigationStyle": "custom",

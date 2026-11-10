@@ -1,0 +1,92 @@
+<m-bar>
+  <view class="icon-btn" hover-class="icon-btn-hover" bindtap="onBack"><icon-m name="arrow_back" size="22" color="#444746" /></view>
+  <view class="bar-title">账号</view>
+</m-bar>
+
+<view class="acc-body">
+  <scroll-view wx:if="{{isAdmin}}" class="tabs" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="tabs-row">
+      <view class="tab {{tab === 'users' ? 'on' : ''}}" data-tab="users" bindtap="setTab">账号管理</view>
+      <view class="tab {{tab === 'me' ? 'on' : ''}}" data-tab="me" bindtap="setTab">我的账号</view>
+      <view class="tab {{tab === 'audit' ? 'on' : ''}}" data-tab="audit" bindtap="setTab">全部日志</view>
+      <view class="tab {{tab === 'backup' ? 'on' : ''}}" data-tab="backup" bindtap="setTab">备份与重置</view>
+    </view>
+  </scroll-view>
+
+  <!-- My account: profile header + basic info + password (Google Account style) -->
+  <block wx:if="{{tab === 'me'}}">
+    <view class="acc-hero">
+      <view class="acc-avatar">{{initial}}</view>
+      <view>
+        <view class="acc-name">{{me.displayName}}</view>
+        <view class="text-sm text-gray">{{role}}<block wx:if="{{me.createdAt}}"> · 注册于 {{me.created}}</block></view>
+      </view>
+    </view>
+    <view class="card acc-card">
+      <view class="acc-card-title">基本信息</view>
+      <view class="acc-row">
+        <view class="acc-row-label">幕后ID</view>
+        <view wx:if="{{!renaming}}" class="acc-row-value">{{me.username}}</view>
+        <input wx:else class="acc-input" value="{{newName}}" focus bindinput="onNewName" bindconfirm="saveRename" />
+        <view class="acc-row-action">
+          <text wx:if="{{isAdmin}}" class="text-xs text-gray">不可修改</text>
+          <view wx:elif="{{!renaming}}" class="act" bindtap="openRename"><icon-m name="edit" size="16" color="#0b57d0" />修改</view>
+          <block wx:else><view class="act" bindtap="cancelRename">取消</view><button class="btn btn-sm" bindtap="saveRename">保存</button></block>
+        </view>
+      </view>
+      <view class="acc-row"><view class="acc-row-label">身份</view><view class="acc-row-value">{{role}}</view><view></view></view>
+      <view class="acc-row"><view class="acc-row-label">注册时间</view><view class="acc-row-value">{{me.created}}</view><view></view></view>
+      <view class="acc-row">
+        <view class="acc-row-label">微信</view>
+        <view class="acc-row-value">{{me.wxBound ? '已绑定' : '未绑定'}}</view>
+        <view class="acc-row-action"><view wx:if="{{me.wxBound}}" class="act danger" bindtap="unbind">解除绑定</view></view>
+      </view>
+    </view>
+    <view class="card acc-card">
+      <view class="acc-card-title">密码</view>
+      <view class="form-group"><view class="label">当前密码</view><input password value="{{pw.oldPassword}}" data-field="oldPassword" bindinput="onPw" /></view>
+      <view class="form-group"><view class="label">新密码</view><input password value="{{pw.newPassword}}" data-field="newPassword" bindinput="onPw" /></view>
+      <view class="form-group"><view class="label">确认新密码</view><input password value="{{pw.newPassword2}}" data-field="newPassword2" bindinput="onPw" /></view>
+      <view class="flex-between pw-foot"><text class="pw-msg">{{pwMsg}}</text><button class="btn" bindtap="changePassword">修改密码</button></view>
+    </view>
+  </block>
+
+  <!-- Accounts (admin): one card per account -->
+  <view wx:if="{{tab === 'users'}}" class="card">
+    <view class="card-header">账号管理</view>
+    <view class="lc-list">
+      <view wx:for="{{users}}" wx:key="id" class="lc">
+        <view class="lc-f full"><text class="lc-k">幕后ID</text><text class="lc-v strong">{{item.username}}{{item.self ? '（我）' : ''}}</text></view>
+        <view class="lc-f"><text class="lc-k">角色</text><text class="badge {{item.role === 'admin' ? 'badge-warning' : ''}}">{{item.role === 'admin' ? '管理员' : '幕后'}}</text></view>
+        <view class="lc-f"><text class="lc-k">状态</text><text class="lc-v {{item.disabled ? 'off' : 'ok'}}">{{item.disabled ? '已停用' : '正常'}}</text></view>
+        <view class="lc-f full"><text class="lc-k">注册时间</text><text class="lc-v">{{item.created}}</text></view>
+        <view class="lc-f actions">
+          <view wx:if="{{item.role !== 'admin'}}" class="lc-btn" data-id="{{item.id}}" bindtap="renameUser"><icon-m name="edit" size="16" color="#0b57d0" />改ID</view>
+          <view class="lc-btn" data-id="{{item.id}}" bindtap="resetPassword"><icon-m name="key" size="16" color="#0b57d0" />重置密码</view>
+          <view wx:if="{{!item.self}}" class="lc-btn" data-id="{{item.id}}" bindtap="toggleDisabled">{{item.disabled ? '启用' : '停用'}}</view>
+          <view wx:if="{{!item.self}}" class="lc-btn danger" data-id="{{item.id}}" bindtap="deleteUser"><icon-m name="delete" size="16" color="#b3261e" />删除</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{tab === 'audit'}}" class="card">
+    <view class="card-header"><text>全部操作日志（最近 200 条 / 共 {{auditTotal}}）</text><view class="act" bindtap="loadAudit"><icon-m name="refresh" size="16" color="#0b57d0" />刷新</view></view>
+    <view class="lc-list">
+      <view wx:for="{{audit}}" wx:key="id" class="lc">
+        <view class="lc-f"><text class="lc-k">时间</text><text class="lc-v">{{item.time}}</text></view>
+        <view class="lc-f"><text class="lc-k">比赛</text><text class="lc-v">{{item.event}}</text></view>
+        <view class="lc-f"><text class="lc-k">操作人</text><text class="lc-v">{{item.user}}</text></view>
+        <view class="lc-f"><text class="lc-k">动作</text><text class="lc-v">{{item.action}}</text></view>
+        <view class="lc-f full"><text class="lc-k">对象</text><text class="lc-v">{{item.target}}</text></view>
+        <view wx:if="{{item.before}}" class="lc-f full"><text class="lc-k">变更前</text><text class="lc-v mono">{{item.before}}</text></view>
+        <view wx:if="{{item.after}}" class="lc-f full"><text class="lc-k">变更后</text><text class="lc-v mono">{{item.after}}</text></view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{tab === 'backup'}}" class="card">
+    <view class="card-header">数据备份与恢复</view>
+    <view class="alert">导出、恢复备份和重置数据需要读写备份文件，且重置不可逆，请在网站「账号管理 → 备份与重置」中操作。</view>
+  </view>
+</view>

@@ -1,0 +1,26 @@
+.bar-title { flex: 1; font-size: 18px; font-weight: 500; color: var(--gray-900); padding-left: 4px; }
+.acc-body { padding: 4px 12px calc(20px + env(safe-area-inset-bottom)); }
+/* Material tabs with an underline indicator (the website's .nav) */
+.tabs { white-space: nowrap; margin-bottom: 12px; border-bottom: 1px solid var(--gray-200); }
+.tabs-row { display: inline-flex; }
+.tab { padding: 10px 14px; font-size: 14px; font-weight: 500; color: var(--gray-600); border-bottom: 3px solid transparent; }
+.tab.on { color: var(--primary); border-bottom-color: var(--primary); }
+.acc-hero { display: flex; align-items: center; gap: 16px; padding: 8px 4px 16px; }
+.acc-avatar { width: 56px; height: 56px; border-radius: 28px; background: var(--primary-light); color: var(--primary-on-light); font-size: 24px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex: none; }
+.acc-name { font-size: 20px; color: var(--gray-900); line-height: 1.3; }
+.acc-card { padding: 16px 16px 8px; }
+.acc-card-title { font-size: 18px; color: var(--gray-900); margin-bottom: 8px; }
+.acc-row { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 52px; border-top: 1px solid var(--gray-100); }
+.acc-row:first-of-type { border-top: none; }
+.acc-row-label { font-size: 13px; color: var(--gray-600); }
+.acc-row-value { font-size: 14px; color: var(--gray-900); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acc-input { height: 36px; padding: 0 12px; border-radius: 18px; background: var(--field); font-size: 15px; }
+.acc-row-action { display: flex; gap: 6px; align-items: center; justify-content: flex-end; }
+.act { display: flex; align-items: center; gap: 4px; height: 32px; padding: 0 8px; font-size: 13px; font-weight: 500; color: var(--primary); }
+.act.danger, .lc-btn.danger { color: var(--danger); }
+.pw-foot { padding: 4px 0 8px; }
+.pw-msg { color: var(--danger); font-size: 13px; }
+.strong { font-weight: 600; }
+.ok { color: var(--success); font-weight: 500; }
+.off { color: var(--danger); font-weight: 500; }
+.mono { font-family: Menlo, monospace; font-size: 11px; text-align: left; }

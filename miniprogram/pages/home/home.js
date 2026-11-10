@@ -67,14 +67,14 @@ Page({
     }
   },
 
-  /** Account: the crew ID, and removing this WeChat binding (the next visit asks for ID + password again) */
+  /** Account menu: account management, or removing this WeChat binding (the next visit asks for ID + password again) */
   account() {
     const user = getApp().globalData.user;
     wx.showActionSheet({
       alertText: user ? `当前账号：${user.displayName}` : '',
-      itemList: ['解除微信绑定并退出'],
-      itemColor: '#b3261e',
-      success: async () => {
+      itemList: ['账号管理', '解除微信绑定并退出'],
+      success: async (r) => {
+        if (r.tapIndex === 0) { wx.navigateTo({ url: '/pages/account/account' }); return; }
         try { await api('/auth/wx-unbind', { method: 'POST' }); } catch (e) { /* signed out anyway */ }
         session.signOut();
         wx.reLaunch({ url: '/pages/login/login' });

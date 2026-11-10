@@ -90,6 +90,7 @@ Page({
   /** Swallows touch moves on the drawer and its scrim so the page behind does not scroll */
   noop() {},
   toggleLive() { this.setData({ live: !this.data.live, drawer: false }); },
+  account() { this.setData({ drawer: false }); wx.navigateTo({ url: '/pages/account/account' }); },
   home() { wx.navigateBack({ fail: () => wx.reLaunch({ url: '/pages/home/home' }) }); },
 
   async answer(e) {

@@ -1,0 +1,6 @@
+{
+  "usingComponents": {
+    "icon-m": "/components/icon/icon",
+    "m-bar": "/components/m-bar/m-bar"
+  }
+}

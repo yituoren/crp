@@ -42,6 +42,7 @@
     <icon-m name="dashboard" size="22" color="{{current === 'admin' ? '#041e49' : '#1f1f1f'}}" />后台
   </view>
   <view class="m-sep"></view>
+  <view class="m-item" bindtap="account"><icon-m name="account_circle" size="22" color="#1f1f1f" />账号管理</view>
   <view class="m-item" bindtap="home"><icon-m name="home" size="22" color="#1f1f1f" />回到主页</view>
 </view>
 
