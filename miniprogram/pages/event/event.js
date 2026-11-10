@@ -55,6 +55,8 @@ Page({
   },
   openDrawer() { this.setData({ drawer: true }); },
   closeDrawer() { this.setData({ drawer: false }); },
+  /** Swallows touch moves on the drawer and its scrim so the page behind does not scroll */
+  noop() {},
   toggleLive() { this.setData({ live: !this.data.live, drawer: false }); },
   home() { wx.navigateBack({ fail: () => wx.reLaunch({ url: '/pages/home/home' }) }); },
 });

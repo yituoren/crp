@@ -27,8 +27,8 @@
   </view>
 </view>
 
-<view wx:if="{{drawer}}" class="m-scrim" bindtap="closeDrawer"></view>
-<view class="m-drawer {{drawer ? 'open' : ''}}" style="padding-top: {{barTop}}px; width: {{drawerWidth}}px">
+<view class="m-scrim {{drawer ? 'open' : ''}}" bindtap="closeDrawer" catchtouchmove="noop"></view>
+<view class="m-drawer {{drawer ? 'open' : ''}}" catchtouchmove="noop" style="padding-top: {{barTop}}px; width: {{drawerWidth}}px">
   <view class="m-drawer-head" style="height: {{barRow}}px">{{event ? event.name : ''}}</view>
   <view wx:for="{{nav}}" wx:key="name" class="m-item {{current === item.name && !live ? 'on' : ''}}" data-name="{{item.name}}" bindtap="go">
     <icon-m name="{{item.icon}}" size="22" color="{{current === item.name && !live ? '#041e49' : '#1f1f1f'}}" />{{item.label}}
