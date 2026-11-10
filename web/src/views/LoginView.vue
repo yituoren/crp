@@ -32,7 +32,7 @@ async function submit() {
 <template>
   <div class="login-wrap">
     <div class="login-box">
-      <h2><img :src="logoUrl" alt="城市飞奔" class="login-logo" /><span class="login-sub">幕后管理系统</span></h2>
+      <h2><img :src="logoUrl" alt="城市飞奔" class="login-logo" /><span class="login-sub">线上管理系统</span></h2>
       <form @submit.prevent="submit">
         <div class="form-group">
           <label>幕后ID</label>

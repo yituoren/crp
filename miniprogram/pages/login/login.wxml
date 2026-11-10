@@ -2,7 +2,7 @@
   <view class="login-box">
     <view class="login-head">
       <image class="login-logo" src="/images/logo-wordmark.png" mode="heightFix" />
-      <view class="login-sub">幕后管理系统</view>
+      <view class="login-sub">线上管理系统</view>
     </view>
 
     <view wx:if="{{stage === 'loading'}}" class="loading"><view class="spinner"></view></view>
