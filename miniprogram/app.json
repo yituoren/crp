@@ -1,0 +1,13 @@
+{
+  "pages": [
+    "pages/index/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "城市飞奔",
+    "navigationBarBackgroundColor": "#f8f9fa",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f8f9fa"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

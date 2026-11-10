@@ -1,0 +1,4 @@
+<view class="home">
+  <image class="logo" src="/images/logo-wordmark.png" mode="widthFix" />
+  <view class="sub">幕后管理系统</view>
+</view>

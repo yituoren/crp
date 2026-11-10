@@ -1,0 +1,6 @@
+page {
+  background: #f8f9fa;
+  color: #3c4043;
+  font-size: 28rpx;
+  line-height: 1.5;
+}
