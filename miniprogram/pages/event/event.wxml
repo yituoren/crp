@@ -1,0 +1,41 @@
+<m-bar>
+  <view class="icon-btn" hover-class="icon-btn-hover" bindtap="openDrawer"><icon-m name="menu" size="24" color="#444746" /></view>
+  <view class="m-title">{{event ? event.name : ''}}{{live ? '：实时大屏' : ''}}</view>
+  <view class="m-toggle {{live ? 'on' : ''}}" bindtap="toggleLive">
+    <icon-m name="{{live ? 'dashboard' : 'tv'}}" size="18" color="{{live ? '#041e49' : '#1f1f1f'}}" />{{live ? '工作区' : '大屏'}}
+  </view>
+  <view wx:if="{{!online}}" class="m-offline"><view class="sync-dot"></view></view>
+</m-bar>
+
+<view wx:if="{{loading}}" class="loading"><view class="spinner"></view></view>
+
+<view wx:elif="{{live}}" class="m-body">
+  <view class="card"><view class="empty-state">实时大屏将在后续版本移植</view></view>
+</view>
+
+<view wx:else class="m-body">
+  <view class="card">
+    <view class="card-header">{{currentLabel}}</view>
+    <view class="empty-state">「{{currentLabel}}」页面将在后续版本移植</view>
+  </view>
+</view>
+
+<view wx:if="{{!live}}" class="m-nav">
+  <view wx:for="{{bottom}}" wx:key="name" class="m-nav-item {{current === item.name ? 'on' : ''}}" data-name="{{item.name}}" bindtap="go">
+    <view class="m-nav-ic"><icon-m name="{{item.icon}}" size="22" color="{{current === item.name ? '#041e49' : '#444746'}}" /></view>
+    <text>{{item.label}}</text>
+  </view>
+</view>
+
+<view wx:if="{{drawer}}" class="m-scrim" bindtap="closeDrawer"></view>
+<view class="m-drawer {{drawer ? 'open' : ''}}">
+  <view class="m-drawer-head">{{event ? event.name : ''}}</view>
+  <view wx:for="{{nav}}" wx:key="name" class="m-item {{current === item.name && !live ? 'on' : ''}}" data-name="{{item.name}}" bindtap="go">
+    <icon-m name="{{item.icon}}" size="22" color="{{current === item.name && !live ? '#041e49' : '#1f1f1f'}}" />{{item.label}}
+  </view>
+  <view wx:if="{{isHost}}" class="m-item {{current === 'admin' ? 'on' : ''}}" data-name="admin" bindtap="go">
+    <icon-m name="dashboard" size="22" color="{{current === 'admin' ? '#041e49' : '#1f1f1f'}}" />后台
+  </view>
+  <view class="m-sep"></view>
+  <view class="m-item" bindtap="home"><icon-m name="home" size="22" color="#1f1f1f" />回到主页</view>
+</view>

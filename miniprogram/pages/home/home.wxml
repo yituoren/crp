@@ -1,0 +1,44 @@
+<m-bar>
+  <view class="home-search">
+    <icon-m name="search" size="22" color="#3c4043" />
+    <input value="{{q}}" placeholder="搜索比赛名称或主办" confirm-type="search" bindinput="onSearch" />
+    <view wx:if="{{q}}" class="icon-btn icon-btn-sm" hover-class="icon-btn-hover" bindtap="clearSearch"><icon-m name="close" size="20" color="#444746" /></view>
+  </view>
+  <view class="icon-btn" hover-class="icon-btn-hover" bindtap="account"><icon-m name="account_circle" size="26" color="#444746" /></view>
+</m-bar>
+
+<view class="home-body">
+  <view class="home-tabs">
+    <view class="home-tab {{tab === 'mine' ? 'on' : ''}}" data-tab="mine" bindtap="setTab"><icon-m name="inbox" size="18" color="{{tab === 'mine' ? '#041e49' : '#444746'}}" />我的比赛<text class="home-tab-n">{{mineCount}}</text></view>
+    <view class="home-tab {{tab === 'all' ? 'on' : ''}}" data-tab="all" bindtap="setTab"><icon-m name="public" size="18" color="{{tab === 'all' ? '#041e49' : '#444746'}}" />全部比赛<text class="home-tab-n">{{allCount}}</text></view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading"><view class="spinner"></view></view>
+  <view wx:elif="{{!rows.length}}" class="empty-state">{{emptyText}}</view>
+  <view wx:else>
+    <view wx:for="{{rows}}" wx:key="hash" class="home-card {{item.joined ? '' : 'out'}}" hover-class="home-card-hover" data-hash="{{item.hash}}" bindtap="openRow">
+      <view class="home-card-head"><text class="home-name">{{item.name}}</text><text class="home-role role-{{item.roleCls}}">{{item.roleText}}</text></view>
+      <view class="home-card-snippet">{{item.snippet}}</view>
+      <view class="home-meta"><text class="home-status status-{{item.status}}">{{item.statusText}}</text><text>{{item.date}}</text></view>
+    </view>
+  </view>
+</view>
+
+<block wx:if="{{joining}}">
+  <view class="sheet-scrim" bindtap="closeJoin"></view>
+  <view class="sheet">
+    <view class="sheet-title">申请加入「{{joining.name}}」</view>
+    <view class="form-group">
+      <view class="label">邀请码</view>
+      <input value="{{code}}" data-field="code" bindinput="onInput" placeholder="向主办索取" />
+    </view>
+    <view class="form-group">
+      <view class="label">备注（可选）</view>
+      <input value="{{note}}" data-field="note" bindinput="onInput" placeholder="例如你的名字、负责的环节" />
+    </view>
+    <view class="sheet-actions">
+      <button class="btn btn-text" hover-class="btn-hover" bindtap="closeJoin">取消</button>
+      <button class="btn" hover-class="btn-hover" bindtap="join">提交申请</button>
+    </view>
+  </view>
+</block>

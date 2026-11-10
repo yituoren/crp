@@ -1,0 +1,4 @@
+<view class="m-bar" style="padding-top: {{top}}px; padding-right: {{right}}px">
+  <view class="m-bar-row" style="height: {{height}}px"><slot /></view>
+</view>
+<view style="height: {{top + height}}px"></view>

@@ -1,0 +1,21 @@
+.home-search { flex: 1; min-width: 0; height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 4px 0 12px; border-radius: 20px; background: #eaf1fb; margin-left: 8px; }
+.home-search input { flex: 1; min-width: 0; height: 100%; font-size: 15px; color: var(--gray-900); }
+.icon-btn-sm { width: 36px; height: 36px; }
+.home-body { padding: 4px 12px calc(16px + env(safe-area-inset-bottom)); }
+.home-tabs { display: flex; gap: 8px; margin: 4px 0 12px; }
+.home-tab { height: 36px; display: flex; align-items: center; gap: 6px; padding: 0 14px; border-radius: 18px; font-size: 14px; color: var(--gray-700); background: var(--surface); border: 1px solid var(--gray-200); }
+.home-tab.on { background: var(--primary-light); color: var(--primary-on-light); border-color: transparent; font-weight: 500; }
+.home-tab-n { font-size: 12px; opacity: .8; }
+.home-card { background: var(--surface); border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
+.home-card-hover { background: #f3f4f6; }
+.home-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 15px; color: var(--gray-900); }
+.home-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.home-card.out .home-name { font-weight: 400; }
+.home-card-snippet { font-size: 13px; color: var(--gray-600); }
+.home-meta { display: flex; justify-content: space-between; font-size: 13px; color: var(--gray-500); }
+.home-role { flex: none; min-width: 56px; font-size: 12px; font-weight: 500; text-align: center; padding: 2px 8px; border-radius: 8px; background: var(--chip); color: var(--gray-700); }
+.home-role.role-host, .home-role.role-admin { background: var(--warning-light); color: var(--warning-on-light); }
+.home-role.role-none { background: transparent; color: var(--gray-500); border: 1px solid var(--gray-300); }
+.home-status { font-weight: 500; }
+.home-status.status-running { color: var(--success); }
+.home-status.status-finished { color: var(--gray-500); }

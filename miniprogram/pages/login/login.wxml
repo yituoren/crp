@@ -1,0 +1,37 @@
+<view class="login-wrap">
+  <view class="login-box">
+    <view class="login-head">
+      <image class="login-logo" src="/images/logo-wordmark.png" mode="heightFix" />
+      <view class="login-sub">幕后管理系统</view>
+    </view>
+
+    <view wx:if="{{stage === 'loading'}}" class="loading"><view class="spinner"></view></view>
+
+    <view wx:elif="{{stage === 'error'}}">
+      <view class="form-error">{{msg}}</view>
+      <button class="btn btn-block" hover-class="btn-hover" bindtap="start">重试</button>
+    </view>
+
+    <view wx:else>
+      <view class="bind-tip">首次使用请{{mode === 'login' ? '登录幕后ID' : '注册幕后ID'}}，绑定后用微信直接进入</view>
+      <view class="form-group">
+        <view class="label">幕后ID</view>
+        <input value="{{username}}" data-field="username" bindinput="onInput" placeholder="{{mode === 'login' ? '请输入你的幕后ID' : '起一个幕后ID'}}" />
+      </view>
+      <view class="form-group">
+        <view class="label">{{mode === 'login' ? '密码' : '设置密码'}}</view>
+        <input value="{{password}}" data-field="password" bindinput="onInput" password placeholder="密码" />
+      </view>
+      <view wx:if="{{mode === 'register'}}" class="form-group">
+        <view class="label">确认密码</view>
+        <input value="{{password2}}" data-field="password2" bindinput="onInput" password placeholder="再次输入密码" />
+      </view>
+      <button class="btn btn-block btn-lg" hover-class="btn-hover" disabled="{{busy}}" bindtap="submit">{{mode === 'login' ? '登录并绑定微信' : '注册并绑定微信'}}</button>
+      <view class="form-error">{{msg}}</view>
+      <view class="switch">
+        <text wx:if="{{mode === 'login'}}" class="link" data-mode="register" bindtap="setMode">还没有账号？立即注册</text>
+        <text wx:else class="link" data-mode="login" bindtap="setMode">已有账号？去登录</text>
+      </view>
+    </view>
+  </view>
+</view>

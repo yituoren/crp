@@ -1,24 +1,21 @@
 {
   "pages": [
-    "pages/index/index"
+    "pages/login/login",
+    "pages/home/home",
+    "pages/event/event"
   ],
   "window": {
+    "navigationStyle": "custom",
     "navigationBarTextStyle": "black",
-    "navigationStyle": "custom"
+    "backgroundColor": "#f8f9fa",
+    "backgroundColorTop": "#f8f9fa",
+    "backgroundColorBottom": "#f8f9fa"
+  },
+  "usingComponents": {
+    "icon-m": "/components/icon/icon",
+    "m-bar": "/components/m-bar/m-bar"
   },
   "style": "v2",
-  "renderer": "skyline",
-  "rendererOptions": {
-    "skyline": {
-      "defaultDisplayBlock": true,
-      "defaultContentBox": true,
-      "tagNameStyleIsolation": "legacy",
-      "disableABTest": true,
-      "sdkVersionBegin": "3.0.0",
-      "sdkVersionEnd": "15.255.255"
-    }
-  },
-  "componentFramework": "glass-easel",
   "sitemapLocation": "sitemap.json",
   "lazyCodeLoading": "requiredComponents"
 }
