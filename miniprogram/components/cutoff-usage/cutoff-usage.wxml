@@ -3,7 +3,7 @@
   <view class="lc-list">
     <view wx:for="{{rows}}" wx:key="id" class="lc">
       <view class="lc-f full"><text class="lc-v cu-team">{{item.label}}</text></view>
-      <view wx:for="{{item.cells}}" wx:for-item="c" wx:key="id" class="lc-f"><text class="lc-k">{{c.name}}</text><text class="lc-v">{{c.text}}</text></view>
+      <view wx:for="{{item.cells}}" wx:for-item="c" wx:key="id" class="lc-f full"><text class="lc-k">{{c.name}}</text><text class="lc-v cu-n">{{c.text}}</text></view>
       <view wx:if="{{isHost}}" class="lc-f actions"><view class="lc-btn" data-id="{{item.id}}" bindtap="edit">修改记录</view></view>
     </view>
   </view>

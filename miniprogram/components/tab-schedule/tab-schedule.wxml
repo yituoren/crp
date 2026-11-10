@@ -20,7 +20,7 @@
         <view wx:for="{{item.legs}}" wx:for-item="l" wx:key="id" class="ts-leg"><leg-tag type="{{l.type}}" /><text>{{l.name}}</text></view>
       </view>
       <view wx:if="{{isHost}}" class="ts-c ts-edit">
-        <picker range="{{roleLabels}}" value="{{item.roleIndex}}" data-i="{{item.i}}" bindchange="pickRole"><view class="ts-sel ts-sel-role">{{roleLabels[item.roleIndex]}}<icon-m name="expand_more" size="16" color="#444746" /></view></picker>
+        <picker range="{{roleLabels}}" value="{{item.roleIndex < 0 ? 0 : item.roleIndex}}" data-i="{{item.i}}" bindchange="pickRole"><view class="ts-sel ts-sel-role">{{roleLabels[item.roleIndex]}}<icon-m name="expand_more" size="16" color="#444746" /></view></picker>
         <picker wx:if="{{item.role === 'follow'}}" range="{{teamLabels}}" data-i="{{item.i}}" bindchange="pickTeam"><view class="ts-sel {{item.teamSet ? '' : 'ph'}}"><text class="ts-ell">{{item.teamText}}</text><icon-m name="expand_more" size="16" color="#444746" /></view></picker>
         <view wx:elif="{{item.role === 'station'}}" class="ts-sel {{item.legSet ? '' : 'ph'}}" data-i="{{item.i}}" bindtap="openLegs"><text class="ts-ell">{{item.legText}}</text><icon-m name="expand_more" size="16" color="#444746" /></view>
         <text wx:else class="text-xs text-gray ts-none">{{item.role === 'live' ? '全赛段只读' : '无需分配'}}</text>

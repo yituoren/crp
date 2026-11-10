@@ -18,7 +18,7 @@
 <view wx:if="{{isCoin}}" class="card">
   <view class="card-header">
     <text>道具日志</text>
-    <picker range="{{filterLabels}}" value="{{filterIndex}}" bindchange="pickFilter"><view class="tc-filter">{{filterLabels[filterIndex]}}<icon-m name="expand_more" size="18" color="#444746" /></view></picker>
+    <picker range="{{filterLabels}}" value="{{filterIndex < 0 ? 0 : filterIndex}}" bindchange="pickFilter"><view class="tc-filter">{{filterLabels[filterIndex]}}<icon-m name="expand_more" size="18" color="#444746" /></view></picker>
   </view>
   <item-log team-id="{{filterTeam}}" />
 </view>
@@ -29,7 +29,7 @@
 <view class="card">
   <view class="card-header">
     <text>{{label}}变动日志</text>
-    <picker range="{{filterLabels}}" value="{{filterIndex}}" bindchange="pickFilter"><view class="tc-filter">{{filterLabels[filterIndex]}}<icon-m name="expand_more" size="18" color="#444746" /></view></picker>
+    <picker range="{{filterLabels}}" value="{{filterIndex < 0 ? 0 : filterIndex}}" bindchange="pickFilter"><view class="tc-filter">{{filterLabels[filterIndex]}}<icon-m name="expand_more" size="18" color="#444746" /></view></picker>
   </view>
   <ledger-list team-id="{{filterTeam}}" />
 </view>

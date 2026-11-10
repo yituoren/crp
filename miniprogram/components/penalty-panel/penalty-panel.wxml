@@ -1,7 +1,7 @@
 <view class="card {{flat ? 'flat' : ''}}">
   <view class="card-header">
     <text>{{title}}</text>
-    <picker wx:if="{{showTeamPick && canAdd && !pending && !finished}}" range="{{teamOptions}}" value="{{teamIndex}}" bindchange="pickTeam">
+    <picker wx:if="{{showTeamPick && canAdd && !pending && !finished}}" range="{{teamOptions}}" value="{{teamIndex < 0 ? 0 : teamIndex}}" bindchange="pickTeam">
       <view class="pp-team {{teamIndex >= 0 ? '' : 'ph'}}">{{teamIndex >= 0 ? teamOptions[teamIndex] : '选择队伍'}}<icon-m name="expand_more" size="18" color="#444746" /></view>
     </picker>
   </view>
@@ -9,7 +9,7 @@
   <view wx:if="{{pending}}" class="alert alert-warning">赛段尚未开始，开始赛段后才能操作罚时。</view>
   <view wx:elif="{{finished}}" class="alert">赛段已结束，罚时记录已锁定，只有管理员可以修改。</view>
   <view wx:elif="{{canAdd}}" class="form-grid mb-2">
-    <picker wx:if="{{!legId}}" class="full" range="{{legOptions}}" value="{{legIndex}}" bindchange="pickLeg">
+    <picker wx:if="{{!legId}}" class="full" range="{{legOptions}}" value="{{legIndex < 0 ? 0 : legIndex}}" bindchange="pickLeg">
       <view class="field {{legIndex >= 0 ? '' : 'ph'}}">{{legIndex >= 0 ? legOptions[legIndex] : '选择环节'}}<icon-m name="expand_more" size="18" color="#444746" /></view>
     </picker>
     <input class="field" type="number" value="{{minutes}}" data-field="minutes" bindinput="onInput" placeholder="分钟" />

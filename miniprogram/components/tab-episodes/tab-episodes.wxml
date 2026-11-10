@@ -61,7 +61,7 @@
     </view>
     <view class="text-xs text-gray mb-2">按签到时间加本赛段净罚时排序，签到或罚时变动后实时重算，结束赛段后锁定。{{form.elimEditable ? '' : '赛段已开始，只有管理员可以修改。'}}</view>
     <view class="te-label">状态（一般用「开始赛段 / 结束赛段」按钮切换，这里可手工修正）</view>
-    <picker range="{{statusLabels}}" value="{{form.statusIndex}}" bindchange="pickStatus"><view class="field">{{statusLabels[form.statusIndex]}}<icon-m name="expand_more" size="18" color="#444746" /></view></picker>
+    <picker range="{{statusLabels}}" value="{{form.statusIndex < 0 ? 0 : form.statusIndex}}" bindchange="pickStatus"><view class="field">{{statusLabels[form.statusIndex]}}<icon-m name="expand_more" size="18" color="#444746" /></view></picker>
     <view class="te-label">赛段说明（所有幕后可见）</view>
     <textarea class="te-notes" value="{{form.notes}}" maxlength="2000" data-field="notes" bindinput="onField" />
     <view class="sheet-actions"><button class="btn btn-text" bindtap="closeEdit">取消</button><button class="btn" bindtap="saveEp">保存</button></view>

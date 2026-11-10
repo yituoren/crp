@@ -6,7 +6,7 @@
     <view class="lc-f"><text class="lc-k">{{item.endLabel}}</text><text class="lc-v rl-t {{item.endHit ? 'hit' : ''}}">{{item.end}}</text></view>
     <view wx:if="{{item.extra}}" class="lc-f full">
       <text class="lc-k">{{item.extra.label}}</text>
-      <picker wx:if="{{item.extra.inline}}" range="{{item.extra.labels}}" value="{{item.extra.index}}" data-key="{{item.key}}" bindchange="pickExtra">
+      <picker wx:if="{{item.extra.inline}}" range="{{item.extra.labels}}" value="{{item.extra.index < 0 ? 0 : item.extra.index}}" data-key="{{item.key}}" bindchange="pickExtra">
         <view class="rl-select">{{item.extra.labels[item.extra.index]}}<icon-m name="expand_more" size="16" color="#444746" /></view>
       </picker>
       <text wx:else class="lc-v">{{item.extra.text}}</text>

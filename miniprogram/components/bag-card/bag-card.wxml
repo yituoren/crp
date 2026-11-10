@@ -26,12 +26,12 @@
     <view wx:for="{{fields}}" wx:for-index="f" wx:key="name" class="bag-field">
       <block wx:if="{{item.type === 'team'}}">
         <view class="bag-label">{{item.name}} 的对象</view>
-        <picker range="{{item.labels}}" value="{{item.index}}" data-f="{{f}}" bindchange="pickTarget">
+        <picker range="{{item.labels}}" value="{{item.index < 0 ? 0 : item.index}}" data-f="{{f}}" bindchange="pickTarget">
           <view class="field {{item.index >= 0 ? '' : 'ph'}}">{{item.index >= 0 ? item.labels[item.index] : '选择队伍'}}<icon-m name="expand_more" size="18" color="#444746" /></view>
         </picker>
         <block wx:if="{{item.steal && item.index >= 0}}">
           <view class="bag-label">{{item.name}}：拿到的卡（线下抽到的）</view>
-          <picker range="{{item.stealLabels}}" value="{{item.stealIndex}}" data-f="{{f}}" bindchange="pickSteal">
+          <picker range="{{item.stealLabels}}" value="{{item.stealIndex < 0 ? 0 : item.stealIndex}}" data-f="{{f}}" bindchange="pickSteal">
             <view class="field {{item.stealIndex >= 0 ? '' : 'ph'}}">{{item.stealIndex >= 0 ? item.stealLabels[item.stealIndex] : '选择卡片'}}<icon-m name="expand_more" size="18" color="#444746" /></view>
           </picker>
         </block>

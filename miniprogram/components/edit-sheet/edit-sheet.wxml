@@ -12,7 +12,7 @@
     </view>
     <view wx:if="{{type === 'UT' || type === 'YD' || type === 'Union'}}" class="es-field">
       <view class="es-label">{{type === 'Union' ? '合作队伍' : '施加对象'}}</view>
-      <picker range="{{targetOptions}}" value="{{targetIndex}}" bindchange="pickTarget"><view class="es-select">{{targetOptions[targetIndex]}}<icon-m name="expand_more" size="18" color="#444746" /></view></picker>
+      <picker range="{{targetOptions}}" value="{{targetIndex < 0 ? 0 : targetIndex}}" bindchange="pickTarget"><view class="es-select">{{targetOptions[targetIndex]}}<icon-m name="expand_more" size="18" color="#444746" /></view></picker>
     </view>
     <view wx:if="{{type === 'DT'}}" class="es-field">
       <view class="es-label">绕道选择</view>

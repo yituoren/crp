@@ -18,3 +18,5 @@
 .cutoff-name { font-weight: 600; color: var(--gray-900); }
 .cutoff-btn { min-width: 96px; }
 .cutoff-wait { font-variant-numeric: tabular-nums; }
+.cl-nw { flex: none; white-space: nowrap; }
+.cl-leg text { overflow: hidden; text-overflow: ellipsis; }

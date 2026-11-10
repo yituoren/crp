@@ -18,7 +18,7 @@
         <view class="lg-sec-title">基本信息</view>
         <view class="lg-label">类型</view>
         <view wx:if="{{fixed}}" class="field ph">{{fixedLabel}}</view>
-        <picker wx:else range="{{typeLabels}}" value="{{typeIndex}}" disabled="{{!editable}}" bindchange="pickType"><view class="field {{editable ? '' : 'ph'}}">{{typeLabels[typeIndex]}}<icon-m name="expand_more" size="18" color="#444746" /></view></picker>
+        <picker wx:else range="{{typeLabels}}" value="{{typeIndex < 0 ? 0 : typeIndex}}" disabled="{{!editable}}" bindchange="pickType"><view class="field {{editable ? '' : 'ph'}}">{{typeLabels[typeIndex]}}<icon-m name="expand_more" size="18" color="#444746" /></view></picker>
         <view class="form-group lg-gap"><view class="label">{{form.type === 'RI' || form.type === 'PS' ? '目的地' : '名称'}}</view><input value="{{form.name}}" data-field="name" bindinput="onField" placeholder="{{form.type === 'RI' ? '目的地名称，显示时自动加箭头' : form.type === 'PS' ? '中继站所在地' : ''}}" /></view>
       </view>
 
@@ -51,7 +51,7 @@
         <view class="flex-between"><text class="lg-sec-title">商店</text><view wx:if="{{editable && shop.length < shopLabels.length}}" class="lg-link" bindtap="addShopItem"><icon-m name="add" size="16" color="#0b57d0" />添加商品</view></view>
         <view wx:for="{{shop}}" wx:key="index" class="lg-row">
           <view class="lg-row-top">
-            <picker class="lg-grow" range="{{shopLabels}}" value="{{item.index}}" disabled="{{!editable}}" data-i="{{index}}" bindchange="pickShopItem"><view class="field {{item.index >= 0 ? '' : 'ph'}}"><text class="lg-ell">{{item.index >= 0 ? shopLabels[item.index] : '选择商品'}}</text><icon-m name="expand_more" size="18" color="#444746" /></view></picker>
+            <picker class="lg-grow" range="{{shopLabels}}" value="{{item.index < 0 ? 0 : item.index}}" disabled="{{!editable}}" data-i="{{index}}" bindchange="pickShopItem"><view class="field {{item.index >= 0 ? '' : 'ph'}}"><text class="lg-ell">{{item.index >= 0 ? shopLabels[item.index] : '选择商品'}}</text><icon-m name="expand_more" size="18" color="#444746" /></view></picker>
             <input class="field lg-qty" type="number" value="{{item.quantity}}" disabled="{{!editable}}" data-i="{{index}}" bindinput="onShopQty" placeholder="不限" /><text>件</text>
             <view wx:if="{{editable}}" class="lg-del" data-i="{{index}}" bindtap="removeShopItem"><icon-m name="delete" size="18" color="#b3261e" /></view>
           </view>
