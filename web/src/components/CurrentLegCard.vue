@@ -25,7 +25,7 @@ const team = computed(() => race.teamById.get(props.teamId));
 const isCoin = computed(() => moneyMode() === 'coin');
 /** The leg in progress: the furthest one with a start and no end (a running side quest counts); none once the team is out of the race */
 const currentLeg = computed<Leg | null>(() => {
-  if (race.stoppedLabel(props.teamId)) return null;
+  if (race.statusIn(props.teamId, race.currentEpisode?.id) !== 'alive') return null;
   const legs = race.currentEpisode?.legs ?? [];
   let cur: Leg | null = null;
   for (const l of legs) { const p = race.progressOf(props.teamId, l.id); if (p?.arrived_at && !p.completed_at) cur = l; }
@@ -35,7 +35,7 @@ const canUse = computed(() => race.canAdjustCurrencyFor(props.teamId) && !race.e
 // route info legs and the way to the pit stop are both travel
 const showTransport = computed(() => ['RI', 'PS'].includes(currentLeg.value?.type ?? ''));
 const showShop = computed(() => isCoin.value && (currentLeg.value?.shop.length ?? 0) > 0);
-const showCutoff = computed(() => !race.stoppedLabel(props.teamId) && (race.currentEpisode?.legs ?? []).some((l) => { const p = race.progressOf(props.teamId, l.id); return !!p?.arrived_at && !p.completed_at && l.cutoffs.length > 0; }));
+const showCutoff = computed(() => race.statusIn(props.teamId, race.currentEpisode?.id) === 'alive' && (race.currentEpisode?.legs ?? []).some((l) => { const p = race.progressOf(props.teamId, l.id); return !!p?.arrived_at && !p.completed_at && l.cutoffs.length > 0; }));
 // Waiting because of a twist card (missile): when it ends
 const waitUntil = computed(() => (currentLeg.value ? race.waitingUntil(props.teamId, currentLeg.value.id) : null));
 // the twist card being waited out; none while the penalties settled here are waited out after it

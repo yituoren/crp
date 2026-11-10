@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useAuth } from '@/stores/auth';
 import { useRace } from '@/stores/race';
 import { fmtTime, fmtTimeSec, fmtDurMs, fmtPenMin } from '@/utils/time';
-import { legName, endLabel, startLabel, hasStart, typeCode, type LegType } from '@/types';
+import { legName, endLabel, startLabel, hasStart, typeCode, type LegType, type Team } from '@/types';
 import { exportProgressXlsx, type ExportCell, type ExportGroup, type ExportRow } from '@/utils/progressExport';
 import { useUi } from '@/stores/ui';
 import EpSelector from '@/components/EpSelector.vue';
@@ -62,8 +62,9 @@ function cell(teamId: number, legId: number, single: boolean, isPs = false): MxC
   const startMs = new Date(start).getTime();
   const pen = race.legPenalty(teamId, legId) * 60000;
   if (p.completed_at) { const endMs = new Date(p.completed_at).getTime(); const ms = endMs - startMs - branchElapsed(teamId, legId, endMs) + pen; return { start: fmtTime(start), end: (isPs ? fmtTimeSec : fmtTime)(p.completed_at), dur: fmtDurMs(ms), ms, cls: 'mx-done' }; }
-  const stop = race.stoppedLabel(teamId);
+  const stop = race.stoppedLabel(teamId, legId);
   if (stop) return { start: fmtTime(start), end: stop, dur: '-', cls: '' }; // out of the race before finishing: no running time
+  if (finished.value) return { start: fmtTime(start), end: '未完成', dur: '-', cls: '' }; // a finished episode no longer runs
   // waiting only for a real reason (twist card, settlement); a start a few seconds ahead of this device's clock is just running
   if (race.waitingUntil(teamId, legId)) return { start: fmtTime(start), end: '等待中', dur: '-', cls: 'mx-arrived' };
   const ms = Math.max(0, now.value - startMs - branchElapsed(teamId, legId, null)) + pen;
@@ -75,7 +76,7 @@ function branchCell(teamId: number, legId: number): MxCell {
   if (!bp?.arrived_at) return { start: '-', end: '-', dur: '-', cls: '' };
   const s = new Date(bp.arrived_at).getTime();
   const pen = race.legPenalty(teamId, br!.id) * 60000;
-  const stop = bp.completed_at ? null : race.stoppedLabel(teamId);
+  const stop = bp.completed_at ? null : race.stoppedLabel(teamId, legId) ?? (finished.value ? '未完成' : null);
   if (stop) return { start: fmtTime(bp.arrived_at), end: stop, dur: '-', cls: '' };
   const ms = (bp.completed_at ? new Date(bp.completed_at).getTime() : now.value) - s + pen;
   return { start: fmtTime(bp.arrived_at), end: bp.completed_at ? fmtTime(bp.completed_at) : '进行中', dur: fmtDurMs(ms), ms, cls: bp.completed_at ? 'mx-done' : 'mx-arrived' };
@@ -108,6 +109,7 @@ function extraVal(teamId: number, l: { id: number; type: string }, i = 0): strin
 /** Cell contents: start / end / duration */
 const isSingleCol = (l: { type: string }) => !hasStart(l.type as LegType);
 const colspanOf = (l: { id: number; type: string }) => (isSingleCol(l) ? 1 : 3) + (branchOf(l) ? 3 : 0) + extraCols(l).length;
+/** The latest record of a team: how long ago while the episode runs; a finished episode shows the time itself (the table no longer changes) */
 function lastAgo(teamId: number): string {
   let last = 0;
   for (const l of legs.value) {
@@ -115,6 +117,7 @@ function lastAgo(teamId: number): string {
     for (const t of [p?.arrived_at, p?.completed_at]) if (t) last = Math.max(last, new Date(t).getTime());
   }
   if (!last) return '';
+  if (finished.value) return `最后记录 ${fmtTime(new Date(last).toISOString())}`;
   const m = Math.max(0, Math.floor((now.value - last) / 60000));
   return `${m} 分钟前`;
 }
@@ -128,13 +131,20 @@ const finalRank = computed(() => new Map(race.pitstop.map((r) => [r.team_id, r.r
  * the first locked leg; a withdrawal after the last leg (nothing locked) keeps the team everywhere.
  */
 const epIndex = computed(() => new Map(race.episodes.map((e, i) => [e.id, i])));
+const finished = computed(() => ep.value?.status === 'finished');
+/** A team's status as this episode saw it: an elimination or withdrawal in a later episode does not show here */
+const statusHere = (t: Team) => race.statusIn(t.id, ep.value?.id);
+/** The episode a team stopped in (elimination leg, or the first locked leg of a withdrawal); null while racing or when nothing is locked */
+function stopEpisodeIndex(t: Team): number | null {
+  const stopLeg = t.status === 'eliminated' ? t.eliminated_leg_id : t.status === 'withdrawn' ? t.locked_from_leg_id : null;
+  const stopEp = stopLeg ? race.legById.get(stopLeg)?.episode_id : null;
+  return stopEp == null ? null : epIndex.value.get(stopEp) ?? null;
+}
 const visibleTeams = computed(() => {
   const cur = epIndex.value.get(ep.value?.id ?? 0) ?? 0;
   return race.teams.filter((t) => {
-    if (t.status === 'alive') return true;
-    const stopLeg = t.status === 'eliminated' ? t.eliminated_leg_id : t.locked_from_leg_id;
-    const stopEp = stopLeg ? race.legById.get(stopLeg)?.episode_id : null;
-    return stopEp == null || (epIndex.value.get(stopEp) ?? cur) >= cur;
+    const i = stopEpisodeIndex(t);
+    return i === null || i >= cur;
   });
 });
 function progressKey(teamId: number): { depth: number; t: number } {
@@ -150,7 +160,7 @@ const orderedTeams = computed(() => {
   const idx = new Map(race.teams.map((t, i) => [t.id, i]));
   const key = new Map(visibleTeams.value.map((t) => [t.id, progressKey(t.id)]));
   return [...visibleTeams.value].sort((a, b) => {
-    const wa = a.status !== 'alive' ? 1 : 0, wb = b.status !== 'alive' ? 1 : 0; // eliminated and withdrawn teams go last, unranked
+    const wa = statusHere(a) !== 'alive' ? 1 : 0, wb = statusHere(b) !== 'alive' ? 1 : 0; // teams out of the race in this episode go last, unranked
     if (wa !== wb) return wa - wb;
     const ra = finalRank.value.get(a.id) ?? null, rb = finalRank.value.get(b.id) ?? null;
     if (ra && rb) return ra - rb;
@@ -161,7 +171,7 @@ const orderedTeams = computed(() => {
     return idx.get(a.id)! - idx.get(b.id)!;
   });
 });
-const rankOf = computed(() => { const m = new Map<number, number>(); let n = 0; for (const t of orderedTeams.value) if (t.status === 'alive') m.set(t.id, ++n); return m; });
+const rankOf = computed(() => { const m = new Map<number, number>(); let n = 0; for (const t of orderedTeams.value) if (statusHere(t) === 'alive') m.set(t.id, ++n); return m; });
 /** Cell background by column kind: times, durations / penalties, task details, blanks */
 type CellKind = 'time' | 'dur' | 'extra';
 const kindCls = (text: string, kind: CellKind) => (text === '-' ? 'mx2-c-blank' : `mx2-c-${kind}`);
@@ -253,7 +263,7 @@ async function exportXlsx() {
         <tbody>
           <tr v-for="t in orderedTeams" :key="t.id">
             <td class="mx2-team">
-              <div class="flex" style="gap: 6px; flex-wrap: nowrap"><span v-if="rankOf.get(t.id)" class="mx2-rank" :class="'rank-' + rankOf.get(t.id)">#{{ rankOf.get(t.id) }}</span><strong><span class="mx2-team-full">{{ t.full_label }}</span><span class="mx2-team-short">{{ t.name }}</span></strong><TeamStatus :status="t.status" class="mx2-team-status" /></div>
+              <div class="flex" style="gap: 6px; flex-wrap: nowrap"><span v-if="rankOf.get(t.id)" class="mx2-rank" :class="'rank-' + rankOf.get(t.id)">#{{ rankOf.get(t.id) }}</span><strong><span class="mx2-team-full">{{ t.full_label }}</span><span class="mx2-team-short">{{ t.name }}</span></strong><TeamStatus :status="statusHere(t)" class="mx2-team-status" /></div>
               <div class="text-xs text-gray mx2-team-ago">{{ lastAgo(t.id) || '尚无记录' }}</div>
             </td>
             <template v-for="l in legs" :key="l.id">

@@ -60,9 +60,22 @@ export const useRace = defineStore('race', () => {
     const e = effectOn(teamId, legId);
     return e?.wait_until && new Date(e.wait_until).getTime() > nowMs.value + auth.serverOffsetMs ? `「${e.item_name}」` : '结算补时罚时';
   }
-  /** A team out of the race: its unfinished legs show this instead of running (e.g. eliminated on arrival at a sudden-death leg) */
-  function stoppedLabel(teamId: number): string | null {
-    const s = teamById.value.get(teamId)?.status;
+  /**
+   * A team's status as an episode saw it: an elimination or withdrawal in a later episode does not count there (a finished
+   * episode's tables stay as they were). The stop episode is the elimination leg's, or for a withdrawal the first locked leg's;
+   * a withdrawal with nothing locked counts everywhere.
+   */
+  function statusIn(teamId: number, episodeId: number | null | undefined): Team['status'] {
+    const t = teamById.value.get(teamId);
+    if (!t || t.status === 'alive') return 'alive';
+    const stopLeg = t.status === 'eliminated' ? t.eliminated_leg_id : t.locked_from_leg_id;
+    const stopEp = stopLeg ? legById.value.get(stopLeg)?.episode_id : null;
+    const order = (id: number | null | undefined) => episodes.value.findIndex((e) => e.id === id);
+    return stopEp != null && episodeId != null && order(stopEp) > order(episodeId) ? 'alive' : t.status;
+  }
+  /** A team out of the race at this leg's episode: its unfinished legs show this instead of running (e.g. eliminated on arrival at a sudden-death leg) */
+  function stoppedLabel(teamId: number, legId: number): string | null {
+    const s = statusIn(teamId, legById.value.get(legId)?.episode_id);
     return s === 'eliminated' ? '已淘汰' : s === 'withdrawn' ? '已退赛' : null;
   }
   /** The start was moved (twist wait or settlement): shown in red */
@@ -366,7 +379,7 @@ export const useRace = defineStore('race', () => {
   }
 
   return {
-    episodes, teams, users, announcements, shopItems, loadShopItems, unreadAnnouncements, markAnnouncementsRead, popupAnnouncements, dismissPopup, effects, effectsOn, effectOn, uturnOn, answerTwist, waitingUntil, waitLabel, stoppedLabel, taskStart, startDelayed, legPenalty, nowMs, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
+    episodes, teams, users, announcements, shopItems, loadShopItems, unreadAnnouncements, markAnnouncementsRead, popupAnnouncements, dismissPopup, effects, effectsOn, effectOn, uturnOn, answerTwist, waitingUntil, waitLabel, statusIn, stoppedLabel, taskStart, startDelayed, legPenalty, nowMs, currentEpisodeId, currentEpisode, assignments, progress, penalties, pitstop, ledger, loaded,
     aliveTeams, myAssignment, teamById, legById, lastEpisodeId, isLastEpisode, progressOf, isLocked, teamLocked, lockReason, structureEditable, cutoffUses, cutoffUseCount, cutoffReadyAt, parentOf, branchOf, branchLocked, canRecord, canEdit, canAdjustCurrency, canAdjustCurrencyFor, currencyLegIds, canManagePenalty, canManagePenaltyFor, canRevert, canEliminate, episodePending, episodeFinished, canUploadTo, blockReason, extraMissing, memberOptions,
     loadAll, reset, loadEpisodes, loadTeams, loadUsers, loadAnnouncements, loadAssignments, loadProgress, loadLedger, loadItemLog, itemLog, selectEpisode, invalidate,
   };
