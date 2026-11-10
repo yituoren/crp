@@ -1,0 +1,28 @@
+<view class="page-title">队伍列表（共 {{total}} 支，存活 {{alive}}）</view>
+<view wx:if="{{isHost}}" class="tt-actions">
+  <button class="btn" data-id="{{0}}" bindtap="open"><icon-m name="add" size="18" color="#ffffff" />新增队伍</button>
+  <button class="btn btn-text" bindtap="resetAll"><icon-m name="restart_alt" size="18" color="#0b57d0" />重置队伍数据</button>
+</view>
+<view wx:if="{{isHost}}" class="text-xs text-gray tt-tip">长按队伍卡片调整顺序，编号随顺序变化</view>
+<view class="tt-grid">
+  <view wx:for="{{teams}}" wx:key="id" class="team-card team-{{item.status}}" data-id="{{item.id}}" bindlongpress="move">
+    <view class="flex-between"><text class="tt-name">{{item.label}}</text><text class="status-{{item.status}}">{{item.statusText}}</text></view>
+    <view class="text-sm text-gray mt-1">{{item.info}}</view>
+    <view wx:if="{{isHost}}" class="tt-btns">
+      <view class="tt-btn" data-id="{{item.id}}" bindtap="open"><icon-m name="edit" size="16" color="#0b57d0" />编辑</view>
+      <button wx:if="{{item.status === 'withdrawn'}}" class="btn btn-tonal btn-sm" data-id="{{item.id}}" data-status="alive" bindtap="setStatus">恢复</button>
+      <view wx:elif="{{item.status === 'alive'}}" class="tt-btn danger" data-id="{{item.id}}" data-status="withdrawn" bindtap="setStatus">退赛</view>
+      <view class="tt-btn danger" data-id="{{item.id}}" bindtap="remove"><icon-m name="delete" size="16" color="#b3261e" />删除</view>
+    </view>
+  </view>
+</view>
+
+<block wx:if="{{editing}}">
+  <view class="sheet-scrim" bindtap="close" catchtouchmove="noop"></view>
+  <view class="sheet">
+    <view class="sheet-title">{{editing.title}}</view>
+    <view wx:for="{{members}}" wx:key="index" class="form-group"><view class="label">成员 {{index + 1}}</view><input value="{{item}}" data-i="{{index}}" bindinput="onMember" placeholder="成员 {{index + 1}} 姓名" /></view>
+    <view class="form-group"><view class="label">简称（选填）</view><input value="{{shortName}}" maxlength="20" bindinput="onShort" placeholder="填写后各处显示「编号 简称」" /></view>
+    <view class="sheet-actions"><button class="btn btn-text" bindtap="close">取消</button><button class="btn" bindtap="save">保存</button></view>
+  </view>
+</block>

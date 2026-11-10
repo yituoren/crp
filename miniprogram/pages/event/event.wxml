@@ -19,6 +19,8 @@
   <tab-announcements wx:if="{{current === 'announcements'}}" />
   <tab-progress wx:if="{{current === 'progress'}}" />
   <tab-currency wx:if="{{current === 'currency'}}" />
+  <tab-teams wx:if="{{current === 'teams'}}" />
+  <tab-schedule wx:if="{{current === 'schedule'}}" />
   <view wx:if="{{!ported}}" class="card">
     <view class="card-header">{{currentLabel}}</view>
     <view class="empty-state">「{{currentLabel}}」页面将在后续版本移植</view>

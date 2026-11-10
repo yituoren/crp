@@ -1,0 +1,46 @@
+<ep-selector />
+
+<!-- phones: no outer card, the title and the table sit on the page; the table scrolls sideways with the first column fixed -->
+<view class="page-title">排班表</view>
+<view wx:if="{{isHost}}" class="ts-actions">
+  <button class="btn btn-tonal" bindtap="copyPrev"><icon-m name="content_copy" size="18" color="#041e49" />复制上一赛段跟队</button>
+  <button class="btn" bindtap="save">保存排班</button>
+</view>
+<view wx:if="{{!rows.length}}" class="empty-state">暂无注册幕后</view>
+<scroll-view wx:else class="ts-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+  <view class="ts-table">
+    <view class="ts-row ts-head">
+      <view class="ts-c ts-name">幕后</view><view class="ts-c ts-role">角色</view><view class="ts-c ts-detail">分配详情</view><view wx:if="{{isHost}}" class="ts-c ts-edit">编辑</view>
+    </view>
+    <view wx:for="{{rows}}" wx:key="userId" class="ts-row">
+      <view class="ts-c ts-name strong">{{item.name}}</view>
+      <view class="ts-c ts-role"><text class="badge {{item.badgeCls}}">{{item.badge}}</text></view>
+      <view class="ts-c ts-detail">
+        <text wx:if="{{item.detail}}">{{item.detail}}</text>
+        <view wx:for="{{item.legs}}" wx:for-item="l" wx:key="id" class="ts-leg"><leg-tag type="{{l.type}}" /><text>{{l.name}}</text></view>
+      </view>
+      <view wx:if="{{isHost}}" class="ts-c ts-edit">
+        <picker range="{{roleLabels}}" value="{{item.roleIndex}}" data-i="{{item.i}}" bindchange="pickRole"><view class="ts-sel ts-sel-role">{{roleLabels[item.roleIndex]}}<icon-m name="expand_more" size="16" color="#444746" /></view></picker>
+        <picker wx:if="{{item.role === 'follow'}}" range="{{teamLabels}}" data-i="{{item.i}}" bindchange="pickTeam"><view class="ts-sel {{item.teamSet ? '' : 'ph'}}"><text class="ts-ell">{{item.teamText}}</text><icon-m name="expand_more" size="16" color="#444746" /></view></picker>
+        <view wx:elif="{{item.role === 'station'}}" class="ts-sel {{item.legSet ? '' : 'ph'}}" data-i="{{item.i}}" bindtap="openLegs"><text class="ts-ell">{{item.legText}}</text><icon-m name="expand_more" size="16" color="#444746" /></view>
+        <text wx:else class="text-xs text-gray ts-none">{{item.role === 'live' ? '全赛段只读' : '无需分配'}}</text>
+      </view>
+    </view>
+  </view>
+</scroll-view>
+<view wx:if="{{isHost}}" class="ts-notes">
+  <view wx:if="{{conflicts}}" class="alert alert-warning">以下队伍被分配了多个跟队：{{conflicts}}</view>
+  <view wx:if="{{unassigned}}" class="alert">尚无跟队的存活队伍：{{unassigned}}</view>
+</view>
+
+<block wx:if="{{picking}}">
+  <view class="sheet-scrim" bindtap="closeLegs" catchtouchmove="noop"></view>
+  <view class="sheet">
+    <view class="sheet-title">{{picking.name}} 驻守的环节</view>
+    <view wx:for="{{pickLegs}}" wx:for-index="k" wx:key="id" class="ts-pick {{item.on ? 'on' : ''}}" data-k="{{k}}" bindtap="toggleLeg">
+      <view class="ts-check"><icon-m wx:if="{{item.on}}" name="check" size="14" color="#ffffff" /></view>
+      <leg-tag type="{{item.type}}" /><text class="ts-ell">{{item.name}}</text>
+    </view>
+    <view class="sheet-actions"><button class="btn btn-text" bindtap="closeLegs">取消</button><button class="btn" bindtap="doneLegs">确定</button></view>
+  </view>
+</block>

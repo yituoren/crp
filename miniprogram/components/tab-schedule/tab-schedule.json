@@ -1,0 +1,4 @@
+{
+  "component": true,
+  "usingComponents": { "icon-m": "/components/icon/icon", "ep-selector": "/components/ep-selector/ep-selector", "leg-tag": "/components/leg-tag/leg-tag" }
+}

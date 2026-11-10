@@ -5,6 +5,8 @@
     "tab-progress": "/components/tab-progress/tab-progress",
     "tab-today": "/components/tab-today/tab-today",
     "tab-currency": "/components/tab-currency/tab-currency",
+    "tab-teams": "/components/tab-teams/tab-teams",
+    "tab-schedule": "/components/tab-schedule/tab-schedule",
     "time-sheet": "/components/time-sheet/time-sheet",
     "edit-sheet": "/components/edit-sheet/edit-sheet",
     "icon-m": "/components/icon/icon",
