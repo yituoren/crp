@@ -7,7 +7,9 @@
 # <domain> is the primary address (e.g. cityrunproject.cn); www.<domain> redirects to it.
 # The HTTPS step needs the domain to resolve to this server, port 80 reachable from the internet
 # (for mainland servers: the ICP filing must be approved first) and port 443 open in the cloud firewall.
-# Plain http://<server IP> keeps working in both modes. Running the script again is safe.
+# HTTP-only mode serves any host name or the bare IP. HTTPS mode serves only https://<domain>: plain HTTP
+# (domain or IP) redirects there, port 80 stays open for that and for certificate renewal, and HTTPS
+# requests for any other name (e.g. the bare IP) are refused at the handshake. Running the script again is safe.
 set -euo pipefail
 
 DOMAIN="${1:-}"
@@ -77,21 +79,20 @@ write_https_site() {
   cat > "$SITE" <<EOF
 map \$http_upgrade \$connection_upgrade { default upgrade; '' close; }
 
-# Bare IP (and unknown names) over HTTP: keep serving the app as before
+# Plain HTTP for any name or the bare IP: certificate challenges, everything else goes to https://$DOMAIN
 server {
   listen 80 default_server;
   listen [::]:80 default_server;
   server_name _;
-  include snippets/crp-proxy.conf;
-}
-
-# The domain over HTTP: certificate challenges, everything else goes to https://$DOMAIN
-server {
-  listen 80;
-  listen [::]:80;
-  server_name $DOMAIN www.$DOMAIN;
   location /.well-known/acme-challenge/ { root $WEBROOT; }
   location / { return 301 https://$DOMAIN\$request_uri; }
+}
+
+# HTTPS for any other name (the bare IP has no certificate): refuse the handshake
+server {
+  listen 443 ssl default_server;
+  listen [::]:443 ssl default_server;
+  ssl_reject_handshake on;
 }
 
 # www over HTTPS: redirect to the primary address
@@ -107,8 +108,8 @@ server {
 
 # Primary address over HTTPS
 server {
-  listen 443 ssl default_server;
-  listen [::]:443 ssl default_server;
+  listen 443 ssl;
+  listen [::]:443 ssl;
   http2 on;
   server_name $DOMAIN;
   ssl_certificate $CERT_DIR/fullchain.pem;
@@ -153,5 +154,5 @@ write_https_site
 reload_nginx
 if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then ufw allow 443/tcp; fi
 echo
-echo "HTTPS is live: https://$DOMAIN (www.$DOMAIN and http:// redirect there; http://<server IP> still works)."
+echo "HTTPS is live: https://$DOMAIN (www.$DOMAIN, http:// and http://<server IP> redirect there)."
 echo "Renewal is automatic; test it with: certbot renew --dry-run"
