@@ -54,7 +54,7 @@ const rows = computed(() => {
 });
 const roleText = (e: EventSummary) => (!e.joined ? (e.pending ? '待审核' : '未加入') : e.role === 'admin' ? '管理员' : e.role === 'host' ? '主办' : '幕后');
 const STATUS_TEXT = { pending: '未开始', running: '进行中', finished: '已结束' } as const;
-const snippet = (e: EventSummary) => [e.ownerName ? `主办 ${e.ownerName}` : '', `${e.memberCount} 名幕后`, `${e.episodeCount} 个赛段`].filter(Boolean).join(' · ');
+const snippet = (e: EventSummary) => [e.ownerName ? `主办 ${e.ownerName}` : '', `${e.memberCount} 名幕后`].filter(Boolean).join(' · ');
 
 // Row click: joined events open directly; otherwise a join request dialog (invite code + note), membership after host approval
 const joining = ref<EventSummary | null>(null);

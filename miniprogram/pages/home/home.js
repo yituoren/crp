@@ -6,7 +6,7 @@ const { fmtDate } = require('../../utils/time');
 
 const STATUS_TEXT = { pending: '未开始', running: '进行中', finished: '已结束' };
 const roleText = (e) => (!e.joined ? (e.pending ? '待审核' : '未加入') : e.role === 'admin' ? '管理员' : e.role === 'host' ? '主办' : '幕后');
-const snippet = (e) => [e.ownerName ? `主办 ${e.ownerName}` : '', `${e.memberCount} 名幕后`, `${e.episodeCount} 个赛段`].filter(Boolean).join(' · ');
+const snippet = (e) => [e.ownerName ? `主办 ${e.ownerName}` : '', `${e.memberCount} 名幕后`].filter(Boolean).join(' · ');
 
 Page({
   data: { loading: true, tab: 'mine', q: '', rows: [], mineCount: 0, allCount: 0, emptyText: '', joining: null, code: '', note: '' },
